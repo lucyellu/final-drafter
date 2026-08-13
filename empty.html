@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Final Draft Editor</title>
+    <title>Final Drafter</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -200,35 +200,56 @@
         .list-items {
             flex-grow: 1;
             overflow-y: auto;
-            padding: 10px;
+            padding: 0;
             list-style: none;
             margin: 0;
         }
-        .list-item {
+        
+        .list-item-container {
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .list-item.main-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 8px 12px;
-            margin-bottom: 5px;
             background: rgba(255,255,255,0.05);
-            border-radius: 4px;
             cursor: pointer;
             border-left: 4px solid transparent;
             font-size: 0.9rem;
+            user-select: none;
         }
-        .list-item:hover { background: rgba(255,255,255,0.1); }
-        .list-item.highlighted {
-            background: rgba(255,255,255,0.2);
+        .list-item.main-item:hover { background: rgba(255,255,255,0.1); }
+        .list-item.main-item.highlighted {
+            background: rgba(255,255,255,0.15);
         }
+        
+        .list-item-left {
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .toggle-arrow {
+            font-size: 0.6rem;
+            margin-right: 6px;
+            color: #888;
+            width: 10px;
+        }
+        
         .list-item-color {
-            width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px;
+            width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px;
             box-shadow: 0 0 2px rgba(0,0,0,0.5);
             flex-shrink: 0;
         }
-        .item-actions button {
-            background: transparent; border: none; color: #999; cursor: pointer; font-size: 1rem; margin-left: 5px;
+        
+        .item-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
-        .item-actions button:hover { color: #ff5555; }
         
         .item-count {
             background: rgba(255,255,255,0.1);
@@ -238,6 +259,37 @@
             border-radius: 10px;
             margin-left: 8px;
         }
+        
+        .item-actions button {
+            background: transparent; border: none; color: #999; cursor: pointer; font-size: 1.2rem; margin-left: 5px;
+            font-weight: bold;
+        }
+        .item-actions button:hover { color: #fff; }
+        
+        .nested-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            background: rgba(0,0,0,0.2);
+        }
+        .nested-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 12px 6px 25px;
+            font-size: 0.8rem;
+            color: #bbb;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+        }
+        .nested-list-item:hover {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+        .nested-list-item .delete-btn {
+            background: transparent; border: none; color: #666; cursor: pointer; font-size: 1rem;
+        }
+        .nested-list-item .delete-btn:hover { color: #ff5555; }
 
         .add-input-group {
             padding: 15px;
@@ -268,6 +320,7 @@
             background-color: #2b2b2b;
             padding: 40px 20px;
             scroll-behavior: smooth;
+            position: relative;
         }
 
         /* Script Page */
@@ -286,18 +339,36 @@
             line-height: 1.1;
             outline: none; 
             transition: zoom 0.1s;
+            position: relative;
         }
         
         /* Simulated Page Breaks */
         .page.show-breaks {
-            background-image: linear-gradient(to bottom, transparent 10.95in, #ccc 10.95in, #ccc 11in);
+            background-image: linear-gradient(to bottom, transparent 0, transparent 10.95in, #ccc 10.95in, #ccc 11in);
             background-size: 100% 11in;
+        }
+        
+        /* Page Numbers Container for Screen */
+        #page-numbers-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .page-number-display {
+            position: absolute;
+            right: 0.5in;
+            font-family: 'Courier Prime', 'Courier New', Courier, monospace;
+            font-size: 12pt;
+            color: #999;
         }
         
         /* Script Elements */
         .page > div {
             white-space: pre-wrap;
             min-height: 1em; /* Allow empty lines */
+            position: relative;
+            z-index: 10;
         }
         .scene-heading {
             text-transform: uppercase;
@@ -345,12 +416,29 @@
         /* Print Media */
         @media print {
             body, #main-container, #editor-wrapper {
-                background: white; height: auto; overflow: visible; display: block;
+                background: white; height: auto; overflow: visible; display: block; padding: 0; margin: 0;
             }
-            #top-bar, #sidebar, #right-sidebar, .resizer { display: none; }
+            #top-bar, #sidebar, #right-sidebar, .resizer, #page-numbers-container { display: none; }
             .page {
-                box-shadow: none; margin: 0; padding: 0; width: 100%; min-height: auto; zoom: 1 !important; background-image: none !important;
+                box-shadow: none; margin: 0; padding: 0; width: 8.5in; min-height: auto; zoom: 1 !important; background-image: none !important;
             }
+            
+            /* Add print page numbers using CSS counters */
+            @page {
+                margin: 1in;
+                @top-right {
+                    content: counter(page) ".";
+                    font-family: 'Courier Prime', 'Courier New', Courier, monospace;
+                    font-size: 12pt;
+                }
+            }
+            
+            /* Re-adjust margins because padding is removed for print */
+            .scene-heading, .action, .transition, .center-title { margin-left: 0.5in; }
+            .character { margin-left: 2.7in; }
+            .dialogue { margin-left: 1.7in; }
+            .parenthetical { margin-left: 2.2in; }
+            
             .scene-heading, .character { page-break-after: avoid; break-after: avoid; }
             .dialogue { page-break-before: avoid; break-before: avoid; }
         }
@@ -425,8 +513,7 @@
         <!-- Editor -->
         <div id="editor-wrapper">
             <div id="editor-page" class="page" contenteditable="true" oninput="handleInput()">
-                <div class="center-title">Keeping Up with the Kardashevs - Pilot Scenes</div>
-
+                <div id="page-numbers-container" contenteditable="false"></div>
 
             </div>
         </div>
@@ -469,16 +556,10 @@
             locations: []
         };
         
-        let dynamicCounts = {
-            characters: {},
-            locations: {}
-        };
+        let dynamicCounts = { characters: {}, locations: {} };
         
-        let highlightPositions = {}; // id -> current index being viewed
-
         // Highlight tracking
         let activeHighlights = new Set();
-        let activeHighlightRanges = {}; // id -> array of nodes/ranges
 
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -493,7 +574,6 @@
             }
         }
 
-        // Generate a random pleasant color
         function getRandomColor() {
             const hue = Math.floor(Math.random() * 360);
             return `hsl(${hue}, 70%, 60%)`;
@@ -501,40 +581,48 @@
 
         function extractEntities() {
             dynamicCounts = { characters: {}, locations: {} };
+            const entityNodes = { characters: {}, locations: {} };
             
-            // Extract Characters
+            let charIdx = 0;
             document.querySelectorAll('.character').forEach(node => {
-                let name = node.innerText.replace(/\\s*\\(.*?\\)/g, '').trim().toUpperCase();
+                let name = node.innerText.replace(/\s*\(.*?\)/g, '').trim().toUpperCase();
                 if (!name) return;
                 dynamicCounts.characters[name] = (dynamicCounts.characters[name] || 0) + 1;
                 
-                // Add to appState if missing
+                if (!entityNodes.characters[name]) entityNodes.characters[name] = [];
+                if (!node.id) node.id = 'char-' + Date.now() + '-' + (charIdx++);
+                entityNodes.characters[name].push(node);
+                
                 if (!appState.characters.find(c => c.name === name)) {
                     appState.characters.push({ id: Date.now() + Math.random(), name: name, color: getRandomColor() });
                 }
             });
             
-            // Extract Locations
+            let locIdx = 0;
             document.querySelectorAll('.scene-heading').forEach(node => {
                 let text = node.innerText.trim().toUpperCase();
-                let match = text.match(/^(?:INT\\.|EXT\\.|I\\/E\\.|INT\\/EXT\\.)\\s+(.*?)(?:\\s+-\\s+.*)?$/);
+                let match = text.match(/^(?:INT\.|EXT\.|I\/E\.|INT\/EXT\.)\s+(.*?)(?:\s+-\s+.*)?$/);
                 let name = match ? match[1].trim() : text;
                 if (!name) return;
                 dynamicCounts.locations[name] = (dynamicCounts.locations[name] || 0) + 1;
+                
+                if (!entityNodes.locations[name]) entityNodes.locations[name] = [];
+                if (!node.id) node.id = 'loc-' + Date.now() + '-' + (locIdx++);
+                entityNodes.locations[name].push(node);
                 
                 if (!appState.locations.find(l => l.name === name)) {
                     appState.locations.push({ id: Date.now() + Math.random(), name: name, color: getRandomColor() });
                 }
             });
             
-            // Sort state alphabetically for display, prioritizing higher counts
             appState.characters.sort((a, b) => (dynamicCounts.characters[b.name] || 0) - (dynamicCounts.characters[a.name] || 0));
             appState.locations.sort((a, b) => (dynamicCounts.locations[b.name] || 0) - (dynamicCounts.locations[a.name] || 0));
             
-            renderLists();
+            renderLists(entityNodes);
+            drawPageNumbers();
         }
 
-        function renderLists() {
+        function renderLists(entityNodes) {
             const charList = document.getElementById('characters-list');
             const locList = document.getElementById('locations-list');
             charList.innerHTML = '';
@@ -543,59 +631,191 @@
             appState.characters.forEach(item => {
                 const count = dynamicCounts.characters[item.name] || 0;
                 if (count > 0 || activeHighlights.has(item.id)) {
-                    charList.appendChild(createListItemEl(item, 'characters', count));
+                    const nodesList = entityNodes.characters[item.name] || [];
+                    charList.appendChild(createListItemEl(item, 'characters', count, nodesList));
                 }
             });
             appState.locations.forEach(item => {
                 const count = dynamicCounts.locations[item.name] || 0;
                 if (count > 0 || activeHighlights.has(item.id)) {
-                    locList.appendChild(createListItemEl(item, 'locations', count));
+                    const nodesList = entityNodes.locations[item.name] || [];
+                    locList.appendChild(createListItemEl(item, 'locations', count, nodesList));
                 }
             });
         }
 
-        function createListItemEl(item, type, count) {
+        function createListItemEl(item, type, count, nodesList) {
+            const liContainer = document.createElement('div');
+            liContainer.className = 'list-item-container';
+            
             const li = document.createElement('li');
-            li.className = 'list-item';
-            if (activeHighlights.has(item.id)) li.classList.add('highlighted');
+            li.className = 'list-item main-item';
+            if (activeHighlights.has(item.id)) {
+                li.classList.add('highlighted');
+                li.style.borderLeftColor = item.color;
+            }
             
             const left = document.createElement('div');
-            left.style.display = 'flex';
-            left.style.alignItems = 'center';
-            left.style.overflow = 'hidden';
-            left.style.textOverflow = 'ellipsis';
-            left.style.whiteSpace = 'nowrap';
-            
-            left.innerHTML = `<span class="list-item-color" style="background-color: ${item.color}"></span> 
-                              <span style="overflow: hidden; text-overflow: ellipsis;" title="${item.name}">${item.name}</span>
+            left.className = 'list-item-left';
+            left.innerHTML = `<span class="toggle-arrow">▶</span> <span class="list-item-color" style="background-color: ${item.color}"></span> 
+                              <span class="item-name" title="${item.name}">${item.name}</span>
                               <span class="item-count">${count}</span>`;
-            
-            li.onclick = (e) => {
-                if (e.target.tagName !== 'BUTTON') {
-                    handleListClick(item, li, type);
-                }
-            };
             
             const actions = document.createElement('div');
             actions.className = 'item-actions';
             
-            const delBtn = document.createElement('button');
-            delBtn.innerHTML = '×';
-            delBtn.title = "Remove from list";
-            delBtn.onclick = (e) => {
+            const addBtn = document.createElement('button');
+            addBtn.innerHTML = '+';
+            addBtn.title = "Insert block at cursor";
+            addBtn.onclick = (e) => {
                 e.stopPropagation();
-                if (confirm(`Are you sure you want to remove '${item.name}' from your custom list?`)) {
-                    if (activeHighlights.has(item.id)) toggleHighlight(item, li, false); // turn off highlight
-                    appState[type] = appState[type].filter(i => i.id !== item.id);
-                    renderLists();
+                insertBlockAtCursor(type, item.name);
+            };
+            actions.appendChild(addBtn);
+            
+            li.appendChild(left);
+            li.appendChild(actions);
+            
+            // Nested Children
+            const childrenUl = document.createElement('ul');
+            childrenUl.className = 'nested-list';
+            childrenUl.style.display = 'none';
+            
+            if (nodesList && nodesList.length > 0) {
+                nodesList.forEach((n, idx) => {
+                    const childLi = document.createElement('li');
+                    childLi.className = 'nested-list-item';
+                    
+                    let snippet = n.innerText.trim();
+                    if (type === 'characters') {
+                        let next = n.nextElementSibling;
+                        while(next && next.classList.contains('parenthetical')) next = next.nextElementSibling;
+                        if (next && next.classList.contains('dialogue')) {
+                            snippet = next.innerText.trim();
+                        }
+                    }
+                    if (snippet.length > 30) snippet = snippet.substring(0, 30) + '...';
+                    
+                    childLi.innerHTML = `<span>${idx+1}. "${snippet}"</span> <button class="delete-btn" title="Delete block">×</button>`;
+                    
+                    childLi.onclick = (e) => {
+                        if (e.target.tagName === 'BUTTON') {
+                            e.stopPropagation();
+                            if (type === 'characters') {
+                                let next = n.nextElementSibling;
+                                while(next && next.classList.contains('parenthetical')) {
+                                    let p = next;
+                                    next = next.nextElementSibling;
+                                    p.remove();
+                                }
+                                if (next && next.classList.contains('dialogue')) next.remove();
+                            }
+                            n.remove();
+                            extractEntities();
+                            saveState();
+                        } else {
+                            e.stopPropagation();
+                            n.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            const oldBg = n.style.backgroundColor;
+                            n.style.backgroundColor = "rgba(255,255,0,0.5)";
+                            setTimeout(() => { n.style.backgroundColor = oldBg; }, 800);
+                        }
+                    };
+                    childrenUl.appendChild(childLi);
+                });
+            }
+            
+            li.oncontextmenu = (e) => {
+                e.preventDefault();
+                if (confirm(`Are you sure you want to delete ALL instances of ${item.name} from the script?`)) {
+                    nodesList.forEach(n => {
+                        if (type === 'characters') {
+                            let next = n.nextElementSibling;
+                            while(next && next.classList.contains('parenthetical')) {
+                                let p = next;
+                                next = next.nextElementSibling;
+                                p.remove();
+                            }
+                            if (next && next.classList.contains('dialogue')) next.remove();
+                        }
+                        n.remove();
+                    });
+                    if (activeHighlights.has(item.id)) toggleHighlight(item, li, false);
+                    extractEntities();
                     saveState();
                 }
             };
             
-            actions.appendChild(delBtn);
-            li.appendChild(left);
-            li.appendChild(actions);
-            return li;
+            li.onclick = (e) => {
+                if (e.target.tagName !== 'BUTTON') {
+                    const arrow = left.querySelector('.toggle-arrow');
+                    if (childrenUl.style.display === 'none') {
+                        childrenUl.style.display = 'block';
+                        arrow.innerText = '▼';
+                        toggleHighlight(item, li, true);
+                    } else {
+                        childrenUl.style.display = 'none';
+                        arrow.innerText = '▶';
+                        toggleHighlight(item, li, false);
+                    }
+                }
+            };
+            
+            liContainer.appendChild(li);
+            liContainer.appendChild(childrenUl);
+            return liContainer;
+        }
+
+        function insertBlockAtCursor(type, name) {
+            let targetClass = type === 'characters' ? 'character' : 'scene-heading';
+            
+            let block1 = document.createElement('div');
+            block1.className = targetClass;
+            block1.innerText = name;
+            
+            let block2 = null;
+            if (type === 'characters') {
+                block2 = document.createElement('div');
+                block2.className = 'dialogue';
+                block2.innerText = ' '; // spacer for cursor
+            } else {
+                block2 = document.createElement('div');
+                block2.className = 'action';
+                block2.innerText = ' ';
+            }
+            
+            const selection = window.getSelection();
+            const editor = document.getElementById('editor-page');
+            
+            let node = selection.anchorNode;
+            let isInside = false;
+            while (node && node.id !== 'editor-page') {
+                if (node.parentNode && node.parentNode.id === 'editor-page') {
+                    isInside = true;
+                    if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+                    break;
+                }
+                node = node.parentNode;
+            }
+            
+            if (isInside && node) {
+                editor.insertBefore(block1, node.nextSibling);
+                editor.insertBefore(block2, block1.nextSibling);
+            } else {
+                editor.appendChild(block1);
+                editor.appendChild(block2);
+            }
+            
+            const range = document.createRange();
+            range.selectNodeContents(block2);
+            range.collapse(false);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            
+            block2.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            extractEntities();
+            saveState();
         }
 
         function addListItem(type) {
@@ -614,74 +834,29 @@
             }
             
             nameInput.value = '';
-            extractEntities(); // Re-render and sort
+            extractEntities(); 
             saveState();
         }
 
-        // --- CSS Custom Highlight & Search Engine ---
-        function handleListClick(item, liElement, type) {
-            // If it's already highlighted, find next
-            if (activeHighlights.has(item.id)) {
-                jumpToNext(item.id);
-            } else {
-                // Not highlighted yet, turn on highlight and jump to first
-                toggleHighlight(item, liElement, true);
-            }
-        }
-        
-        function jumpToNext(id) {
-            const ranges = activeHighlightRanges[id];
-            if (!ranges || ranges.length === 0) return;
-            
-            if (highlightPositions[id] === undefined) {
-                highlightPositions[id] = 0;
-            } else {
-                highlightPositions[id] = (highlightPositions[id] + 1) % ranges.length;
-            }
-            
-            const range = ranges[highlightPositions[id]];
-            const node = range.startContainer;
-            if (node && node.parentElement) {
-                // Scroll into view
-                node.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                
-                // Briefly flash the element background to help the user spot it
-                const oldBg = node.parentElement.style.backgroundColor;
-                node.parentElement.style.backgroundColor = "rgba(255,255,0,0.5)";
-                setTimeout(() => { node.parentElement.style.backgroundColor = oldBg; }, 800);
-            }
-        }
-
+        // --- CSS Custom Highlight ---
         function toggleHighlight(item, liElement, forceOn) {
-            if (!window.CSS || !CSS.highlights) {
-                // Fallback for non-supported browsers
-                const firstHit = document.evaluate(`.//div[contains(text(), '${item.name}')]`, document.getElementById('editor-page'), null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                if(firstHit) firstHit.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                return;
-            }
+            if (!window.CSS || !CSS.highlights) return;
             
             const id = item.id;
             const hlName = "hl-" + id.toString().replace('.', '-');
             
-            // Toggle OFF
             if (!forceOn && activeHighlights.has(id)) {
-                if (CSS.highlights.has(hlName)) {
-                    CSS.highlights.delete(hlName);
-                }
+                if (CSS.highlights.has(hlName)) CSS.highlights.delete(hlName);
                 activeHighlights.delete(id);
-                delete activeHighlightRanges[id];
-                delete highlightPositions[id];
                 liElement.classList.remove('highlighted');
                 liElement.style.borderLeftColor = 'transparent';
                 return;
             }
             
-            // Toggle ON
             activeHighlights.add(id);
             liElement.classList.add('highlighted');
             liElement.style.borderLeftColor = item.color;
             
-            // Inject CSS Rule if not exists
             if (!document.getElementById("style-" + hlName)) {
                 const style = document.createElement('style');
                 style.id = "style-" + hlName;
@@ -694,9 +869,8 @@
             let node;
             const ranges = [];
             
-            // Escape special chars for regex
-            const safeName = item.name.replace(/[-[\\]{}()*+?.,\\\\^$|#\\s]/g, '\\\\$&');
-            const regex = new RegExp(`\\\\b${safeName}\\\\b`, 'gi');
+            const safeName = item.name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+            const regex = new RegExp(`\\b${safeName}\\b`, 'gi');
             
             while ((node = walker.nextNode())) {
                 let match;
@@ -712,10 +886,6 @@
             if (ranges.length > 0) {
                 const highlight = new Highlight(...ranges);
                 CSS.highlights.set(hlName, highlight);
-                activeHighlightRanges[id] = ranges;
-                jumpToNext(id); // Jump to first
-            } else {
-                activeHighlightRanges[id] = [];
             }
         }
 
@@ -727,7 +897,17 @@
         function saveState() {
             if (isUndoRedo) return;
             const editor = document.getElementById('editor-page');
+            
+            // Temporarily remove page numbers before saving DOM state
+            const pn = document.getElementById('page-numbers-container');
+            const pnHtml = pn ? pn.outerHTML : '';
+            if (pn) pn.innerHTML = '';
+            
             const content = editor.innerHTML;
+            
+            if (pnHtml) {
+                if(pn) pn.outerHTML = pnHtml;
+            }
             
             if (historyIndex >= 0 && historyStack[historyIndex] === content) return;
             
@@ -766,24 +946,19 @@
         function refreshAllHighlights() {
             if (!window.CSS || !CSS.highlights) return;
             const currentlyActive = Array.from(activeHighlights);
-            // clear state internally and retoggle to rebuild ranges
             currentlyActive.forEach(id => {
                 let item = appState.characters.find(c => c.id === id) || appState.locations.find(l => l.id === id);
                 if (item) {
                     const hlName = "hl-" + id.toString().replace('.', '-');
                     if (CSS.highlights.has(hlName)) CSS.highlights.delete(hlName);
                     activeHighlights.delete(id);
-                    delete activeHighlightRanges[id];
-                    
                     const li = document.querySelector(`.list-item-color[style*="${item.color}"]`);
-                    if (li) {
-                        toggleHighlight(item, li.parentNode.parentNode, true);
-                    }
+                    if (li) toggleHighlight(item, li.parentNode.parentNode.parentNode, true);
                 }
             });
         }
 
-        // --- Layout Controls ---
+        // --- Layout Controls & Pagination ---
         function updateZoom() {
             const val = document.getElementById('zoom-slider').value;
             document.getElementById('zoom-val').innerText = val;
@@ -793,8 +968,35 @@
         function togglePageBreaks() {
             const show = document.getElementById('page-breaks-toggle').checked;
             const page = document.getElementById('editor-page');
-            if (show) page.classList.add('show-breaks');
-            else page.classList.remove('show-breaks');
+            if (show) {
+                page.classList.add('show-breaks');
+                document.getElementById('page-numbers-container').style.display = 'block';
+            } else {
+                page.classList.remove('show-breaks');
+                document.getElementById('page-numbers-container').style.display = 'none';
+            }
+        }
+
+        function drawPageNumbers() {
+            let container = document.getElementById('page-numbers-container');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            const pageHeight = document.getElementById('editor-page').scrollHeight;
+            const pixelsPerInch = 96; 
+            const pageInches = 11;
+            const pixelsPerPage = pixelsPerInch * pageInches;
+            
+            const numPages = Math.max(1, Math.ceil(pageHeight / pixelsPerPage));
+            
+            for (let i = 1; i <= numPages; i++) {
+                const num = document.createElement('div');
+                num.className = 'page-number-display';
+                num.innerText = i + '.';
+                // Position at the top right of each 11-inch block, with 0.5in top margin offset
+                num.style.top = ((i - 1) * pixelsPerPage + 48) + 'px'; 
+                container.appendChild(num);
+            }
         }
 
         // Resizers
@@ -845,7 +1047,7 @@
                 saveState();
             } else if (node && node.id === 'editor-page') {
                 document.execCommand('formatBlock', false, 'DIV');
-                const divs = node.querySelectorAll('div:not([class])');
+                const divs = node.querySelectorAll('div:not([class]):not(#page-numbers-container)');
                 divs.forEach(d => d.className = className);
                 saveState();
             }
@@ -920,7 +1122,7 @@
             
             const nodesToMove = [sourceHeading];
             let curr = sourceHeading.nextElementSibling;
-            while (curr && !curr.classList.contains('scene-heading')) {
+            while (curr && !curr.classList.contains('scene-heading') && curr.id !== 'page-numbers-container') {
                 nodesToMove.push(curr);
                 curr = curr.nextElementSibling;
             }
@@ -951,32 +1153,35 @@
             const editor = document.getElementById('editor-page');
             const lines = [];
             for (let child of editor.children) {
-                if (child.classList.contains('center-title')) lines.push("          " + child.innerText + "\\n");
-                else if (child.classList.contains('scene-heading') || child.classList.contains('transition')) lines.push("\\n" + child.innerText + "\\n");
-                else if (child.classList.contains('action')) lines.push(child.innerText + "\\n");
-                else if (child.classList.contains('character')) lines.push("\\n          " + child.innerText);
+                if (child.id === 'page-numbers-container') continue;
+                if (child.classList.contains('center-title')) lines.push("          " + child.innerText + "\n");
+                else if (child.classList.contains('scene-heading') || child.classList.contains('transition')) lines.push("\n" + child.innerText + "\n");
+                else if (child.classList.contains('action')) lines.push(child.innerText + "\n");
+                else if (child.classList.contains('character')) lines.push("\n          " + child.innerText);
                 else if (child.classList.contains('parenthetical')) lines.push("        " + child.innerText);
                 else if (child.classList.contains('dialogue')) lines.push("      " + child.innerText);
             }
-            downloadFile('script.txt', lines.join("\\n"), 'text/plain');
+            downloadFile('script.txt', lines.join("\n"), 'text/plain');
         }
         
         function exportMD() {
             const editor = document.getElementById('editor-page');
             const lines = [];
             for (let child of editor.children) {
-                if (child.classList.contains('scene-heading')) lines.push("**" + child.innerText + "**\\n");
-                else if (child.classList.contains('character')) lines.push("\\n**" + child.innerText + "**");
+                if (child.id === 'page-numbers-container') continue;
+                if (child.classList.contains('scene-heading')) lines.push("**" + child.innerText + "**\n");
+                else if (child.classList.contains('character')) lines.push("\n**" + child.innerText + "**");
                 else if (child.classList.contains('parenthetical')) lines.push("*" + child.innerText + "*");
-                else lines.push(child.innerText + "\\n");
+                else lines.push(child.innerText + "\n");
             }
-            downloadFile('script.md', lines.join("\\n"), 'text/markdown');
+            downloadFile('script.md', lines.join("\n"), 'text/markdown');
         }
 
         function saveJSON() {
             const editor = document.getElementById('editor-page');
             const data = [];
             for (let child of editor.children) {
+                if (child.id === 'page-numbers-container') continue;
                 if(child.className) {
                     data.push({ type: child.className, text: child.innerText });
                 }
@@ -996,11 +1201,19 @@
                 const contents = e.target.result;
                 const editor = document.getElementById('editor-page');
                 
+                // Keep the page numbers container
+                let pn = document.getElementById('page-numbers-container');
+                if (!pn) {
+                    pn = document.createElement('div');
+                    pn.id = 'page-numbers-container';
+                    pn.contentEditable = "false";
+                }
+                editor.innerHTML = '';
+                editor.appendChild(pn);
+                
                 if (file.name.endsWith('.json')) {
                     try {
                         const data = JSON.parse(contents);
-                        editor.innerHTML = '';
-                        
                         const scriptData = data.script ? data.script : data;
                         if (data.lists) {
                             appState = data.lists;
@@ -1019,7 +1232,10 @@
                         saveState();
                     } catch (err) { alert("Invalid JSON format."); }
                 } else {
-                    editor.innerHTML = '<div class="action">' + contents.replace(/\\n/g, '<br>') + '</div>';
+                    const block = document.createElement('div');
+                    block.className = 'action';
+                    block.innerHTML = contents.replace(/\n/g, '<br>');
+                    editor.appendChild(block);
                     buildToc();
                     extractEntities();
                     saveState();
@@ -1061,7 +1277,8 @@
         });
 
         window.onload = () => {
-            extractEntities(); // Natively builds the lists from DOM
+            togglePageBreaks(); // Ensure page numbers display correctly if toggle is on
+            extractEntities(); 
             saveState(); 
             buildToc();
         };
