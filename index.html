@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Keeping Up with the Kardashevs - Final Draft Editor</title>
+    <title>Final Draft Editor</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -223,11 +223,21 @@
         .list-item-color {
             width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px;
             box-shadow: 0 0 2px rgba(0,0,0,0.5);
+            flex-shrink: 0;
         }
         .item-actions button {
             background: transparent; border: none; color: #999; cursor: pointer; font-size: 1rem; margin-left: 5px;
         }
-        .item-actions button:hover { color: #fff; }
+        .item-actions button:hover { color: #ff5555; }
+        
+        .item-count {
+            background: rgba(255,255,255,0.1);
+            color: #ccc;
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
 
         .add-input-group {
             padding: 15px;
@@ -257,6 +267,7 @@
             overflow-y: auto;
             background-color: #2b2b2b;
             padding: 40px 20px;
+            scroll-behavior: smooth;
         }
 
         /* Script Page */
@@ -415,532 +426,7 @@
         <div id="editor-wrapper">
             <div id="editor-page" class="page" contenteditable="true" oninput="handleInput()">
                 <div class="center-title">Keeping Up with the Kardashevs - Pilot Scenes</div>
-                <div class="scene-heading" id="scene-1">INT. ARCHIVE LIBRARY - CORNELIA'S ESTATE - NIGHT</div>
-                <div class="action">Sleek 1920s jazz plays softly from hidden acoustic panels. The room is immaculate—warm mahogany, glass cases holding real paper books, and a stabilized 70-degree micro-climate while a bitter December rain hits the terrace outside.</div>
-                <div class="action">CORNELIA (26) adjusts Julian’s velvet bow tie. Her touch is light, practiced, and perfectly polite.</div>
-                <div class="character">CORNELIA</div>
-                <div class="dialogue">Your father’s already on his second glass of vintage synthetic. He told my dad you’re considering the North Grid merger.</div>
-                <div class="action">JULIAN (28)</div>
-                <div class="parenthetical">(Staring past her out the window)</div>
-                <div class="dialogue">My dad says a lot of things when his blood-sugar stabilizes.</div>
-                <div class="character">CORNELIA</div>
-                <div class="dialogue">It’s a good look for you, Julian. Being serious. You’ve been... drifting since the summer. People notice.</div>
-                <div class="action">Julian takes a slow breath. He feels a familiar, heavy tightness in his chest—the quiet, creeping fatigue that always comes when he’s around her for more than twenty minutes. She isn't mean; she's just empty. A human vacuum sucking the air out of his lungs.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">I was at the hospital until 6 AM with my mother, Cornelia.</div>
-                <div class="character">CORNELIA</div>
-                <div class="parenthetical">(Softens slightly, but her eyes stay cool)</div>
-                <div class="dialogue">I know. It’s sweet. Truly. But she’d want you out tonight. Turning 2100 in a hospital room isn't an strategy. You need to be seen in the room. With me.</div>
-                <div class="action">Julian nods numbly. He looks at his reflection in the dark glass. He can practically feel his own battery draining into her floorboards.</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-2">INT. SERVICE CORRIDOR - NIGHT</div>
-                <div class="action">Away from the mahogany and silk, the hallway is cold steel and exposed utility conduits.</div>
-                <div class="action">MERLIN (30) sits on an upside-down plastic crate, wearing a scuffed vintage leather jacket. He’s balancing a tiny electronic scale on his knee, carefully measuring drops of clear fluid into three small glass vials.</div>
-                <div class="action">Julian steps through the service door, letting out a long, ragged exhale. He stops when he sees Merlin.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">This isn't the guest bathroom.</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Without looking up)</div>
-                <div class="dialogue">Guest bathroom is two doors left. Unless you’re looking for something that actually fixes your mood, in which case, you’re in the right hallway.</div>
-                <div class="action">Julian eyes the vials.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">You’re Arthur’s guy. The nootropic cook.</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">I’m a metabolic chemist. "Cook" sounds like I work in a fast-food joint. I synthesize precision neural-peptides for people who have too much money and zero natural serotonin.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">Does it work?</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Finally looks up, scanning Julian's tired face)</div>
-                <div class="dialogue">For two hours? You’ll feel like you wrote the Declaration of Independence. At hour three, you’ll crash and realize you’re just a guy in a velvet suit whose family owns a fuse box.</div>
-                <div class="action">Julian lets out a quiet, genuine laugh—his first of the night.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">How much for two hours?</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-3">INT. GRAND FOYER - NIGHT</div>
-                <div class="action">The room is full of high-society guests sipping champagne, speaking in quiet, restrained murmurs. The vibe is sterile, controlled, and intensely rehearsed.</div>
-                <div class="action">Suddenly, the heavy double doors swing open.</div>
-                <div class="action">CHLOE (24) steps through. She’s wearing an oversized, vintage 1999 leather jacket over an gold-embroidered Egyptian silk slip dress. She’s wet from the rain, hair slightly messy, completely ignoring the coat-check staff.</div>
-                <div class="action">She doesn't raise her voice. She doesn't make a scene. But the moment she walks three paces into the foyer, the energy in the room snaps.</div>
-                <div class="action">Conversations stall mid-sentence. People turn their heads without meaning to. It’s an instinctive, biological pull—like a sudden drop in barometric pressure.</div>
-                <div class="action">Chloe catches Julian standing by the grand staircase with a half-empty glass in his hand. A slow, unapologetic grin spreads across her face. She walks straight past two prominent city councilors as if they’re furniture, stopping right in front of Julian.</div>
-                <div class="character">CHLOE</div>
-                <div class="dialogue">You look like you’re attending your own funeral.</div>
-                <div class="character">JULIAN</div>
-                <div class="parenthetical">(Slightly thrown, heart suddenly racing)</div>
-                <div class="dialogue">It’s a 1920s theme. Melancholy was very trendy.</div>
-                <div class="character">CHLOE</div>
-                <div class="parenthetical">(Reaches out, casually pulling off his bow tie and tossing it onto a silver tray carried by a passing waiter)</div>
-                <div class="dialogue">Boring. Come on. Jesu’s waiting in the courtyard, and someone just hot-wired your dad’s decorative fountain.</div>
-                <div class="action">Julian looks over her shoulder. Across the room, Cornelia is watching them, her face pale, sensing instantly that she’s just been completely erased from the room.</div>
-                <div class="action">Julian looks back at Chloe. His hands aren't shaking anymore. For the first time all night, he feels completely awake.</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-4">INT. SERVICE CORRIDOR - GATSBY GALA - NIGHT</div>
-                <div class="action">JULIAN (28) pushes through the heavy service door into the cold back hallway. MERLIN (30) is leaning against a stainless-steel counter, measuring amber drops into tiny dark-glass vials.</div>
-                <div class="action">Julian blinks, stopping short.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">Where’s Lance?</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Without looking up)</div>
-                <div class="dialogue">Lance didn't tell you? Business has been good. He had to go up to the Tier-2 district to schmooze some FDA regulators. I’m covering his VIP circuit tonight.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">I don't know you.</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">I’m Merlin. I’m the guy who actually formulates what Lance sells you. You’re Julian. You look like a guy whose family owns a fuse box and who hasn't slept since Tuesday.</div>
-                <div class="action">CORNELIA (26) steps through the service door behind Julian, her heels clicking sharply against the concrete floor. She looks deeply out of place in her pristine, custom silk gown.</div>
-                <div class="character">CORNELIA</div>
-                <div class="dialogue">Julian, your father is asking for you—who is this? Why are we in the scullery?</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Scanning Cornelia's hyper-rigid posture)</div>
-                <div class="dialogue">Ah. The WASP contingent has arrived. Perfect timing.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">Merlin, just give me the standard focus-boost Lance brings.</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">Standard is boring. Standard is what Lance sells to mid-level energy brokers who want to stay awake through quarterly reviews. I’ve got something off-menu tonight. Fresh out of my own biolab.</div>
-                <div class="action">Merlin pulls out two small, unlabeled amber ampoules.</div>
-                <div class="character">CORNELIA</div>
-                <div class="parenthetical">(Crossing her arms, OCD rising)</div>
-                <div class="dialogue">That is completely unsanctioned. Those vials aren't even micro-stamped. Julian, we are leaving.</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">It’s a dual-phase neural-catalyst. For two hours? You’ll feel like you wrote the Declaration of Independence. At hour three, you’ll crash and realize you’re just a guy in a velvet suit whose dad controls a solar relay.</div>
-                <div class="action">Julian stares at the ampoule. He’s exhausted. He looks at Cornelia, whose jaw is locked in absolute, controlled perfection.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">What happens if she takes one?</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">Her? It’d probably dissolve that invisible steel rod she’s got strapped to her spine. She might actually have an unscripted thought.</div>
-                <div class="action">Cornelia’s eyes flash with indignation—and a sudden, dangerous flicker of curiosity.</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-5">INT. SERVICE CORRIDOR - GATSBY GALA - NIGHT</div>
-                <div class="action">Julian isn't looking at Merlin anymore. He’s looking through the glass portal of the service door.</div>
-                <div class="action">Across the ballroom, Chloe is standing under a green ambient spotlight, laughing with two high-ranking orbital diplomats who look completely entranced by her. She isn't even trying. She’s just there.</div>
-                <div class="action">Cornelia sees Julian’s eyes. She watches him watch Chloe, and something tiny and brittle snaps inside her chest. She steps forward, taking the dark glass ampoule right out of Merlin’s fingers before Julian can touch it.</div>
-                <div class="character">CORNELIA</div>
-                <div class="dialogue">I’m confiscating this. I’ll have our Archiater break down the molecular chain in the morning.</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(A slow, ancient smile)</div>
-                <div class="dialogue">Sure you will, sweetheart. Store it in the family vault next to the Seneca manuscripts.</div>
-                <div class="action">Merlin leans against the stainless steel counter, looking at them like a man who has watched empires rise, rot, and turn into museum exhibits.</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">You know, at the turn of 1600, people thought the sky was going to crack open. At the turn of 600, they thought the world was ending in mud. Now it’s 2099. Humanity turns a new century in fifteen minutes, and you two are in a back hallway arguing over administrative clearance. It’s criminal to spend a turn of the wheel this boring.</div>
-                <div class="character">CORNELIA</div>
-                <div class="parenthetical">(Holding the vial tightly)</div>
-                <div class="dialogue">Law and order aren't "boring."</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">Law is just the weather of the decade, Cornelia. But tonight? At midnight, the global grid resets its encryption keys for three seconds. The whole world is technically legal until the clock strikes 12:00:03.</div>
-                <div class="action">Julian looks at Merlin, genuinely unsettled by the guy's quiet, timeless gravity.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">Who the hell are you?</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Pushes off the wall, walking toward the exit)</div>
-                <div class="dialogue">Just an old friend of the family. Go enjoy the green light, Julian. The AI Fitzgerald in the conservatory is currently hallucinating a boat rowing against the current, and he’s dying for someone to talk to.</div>
-                <div class="action">Merlin slips through the service doors into the rain.</div>
-                <div class="action">Cornelia stands under the harsh fluorescent bulb of the hallway. She looks at the tiny amber vial in her palm. Through the door, she sees Chloe casually toss her shoes into a champagne fountain while three trillionaires laugh like schoolboys.</div>
-                <div class="action">Cornelia uncaps the vial.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">Cornelia, wait—what are you—</div>
-                <div class="action">Without a word, Cornelia downs the ampoule in one smooth, defiant swallow.</div>
-                <div class="action">She snaps the empty glass vial into the recycling chute, adjusts her diamonds, and looks at Julian with wide, unblinking eyes as her pupils begin to dilate into sudden, terrifying clarity.</div>
-                <div class="character">CORNELIA</div>
-                <div class="parenthetical">(Her voice unnervingly calm)</div>
-                <div class="dialogue">Let’s go to the party, Julian. I want to see what happens when the encryption breaks.</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-6">INT. SERVICE CORRIDOR - GATSBY GALA - NIGHT</div>
-                <div class="action">JULIAN (28) stands by the stainless-steel counter. Next to him, OLLIE (27) is unbuttoning his tight collar, looking thoroughly miserable in his tux.</div>
-                <div class="character">OLLIE</div>
-                <div class="dialogue">I hate 1920s parties. The pants have no stretch. Why did people in the 1900s hate flexible waistbands?</div>
-                <div class="action">MERLIN (30) doesn't look up from his vials. He’s balancing amber drops on a digital micro-scale.</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">Because they had self-control, Ollie. A concept your lineage clearly lost somewhere around the invention of the automated pantry.</div>
-                <div class="character">OLLIE</div>
-                <div class="parenthetical">(Points a finger at Merlin)</div>
-                <div class="dialogue">Hey. I came back here for ice. I didn't sign up to be body-shamed by a guy who looks like he lives in an abandoned MRI machine.</div>
-                <div class="action">Julian ignores them, staring through the glass portal of the service door at Chloe, who is effortlessly commanding a circle of diplomats in the main room.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">Where’s Lance, Merlin?</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">Lance is in the Tier-2 district, kissing the rings of three FDA inspectors who think they understand neuro-chemistry. Lance is a salesman. I’m the guy who actually writes the code your brain runs on.</div>
-                <div class="action">CAL (26) bursts through the service door, her heels clicking like gunshots. Her posture is military-grade perfection, eyes sharp with OCD panic.</div>
-                <div class="character">CAL</div>
-                <div class="dialogue">Julian! Your father is three minutes away from announcing the North Grid merger, and you’re standing in the scullery with a... drug dealer and a guy eating catering olives out of a tub.</div>
-                <div class="character">OLLIE</div>
-                <div class="parenthetical">(Chewing)</div>
-                <div class="dialogue">They’re stuffed with pimento, Cal. It’s a classic.</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Scans Cal from head to toe, letting out a dry, ruthless quiet laugh)</div>
-                <div class="dialogue">Look at you. Calpurnia Cinna. Daughter of the Vaults. You’ve got four hundred terabytes of unencrypted anxiety humming behind your eyes, and you’re wearing a dress that costs more than a municipal water pump.</div>
-                <div class="character">CAL</div>
-                <div class="parenthetical">(Glaring at Merlin)</div>
-                <div class="dialogue">Do not analyze me. You aren't on the family payroll.</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">I don't need to be on your payroll to read your specs, sweetheart. You’re running on 95% cortisol and 5% filial obligation. You haven't had a spontaneous thought since 2096.</div>
-                <div class="character">CAL</div>
-                <div class="parenthetical">(Jaw locked, voice icy)</div>
-                <div class="dialogue">Julian, we are leaving.</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Picks up a tiny amber ampoule, holding it to the light)</div>
-                <div class="dialogue">You could leave. Go back out there. Smile for her dad’s cameras. Or you could take this. Dual-phase neural catalyst. It doesn't give you answers, Cal. It just turns off the script you’ve been memorizing since you were six years old.</div>
-                <div class="character">CAL</div>
-                <div class="dialogue">It’s unsanctioned. It’s criminal.</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Leans in, voice dropping into a low, hypnotic drawl)</div>
-                <div class="dialogue">Law is just the weather of the decade, Cal. And in seven minutes, at midnight, the global grid resets its master encryption keys. For three seconds, the whole world is technically unrecorded. You want to spend the turn of the century being a good girl, or do you want to see what your brain feels like when nobody's watching?</div>
-                <div class="action">Ollie looks between Merlin and Cal, taking another olive.</div>
-                <div class="character">OLLIE</div>
-                <div class="dialogue">I mean... he’s kind of making a point about the pants.</div>
-                <div class="action">Cal stares at the amber vial in Merlin’s hand. She looks through the glass door at Chloe laughing effortlessly with Julian's father.</div>
-                <div class="action">Without another word, Cal snatches the vial, unplugs the stopper, and downs it in one smooth, terrifyingly calm swallow.</div>
-                <div class="character">OLLIE</div>
-                <div class="parenthetical">(Gasping)</div>
-                <div class="dialogue">Whoa. Okay. We’re doing that now?</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-7">INT. SERVICE CORRIDOR - GATSBY GALA - NIGHT</div>
-                <div class="action">JULIAN (28) stands by the stainless-steel counter. Next to him, OLLIE (27) is unbuttoning his tight collar, digging through a tub of catering olives.</div>
-                <div class="character">OLLIE</div>
-                <div class="dialogue">I hate 1920s parties. The pants have no stretch. Why did people in the 1900s hate flexible waistbands?</div>
-                <div class="action">MERLIN (30) doesn't look up from his vials. He’s balancing amber drops on a digital micro-scale.</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">Because they had self-control, Ollie. A concept your lineage clearly lost somewhere around the invention of the automated pantry.</div>
-                <div class="action">The heavy service door swings open. CAL (26) steps through in her pristine silk gown. She takes one look at Merlin’s hand near Julian’s coat pocket.</div>
-                <div class="character">CAL</div>
-                <div class="dialogue">Julian! What is going on back here?</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Hands up, smirking, deadpan)</div>
-                <div class="dialogue">I swear, officer, I don't know how her hands got on my packages.</div>
-                <div class="character">CAL</div>
-                <div class="parenthetical">(Ignoring Merlin, eyes flashing at Julian)</div>
-                <div class="dialogue">Your father and my father are standing by the fireplace discussing the Atlantic archive leases, and you’re in the scullery with a dealer and a guy eating pimentos out of a bucket.</div>
-                <div class="character">OLLIE</div>
-                <div class="parenthetical">(Chewing)</div>
-                <div class="dialogue">They’re stuffed with pimento, Cal. It’s a classic.</div>
-                <div class="character">CAL</div>
-                <div class="parenthetical">(Stepping up to Merlin, sharp and authoritative)</div>
-                <div class="dialogue">Hand those over. They aren't micro-stamped or verified. You’re distributing uncertified biologicals on private property. I’m confiscating them for our Archiater to log.</div>
-                <div class="action">Merlin doesn't flinch. He casually hands her the small, amber glass ampoule with zero resistance.</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Shrugs)</div>
-                <div class="dialogue">Be my guest, sweetheart. Threaten me with administrative compliance. See how far that gets you.</div>
-                <div class="character">CAL</div>
-                <div class="parenthetical">(Inspecting the glass, disgusted)</div>
-                <div class="dialogue">Ew. Taking indiscriminate white powder or unverified liquid from a random stranger in a hallway? I’d rather die.</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(In flawless, liquid Mandarin, with a lazy smirk)</div>
-                <div class="parenthetical">(Translation: "Suit yourself, Miss Cinna. Meet you in the next life, love.")</div>
-                <div class="action">Cal blinks, momentarily caught off-guard by his accent. She clenches the vial tightly in her hand, her posture stiffening.</div>
-                <div class="action">Through the glass portal of the service door, she sees Chloe.</div>
-                <div class="action">Chloe isn't doing anything crazy—she’s just leaning against the mantelpiece, casually talking to Cal’s father, Lucius, and Julian’s father, Victor. She’s discussing a recent academic paper on the new mitochondrial organelle trial, introducing a quiet kid from her volunteering group as a prospective study participant. Both trillionaire fathers are listening to Chloe with rapt, smiling attention.</div>
-                <div class="action">Cal’s stomach drops. She’s spent her entire life memorizing data, maintaining perfect etiquette, and trying to win her father’s approval—and Chloe just glides in and commands the room without even trying.</div>
-                <div class="action">Cal looks down at the tiny amber vial in her palm.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">Cal? Come on, let’s just go back out—</div>
-                <div class="action">Without a word, driven by a sudden, quiet spike of pure desperation to feel that effortless "cool," Cal pops the seal and downs the liquid in one smooth, reckless swallow.</div>
-                <div class="action">Ollie stops chewing. Julian’s jaw drops.</div>
-                <div class="character">OLLIE</div>
-                <div class="dialogue">...Whoa. Okay. We’re drinking the sketchy hallway science now?</div>
-                <div class="action">Merlin just leans against the counter, a slow, dangerous smile spreading across his face.</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">Happy 2100, Cal. Three-second encryption drop is in five minutes. Let's see what happens when the script runs out.</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-8">INT. SERVICE CORRIDOR - GATSBY GALA - NIGHT</div>
-                <div class="action">OLLIE (27) stands in his tight tuxedo, double-fisting two coupe glasses of champagne while staring out the glass service door at the ballroom.</div>
-                <div class="character">OLLIE</div>
-                <div class="dialogue">I hate Gatsby parties. Why does everyone think this is the epitome of American excess? The Great American Novel? More like Great American Navel-Gazing. I’m so sick of pretending coupes of champagne are somehow 'glitzy.' Who is Leo even gesturing to out there? The camera?</div>
-                <div class="action">MERLIN (30) sits on the edge of an open terrace window, the cold rain misting behind him. He isn't sloshing beakers; he’s flicking a heavy brass Zippo lighter open and closed—clack, flick, flame, snap—staring absentmindedly at the stars through a small handheld brass monocular.</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Without looking down)</div>
-                <div class="dialogue">The great Fitzgerald was telling a tale as old as time, Ollie: the rise before the fall. The climax of excess. We herald it because it was fun—and to some, hilarious.</div>
-                <div class="character">OLLIE</div>
-                <div class="dialogue">Easy for you to say. You aren't wearing wool pants with zero stretch while your cousin’s dad explains the Atlantic archive leases for the fourth time.</div>
-                <div class="action">JULIAN (28) leans against the wall nearby, his eyes heavy, his smile a little too loose. He’s already floating on an earlier dose Merlin gave him—distanced from the noise, just trying to survive the night.</div>
-                <div class="action">The service door swings open. CAL (26) steps through in her pristine silk gown. Her posture is military-grade perfection, but her eyes are sharp with OCD panic. She spots Merlin’s jacket lining—stuffed with vacuum-sealed, matte-black ampoules.</div>
-                <div class="character">CAL</div>
-                <div class="dialogue">Julian! What is this? You’re in the scullery with a dealer?</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Snaps the lighter shut, deadpan)</div>
-                <div class="dialogue">I swear, officer, I don't know how his hands got on my packages.</div>
-                <div class="character">CAL</div>
-                <div class="parenthetical">(Ignoring Merlin, voice tight)</div>
-                <div class="dialogue">Your father is looking for you. He’s two minutes away from announcing the North Grid merger, and you’re back here looking... spacey.</div>
-                <div class="action">She steps right up to Merlin, her voice dropping into an authoritative, sharp hiss.</div>
-                <div class="character">CAL</div>
-                <div class="dialogue">Hand over those ampoules. They aren't micro-stamped or verified. You’re distributing uncertified biologicals on private property. I’m confiscating them for our Archiater to log.</div>
-                <div class="action">Merlin doesn't fight her. He casually reaches into his lining, pulls out a single, vacuum-sealed matte-black ampoule, and drops it into her open palm with a lazy smirk.</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">Be my guest, Miss Cinna. Threaten me with administrative compliance. See how far that gets you.</div>
-                <div class="character">CAL</div>
-                <div class="parenthetical">(Inspecting the sleek seal, disgusted)</div>
-                <div class="dialogue">Ew. Taking indiscriminate white powder or unverified liquid from a stranger in a hallway? I’d rather die.</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(In flawless, liquid Mandarin, with a slow, ancient smile)</div>
-                <div class="parenthetical">(Translation: "Suit yourself, Miss Cinna. Meet you in the next life, love.")</div>
-                <div class="action">Cal blinks, momentarily thrown by his accent. She stiffens, shoving the vacuum-sealed ampoule deep into her vintage clutch.</div>
-                <div class="character">CAL</div>
-                <div class="dialogue">Julian. We are going back out there. Now.</div>
-                <div class="action">Julian just nods lazily, offering her an easy, detached arm.</div>
-                <div class="action">As they walk back toward the ballroom, Cal clutches her bag tightly against her side. She looks through the glass door and sees Chloe standing by the hearth—effortlessly discussing an academic paper on the new organelle with Cal’s own father, who is smiling warmly at her.</div>
-                <div class="action">Nobody in the hallway notices the tiny, desperate flash in Cal’s eyes as her fingers tighten around the stolen ampoule in her bag.</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-9">INT. JULIAN'S APARTMENT - MORNING (09:00 AM)</div>
-                <div class="action">Julian sits on the edge of his bed, head pounding. Sunlight streams through the glass. The apartment is dead quiet—except for a faint, muffled audio track looping in his head.</div>
-                <div class="action">FLASHBACK FRAGMENT (0.5 SECONDS):</div>
-                <div class="action">A sudden, harsh strobe light. Tupac's voice echoes through a cavernous warehouse. We see a close-up of Chloe's hand grabbing Julian’s wrist in the dark, pulling him toward a service door.</div>
-                <div class="action">BACK TO PRESENT:</div>
-                <div class="action">Julian blinks. Was that from the Y2K warehouse? Or did he imagine it? He reaches into his coat pocket and pulls out a crumpled physical paper napkin.</div>
-                <div class="action">Written on it in red ink: "12:01 AM wasn't an accident. Ask Merlin."</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-10">INT. FARADAY TUNNEL - MEATPACKING WAREHOUSE - NIGHT</div>
-                <div class="action">The tunnel walls are copper mesh and raw lead sheeting. The moment the group walks through, the subtle blue hum beneath their thumb and index fingers dies.</div>
-                <div class="action">CAL (26) stops dead in her tracks, staring down at her right hand.</div>
-                <div class="character">CAL</div>
-                <div class="dialogue">My node just dropped. My Atlantic archive feed is offline. Is... is the grid down?</div>
-                <div class="action">CHLOE (24)</div>
-                <div class="parenthetical">(Walking past her, completely unbothered)</div>
-                <div class="dialogue">It’s a Faraday cage, Cal. Relax. You’re back in the late 1900s.</div>
-                <div class="action">JULIAN (28)</div>
-                <div class="parenthetical">(Holding his hand up, staring at blank skin)</div>
-                <div class="dialogue">How long are we in here for?</div>
-                <div class="character">CHLOE</div>
-                <div class="parenthetical">(Smiles over her shoulder)</div>
-                <div class="dialogue">Could be four hours. Could be the rest of our lives. You’ll survive.</div>
-                <div class="action">OLLIE (27) looks at his hand, then looks at MERLIN (30).</div>
-                <div class="character">OLLIE</div>
-                <div class="dialogue">I haven't been off-grid since I was nine. What do I do with my hands when I'm walking? Do I just... let them swing?</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">Put them in your pockets, Ollie. Try not to panic while your brain remembers what quiet feels like.</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-11">INT. MAIN WAREHOUSE - NIGHT</div>
-                <div class="action">They step out of the tunnel into a cavernous, dimly lit industrial space.</div>
-                <div class="action">Three hundred people are gathered—all dressed in pristine, matching monochrome linen. Half the room is on the elevated iron balcony; half is on the ground floor.</div>
-                <div class="action">In the center, standing on a simple wooden riser between the two levels, is JESU (26). He holds a vintage wired microphone, his voice echoing through the room like a mix between a Malcolm X rally, a Sunday pastor, and an Ibiza DJ doing a 2 AM crowd check.</div>
-                <div class="character">JESU</div>
-                <div class="parenthetical">(Over the mic, low, magnetic, authoritative)</div>
-                <div class="dialogue">...They told you 2100 was coming. They told you the turn of the century meant something new. But you’re still using their energy, running on their clocks, breathing their recycled air! Tonight, humanity turned legal. Welcome to Year One.</div>
-                <div class="action">The crowd sways in silent, locked-in agreement.</div>
-                <div class="character">OLLIE</div>
-                <div class="parenthetical">(Whispering to Julian)</div>
-                <div class="dialogue">Is this a cult? Because if this is a cult, I didn't bring the right shoes.</div>
-                <div class="character">JULIAN</div>
-                <div class="parenthetical">(Eyes fixed on Jesu)</div>
-                <div class="dialogue">I don't think it’s a cult. I think they just... actually believe him.</div>
-                <div class="action">A server in a white robe walks past holding a silver tray with a crystal decanter containing a dark, thick liquid. He offers glasses to the group.</div>
-                <div class="character">CAL</div>
-                <div class="parenthetical">(Peaking hard on Merlin's drug, eyes wide with paranoid OCD)</div>
-                <div class="dialogue">What is that? Is that blood? Is that unpasteurized Welch’s? Is there creatine in that?</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Taking a sip from his own glass, unbothered)</div>
-                <div class="dialogue">It’s raisin juice, Cal. Calm down.</div>
-                <div class="character">CAL</div>
-                <div class="parenthetical">(Whispering furiously to Merlin)</div>
-                <div class="dialogue">You don't know that! This has total Stone Mason meets island-conspiracy vibes! We’re going to end up on an unindexed server memory log!</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Deadpan)</div>
-                <div class="dialogue">Cal, if these dorks were organized enough to run a global conspiracy, someone in this room would have brought a chair. It’s just grape juice and ego. Drink it or don't.</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-12">EXT. HUDSON RIVER FERRY - MORNING (08:04 AM)</div>
-                <div class="action">A cold, crisp New York morning. The river is flat as glass.</div>
-                <div class="action">JULIAN (28) wakes up on a hard plastic bench on the outdoor deck of a commuter ferry. He’s wearing a rumpled, vintage velvet tuxedo jacket. His hair is a mess.</div>
-                <div class="action">He groans, rubbing his face. He raises his right hand to check his time-feed—holding up his thumb and index finger in the "L-Frame" gesture.</div>
-                <div class="action">Nothing. The subdermal skin node between his fingers is dark, completely dead.</div>
-                <div class="action">He reaches into his jacket pocket for a phone or tablet. Instead, his fingers wrap around a physical, crumpled paper cocktail napkin. He pulls it out. Written on it in smeared red lipstick:</div>
-                <div class="action">> "12:01 AM wasn't a glitch. Ask Merlin."</div>
-                <div class="action">CUT TO:</div>
-                <div class="scene-heading" id="scene-13">INT. LOW-GRID DINER - SAME TIME</div>
-                <div class="action">OLLIE (27) is sitting in a booth wearing a mismatched diner apron over his tuxedo pants, aggressively eating a plate of greasy physical bacon.</div>
-                <div class="action">Across from him, MERLIN (30) is quietly sipping black coffee, using a fountain pen to write complex bio-chemical equations directly onto a paper placemat.</div>
-                <div class="character">OLLIE</div>
-                <div class="parenthetical">(Chewing, deadpan)</div>
-                <div class="dialogue">I don't know where my shoes are, Merlin. I don't know where my helicopter is. And I'm pretty sure I kissed your client’s fiancée in the dark.</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Without looking up)</div>
-                <div class="dialogue">You kissed Cal. She was high. You were bored. The helicopter is on a roof in the Meatpacking District. Eat your bacon.</div>
-                <div class="action">CUT TO:</div>
-                <div class="scene-heading" id="scene-14">INT. LUXURY DUPLEX LOFT - SAME TIME</div>
-                <div class="action">CAL (26) wakes up face-down on a plush velvet couch in a high-rise loft she’s never seen before. She’s wearing an oversized silk shirt that isn't hers. Her hair, usually pinned in a military-grade bun, is wild and untamed.</div>
-                <div class="action">She sits up in a panic, checking her wrists, her posture, her surroundings.</div>
-                <div class="action">Across the room, CHLOE (24) is standing by a floor-to-ceiling window in her bare feet, sipping green tea, looking out at the skyline.</div>
-                <div class="character">CAL</div>
-                <div class="parenthetical">(Voice cracking, OCD rising)</div>
-                <div class="dialogue">Where are my clothes? Where is my father? What time is it?</div>
-                <div class="character">CHLOE</div>
-                <div class="parenthetical">(Turns around, smiling serenely)</div>
-                <div class="dialogue">It’s 8:05 AM, Cal. Happy new century. You slept for four hours.</div>
-                <div class="character">CAL</div>
-                <div class="parenthetical">(Hyperventilating)</div>
-                <div class="dialogue">Did we... did I... what happened after the power went out at midnight?</div>
-                <div class="character">CHLOE</div>
-                <div class="dialogue">You really don't remember?</div>
-                <div class="parenthetical">(Off Cal's terrified, wide-eyed realization that her memory is completely blank—)</div>
-                <div class="action">TITLE CARD: KARDASHEV</div>
-                <div class="parenthetical">(FLASH-BACK SMASH CUT TO: 12 HOURS EARLIER — 8:00 PM, DEC 31, 2099)</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-15">INT. GATSBY BALLROOM - NIGHT (11:59:50 PM)</div>
-                <div class="action">The digital clock on the wall counts down: 10... 9... 8...</div>
-                <div class="action">Julian is standing near the champagne tower, eyes locked on Chloe across the room. Cal (having secretly swallowed Merlin's ampoule five minutes prior in the bathroom) is standing next to Ollie, her pupils beginning to dilate into terrifying clarity.</div>
-                <div class="action">3... 2... 1...</div>
-                <div class="action">12:00:00 AM — JANUARY 1, 2100.</div>
-                <div class="action">Confetti drops. Music swells. Couples embrace. Julian steps toward Chloe. In the crowd surge, they bump into each other—an accidental, electric, breath-catching moment where their lips brush.</div>
-                <div class="action">Then, at 12:01:00 AM—</div>
-                <div class="character">BOOM.</div>
-                <div class="action">The entire estate drops into PITCH BLACK.</div>
-                <div class="action">The micro-climate heaters shut off. The wireless energy loops die. The room temperature drops 15 degrees in two seconds. Panic ripples through the darkness.</div>
-                <div class="scene-heading" id="scene-16">INT. BASEMENT POWER SUB-STATION - SAME TIME</div>
-                <div class="action">Down in the estate’s heavy fusion basement, the digital telemetry meters are spinning backward.</div>
-                <div class="action">BENNETT VANE (48), the corporate CEO, is standing with Julian’s father, VICTOR KARDASHEV (60s). They are staring at a massive diagnostic screen glowing red.</div>
-                <div class="character">VICTOR</div>
-                <div class="parenthetical">(Shouting over the emergency alarms)</div>
-                <div class="dialogue">Is it a grid failure? Did the orbital relay drop?</div>
-                <div class="character">BENNETT VANE</div>
-                <div class="parenthetical">(Staring at the bio-frequency sensor readings, pale)</div>
-                <div class="dialogue">No. It’s not the grid. The grid didn't fail.</div>
-                <div class="character">VICTOR</div>
-                <div class="dialogue">Then what the hell just sucked 500 megawatts out of the building in one second?!</div>
-                <div class="action">Bennett looks at the bio-scanner readout on his console. Two glowing spike-points are pulsing right in the center of the estate layout—one in the ballroom (Chloe), and one four miles away in the Meatpacking District (Jesu).</div>
-                <div class="character">BENNETT VANE</div>
-                <div class="parenthetical">(Sober, terrified)</div>
-                <div class="dialogue">They're syncing, Victor. The kids are feeding.</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-17">INT. BALLROOM - DARKNESS (12:01:03 AM)</div>
-                <div class="action">In the pitch-black ballroom, Julian can't see anything. But in the dark, Chloe’s skin is faintly, impossibly glowing with static bio-electricity.</div>
-                <div class="action">She leans in close to Julian’s ear in the dark. Her voice is a soft, magnetic whisper.</div>
-                <div class="character">CHLOE</div>
-                <div class="dialogue">Don't be scared, Julian. It’s just three seconds. Nobody's watching.</div>
-                <div class="parenthetical">(CLICK.)</div>
-                <div class="action">12:01:04 AM. The emergency generators kick back on. The lights flash up.</div>
-                <div class="action">Julian blinks in the bright light. Chloe is gone.</div>
-                <div class="action">Standing right in front of him instead is Cal, looking at him with wide, unblinking eyes—her face flushed, her breathing shallow, completely transformed by Merlin's drug.</div>
-                <div class="action">Julian looks down at his right hand. Printed on his skin in faint, glowing bio-luminescent residue from where Chloe touched his wrist is a tiny set of GPS coordinates pointing to the Meatpacking District.</div>
-                <div class="character">OLLIE</div>
-                <div class="parenthetical">(Stepping up, unbuttoning his collar, totally unfazed)</div>
-                <div class="dialogue">So... who's taking my helicopter to the after-party?</div>
-                <div class="character">FADE TO BLACK.</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-18">INT. LOW-GRID DINER - MORNING</div>
-                <div class="action">OLLIE (27) sits across from MERLIN (30), staring at a small glass data-drive he just bought from a street vendor outside. He taps it against his thumb-node, trying to force a sync.</div>
-                <div class="character">OLLIE</div>
-                <div class="dialogue">My thone is three days behind on the local lexicon patch. I tried to order a coffee outside, and the vendor looked at me like I was speaking Old English because I didn't use the new verb for "decaf."</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Sipping his black coffee)</div>
-                <div class="dialogue">You were data-fasting, Ollie. That’s what happens when you turn off your feed to feel deep.</div>
-                <div class="character">OLLIE</div>
-                <div class="dialogue">I wasn't trying to feel deep! I was high on your off-menu ampoule and my battery died! Now it’s going to cost me sixty energy credits just to burst-sync my node back to 8:00 AM.</div>
-                <div class="character">MERLIN</div>
-                <div class="parenthetical">(Smirks)</div>
-                <div class="dialogue">A pleb would have to spend three weeks working off that lag. Count your blessings, cousin. Pay the fee, take the data-drop, and learn the new word for coffee.</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-19">INT. ELENA'S HOSPITAL ROOM - NIGHT</div>
-                <div class="action">VICTOR KARDASHEV (60s) stands by his wife’s stasis bed, quietly reviewing a glowing blue transaction ledger on his thone. JULIAN (28) sits in a chair in the corner, holding his mother’s limp hand.</div>
-                <div class="action">Victor doesn't look up from his screen.</div>
-                <div class="character">VICTOR</div>
-                <div class="dialogue">Lucius Cinna wants another two percent on the Atlantic Vault leases. He knows we need the historical data buffer for the Q1 orbital launch. I’m going to concede the two percent tomorrow.</div>
-                <div class="action">Julian closes his eyes. For three seconds, his breath hitches. A quiet, high-frequency ringing fills his ears—a 3-second absence seizure. His vision flashes with a faint, geometric map of the room's energy flow.</div>
-                <div class="action">He blinks, coming back. His eyes are dead calm.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">Don't give him the two percent.</div>
-                <div class="character">VICTOR</div>
-                <div class="parenthetical">(Scoffs, not looking up)</div>
-                <div class="dialogue">Julian, please. I’m running a trillion-dollar grid integration. You don't know Lucius.</div>
-                <div class="character">JULIAN</div>
-                <div class="parenthetical">(Voice low, precise, unnervingly steady)</div>
-                <div class="dialogue">Lucius isn't looking for yield, Dad. He’s looking for leverage because his sub-Atlantic cooling line failed six hours ago. He’s running hot. If you hold out until 10:00 AM tomorrow, he’ll drop his price by five percent just so we route our excess coolant through his sub-station.</div>
-                <div class="action">Victor stops scrolling. He slowly turns his head, staring at his son.</div>
-                <div class="character">VICTOR</div>
-                <div class="dialogue">...Who told you his cooling line failed?</div>
-                <div class="character">JULIAN</div>
-                <div class="parenthetical">(Staring at the floorboards, feeling his pulse steadily beat)</div>
-                <div class="dialogue">Nobody told me. He was standing too close to the fireplace at the party, Dad. He kept adjusting his collar. A guy who owns the coldest data vault in the world doesn't sweat unless his heat-sink is dying.</div>
-                <div class="action">Victor stares at Julian. For the first time in ten years, Victor doesn't see a soft, weary boy—he sees a predator.</div>
-                <div class="character">VICTOR</div>
-                <div class="parenthetical">(Quietly)</div>
-                <div class="dialogue">Sit up straight, Julian. Tell me what else you saw.</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-20">INT. ELENA'S HOSPITAL ROOM - NIGHT</div>
-                <div class="action">VICTOR KARDASHEV (60s) stands near his wife’s stasis bed, quietly reviewing a live diagnostic stream on his thone. The room is dead silent, save for the soft, hummed pulse of the atmospheric misting.</div>
-                <div class="action">JULIAN (28) sits in a low chair, holding his mother’s hand.</div>
-                <div class="action">Victor doesn't look up from his screen.</div>
-                <div class="character">VICTOR</div>
-                <div class="dialogue">Lucius Cinna wants to renegotiate the sub-Atlantic data leases. He’s asking for an additional forty petajoules of direct CMB Parity on the Q1 allocation. I’m leaning toward granting it. We need his vault’s quantum shielding for the new orbital array.</div>
-                <div class="action">Julian closes his eyes. For three seconds, his breath hitches. A quiet, high-frequency ringing fills his ears—the sudden, silent absence seizure. His vision flashes with a faint, geometric map of the room's electromagnetic currents.</div>
-                <div class="action">He blinks, coming back. His eyes are dead calm, the exhaustion completely drained from his posture.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">Don't give him the Parity.</div>
-                <div class="character">VICTOR</div>
-                <div class="parenthetical">(Scoffs softly, not looking up)</div>
-                <div class="dialogue">Julian, please. I’m balancing the planetary baseline reserve. Lucius holds forty percent of the un-corrupted historical archives.</div>
-                <div class="character">JULIAN</div>
-                <div class="parenthetical">(Voice low, precise, unnervingly steady)</div>
-                <div class="dialogue">Lucius isn't asking for Parity because he wants yield, Dad. He’s asking because his sub-Atlantic cooling line failed six hours ago. His local reserves are bleeding heat. He’s running on emergency thermal reserves right now.</div>
-                <div class="action">Victor stops scrolling. He slowly turns his head, staring at his son.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">If you grant him Parity, you’re just funding his repair bills. If you hold out until 10:00 AM tomorrow, he’ll drop his archive lease price by half—just so we route our excess coolant through his sub-station to keep his servers from melting.</div>
-                <div class="action">Victor stares at Julian. The room feels suddenly colder. For the first time in ten years, Victor doesn't see a weary, spacey boy hiding in the shadow of the family name. He sees a mind calculating thermodynamic leverage in real-time.</div>
-                <div class="character">VICTOR</div>
-                <div class="dialogue">...How do you know his cooling line failed?</div>
-                <div class="character">JULIAN</div>
-                <div class="parenthetical">(Staring at his own hand, feeling his pulse beat in sync with the room's hum)</div>
-                <div class="dialogue">He was standing too close to the fireplace at the party, Dad. He kept unbuttoning his collar. A man who controls the coldest data vault on the Eastern seaboard doesn't sweat in a seventy-degree room unless his heat-sink is dying.</div>
-                <div class="action">Victor looks at his son, a slow, dangerous realization dawning on his face.</div>
-                <div class="character">VICTOR</div>
-                <div class="parenthetical">(Quietly, stepping closer)</div>
-                <div class="dialogue">Sit up, Julian. What else did you feel in that room?</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-21">INT. GATSBY BALLROOM - NIGHT</div>
-                <div class="action">OLLIE (27) pulls a small obsidian Metabolic Sandglass from his tuxedo pocket and holds it up to the light. The inner plasma is glowing a frantic, bubbling purple.</div>
-                <div class="character">OLLIE</div>
-                <div class="dialogue">Look at this. I haven't even touched the champagne yet, and my Sandglass looks like a neon sign in a cheap arcade.</div>
-                <div class="action">MERLIN (30) doesn't pull out a device. He casually reaches into his pocket and pops a small iridescent Stutter-Pill into his mouth, chewing slowly.</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">That’s because you’re standing next to Julian, Ollie. He’s running so hot right now his body heat is literally cooking your baseline.</div>
-                <div class="action">JULIAN (28) stands three feet away, staring rigidly at Chloe across the room. His hands are buried in his pockets, but his shoulders are tight as piano wire.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">I’m fine. I’m Parity-Clean.</div>
-                <div class="character">OLLIE</div>
-                <div class="dialogue">Julian, brother, you’re three seconds away from a spill. Your eyes are bloodshot and you haven't blinked since 11:40 PM. If your dad sees you feverish like this, he’s going to put you in a Snooze-Vault until 2105.</div>
-                <div class="character">JULIAN</div>
-                <div class="parenthetical">(Voice unnervingly calm, eyes cold)</div>
-                <div class="dialogue">Let him try to snooze me. I just found out how Lucius Cinna cools his vaults. My hands have never been colder.</div>
-                <div class="transition">CUT TO:</div>
-
-                <div class="scene-heading" id="scene-22">INT. GATSBY BALLROOM - NIGHT</div>
-                <div class="action">OLLIE (27) presses his index finger firmly against his left wrist. Under his skin, a faint, pulsing violet light glows beneath his cuff.</div>
-                <div class="character">OLLIE</div>
-                <div class="parenthetical">(Sucking in a breath)</div>
-                <div class="dialogue">Julian, stop talking about your father’s sub-stations. You’re violetting me. My cortisol is spiking through my silk sleeve.</div>
-                <div class="action">JULIAN (28) doesn't even press his wrist. He’s standing completely still, watching Chloe across the room. His posture is cool, low-entropy, absolute zero.</div>
-                <div class="character">JULIAN</div>
-                <div class="dialogue">You’re acting like a dreena, Ollie. Calm down.</div>
-                <div class="character">OLLIE</div>
-                <div class="dialogue">I can’t calm down! I haven't ooofed in six months, my thone is three days behind on the lexicon patch, and Dr. Vance is over by the raw bar making a list on a digital slate.</div>
-                <div class="action">Ollie gestures across the floor. DR. VANE (50s), an impeccably tailored geneticist with silver hair, is chatting warmly with a group of diplomats while making light notes on a small glass tablet.</div>
-                <div class="character">OLLIE</div>
-                <div class="dialogue">He looked at me five minutes ago, pressed his wrist, frowned, and literally crossed my name off his screen. I’ve been officially categorized as an evolutionary dead end before midnight.</div>
-                <div class="character">JULIAN</div>
-                <div class="parenthetical">(Dryly)</div>
-                <div class="dialogue">You are an evolutionary dead end, Ollie. You eat pimentos out of a bucket.</div>
-                <div class="character">OLLIE</div>
-                <div class="dialogue">That’s not the point! He thinks the birth rate drop is because we’re speciating! He wants to build a private island for the Organelle kids!</div>
-                <div class="action">MERLIN (30) steps up beside them, casually popping a salted olive into his mouth.</div>
-                <div class="character">MERLIN</div>
-                <div class="dialogue">Let Vance make his lists. The guy’s an academic pervert. He thinks he’s predicting the future of the human race, but he doesn't realize Chloe and Jesu are already ooming right past his entire thesis.</div>
-                <div class="character">JULIAN</div>
-                <div class="parenthetical">(Eyes narrowing as Chloe glances toward him)</div>
-                <div class="dialogue">Let's see what happens when the grid drops at midnight. I’m tired of oozing. It’s time to make a move.</div>
-                <div class="transition">CUT TO:</div>
-
+                <div class="scene-heading" id="scene-1">INT. ARCHIVE LIBRARY - CORNELIA'S ESTATE - NIGHT</div>\n                <div class="action">Sleek 1920s jazz plays softly from hidden acoustic panels. The room is immaculate—warm mahogany, glass cases holding real paper books, and a stabilized 70-degree micro-climate while a bitter December rain hits the terrace outside.</div>\n                <div class="action">CORNELIA (26) adjusts Julian’s velvet bow tie. Her touch is light, practiced, and perfectly polite.</div>\n                <div class="character">CORNELIA</div>\n                <div class="dialogue">Your father’s already on his second glass of vintage synthetic. He told my dad you’re considering the North Grid merger.</div>\n                <div class="action">JULIAN (28)</div>\n                <div class="parenthetical">(Staring past her out the window)</div>\n                <div class="dialogue">My dad says a lot of things when his blood-sugar stabilizes.</div>\n                <div class="character">CORNELIA</div>\n                <div class="dialogue">It’s a good look for you, Julian. Being serious. You’ve been... drifting since the summer. People notice.</div>\n                <div class="action">Julian takes a slow breath. He feels a familiar, heavy tightness in his chest—the quiet, creeping fatigue that always comes when he’s around her for more than twenty minutes. She isn't mean; she's just empty. A human vacuum sucking the air out of his lungs.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">I was at the hospital until 6 AM with my mother, Cornelia.</div>\n                <div class="character">CORNELIA</div>\n                <div class="parenthetical">(Softens slightly, but her eyes stay cool)</div>\n                <div class="dialogue">I know. It’s sweet. Truly. But she’d want you out tonight. Turning 2100 in a hospital room isn't an strategy. You need to be seen in the room. With me.</div>\n                <div class="action">Julian nods numbly. He looks at his reflection in the dark glass. He can practically feel his own battery draining into her floorboards.</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-2">INT. SERVICE CORRIDOR - NIGHT</div>\n                <div class="action">Away from the mahogany and silk, the hallway is cold steel and exposed utility conduits.</div>\n                <div class="action">MERLIN (30) sits on an upside-down plastic crate, wearing a scuffed vintage leather jacket. He’s balancing a tiny electronic scale on his knee, carefully measuring drops of clear fluid into three small glass vials.</div>\n                <div class="action">Julian steps through the service door, letting out a long, ragged exhale. He stops when he sees Merlin.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">This isn't the guest bathroom.</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Without looking up)</div>\n                <div class="dialogue">Guest bathroom is two doors left. Unless you’re looking for something that actually fixes your mood, in which case, you’re in the right hallway.</div>\n                <div class="action">Julian eyes the vials.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">You’re Arthur’s guy. The nootropic cook.</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">I’m a metabolic chemist. "Cook" sounds like I work in a fast-food joint. I synthesize precision neural-peptides for people who have too much money and zero natural serotonin.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">Does it work?</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Finally looks up, scanning Julian's tired face)</div>\n                <div class="dialogue">For two hours? You’ll feel like you wrote the Declaration of Independence. At hour three, you’ll crash and realize you’re just a guy in a velvet suit whose family owns a fuse box.</div>\n                <div class="action">Julian lets out a quiet, genuine laugh—his first of the night.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">How much for two hours?</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-3">INT. GRAND FOYER - NIGHT</div>\n                <div class="action">The room is full of high-society guests sipping champagne, speaking in quiet, restrained murmurs. The vibe is sterile, controlled, and intensely rehearsed.</div>\n                <div class="action">Suddenly, the heavy double doors swing open.</div>\n                <div class="action">CHLOE (24) steps through. She’s wearing an oversized, vintage 1999 leather jacket over an gold-embroidered Egyptian silk slip dress. She’s wet from the rain, hair slightly messy, completely ignoring the coat-check staff.</div>\n                <div class="action">She doesn't raise her voice. She doesn't make a scene. But the moment she walks three paces into the foyer, the energy in the room snaps.</div>\n                <div class="action">Conversations stall mid-sentence. People turn their heads without meaning to. It’s an instinctive, biological pull—like a sudden drop in barometric pressure.</div>\n                <div class="action">Chloe catches Julian standing by the grand staircase with a half-empty glass in his hand. A slow, unapologetic grin spreads across her face. She walks straight past two prominent city councilors as if they’re furniture, stopping right in front of Julian.</div>\n                <div class="character">CHLOE</div>\n                <div class="dialogue">You look like you’re attending your own funeral.</div>\n                <div class="character">JULIAN</div>\n                <div class="parenthetical">(Slightly thrown, heart suddenly racing)</div>\n                <div class="dialogue">It’s a 1920s theme. Melancholy was very trendy.</div>\n                <div class="character">CHLOE</div>\n                <div class="parenthetical">(Reaches out, casually pulling off his bow tie and tossing it onto a silver tray carried by a passing waiter)</div>\n                <div class="dialogue">Boring. Come on. Jesu’s waiting in the courtyard, and someone just hot-wired your dad’s decorative fountain.</div>\n                <div class="action">Julian looks over her shoulder. Across the room, Cornelia is watching them, her face pale, sensing instantly that she’s just been completely erased from the room.</div>\n                <div class="action">Julian looks back at Chloe. His hands aren't shaking anymore. For the first time all night, he feels completely awake.</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-4">INT. SERVICE CORRIDOR - GATSBY GALA - NIGHT</div>\n                <div class="action">JULIAN (28) pushes through the heavy service door into the cold back hallway. MERLIN (30) is leaning against a stainless-steel counter, measuring amber drops into tiny dark-glass vials.</div>\n                <div class="action">Julian blinks, stopping short.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">Where’s Lance?</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Without looking up)</div>\n                <div class="dialogue">Lance didn't tell you? Business has been good. He had to go up to the Tier-2 district to schmooze some FDA regulators. I’m covering his VIP circuit tonight.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">I don't know you.</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">I’m Merlin. I’m the guy who actually formulates what Lance sells you. You’re Julian. You look like a guy whose family owns a fuse box and who hasn't slept since Tuesday.</div>\n                <div class="action">CORNELIA (26) steps through the service door behind Julian, her heels clicking sharply against the concrete floor. She looks deeply out of place in her pristine, custom silk gown.</div>\n                <div class="character">CORNELIA</div>\n                <div class="dialogue">Julian, your father is asking for you—who is this? Why are we in the scullery?</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Scanning Cornelia's hyper-rigid posture)</div>\n                <div class="dialogue">Ah. The WASP contingent has arrived. Perfect timing.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">Merlin, just give me the standard focus-boost Lance brings.</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">Standard is boring. Standard is what Lance sells to mid-level energy brokers who want to stay awake through quarterly reviews. I’ve got something off-menu tonight. Fresh out of my own biolab.</div>\n                <div class="action">Merlin pulls out two small, unlabeled amber ampoules.</div>\n                <div class="character">CORNELIA</div>\n                <div class="parenthetical">(Crossing her arms, OCD rising)</div>\n                <div class="dialogue">That is completely unsanctioned. Those vials aren't even micro-stamped. Julian, we are leaving.</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">It’s a dual-phase neural-catalyst. For two hours? You’ll feel like you wrote the Declaration of Independence. At hour three, you’ll crash and realize you’re just a guy in a velvet suit whose dad controls a solar relay.</div>\n                <div class="action">Julian stares at the ampoule. He’s exhausted. He looks at Cornelia, whose jaw is locked in absolute, controlled perfection.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">What happens if she takes one?</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">Her? It’d probably dissolve that invisible steel rod she’s got strapped to her spine. She might actually have an unscripted thought.</div>\n                <div class="action">Cornelia’s eyes flash with indignation—and a sudden, dangerous flicker of curiosity.</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-5">INT. SERVICE CORRIDOR - GATSBY GALA - NIGHT</div>\n                <div class="action">Julian isn't looking at Merlin anymore. He’s looking through the glass portal of the service door.</div>\n                <div class="action">Across the ballroom, Chloe is standing under a green ambient spotlight, laughing with two high-ranking orbital diplomats who look completely entranced by her. She isn't even trying. She’s just there.</div>\n                <div class="action">Cornelia sees Julian’s eyes. She watches him watch Chloe, and something tiny and brittle snaps inside her chest. She steps forward, taking the dark glass ampoule right out of Merlin’s fingers before Julian can touch it.</div>\n                <div class="character">CORNELIA</div>\n                <div class="dialogue">I’m confiscating this. I’ll have our Archiater break down the molecular chain in the morning.</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(A slow, ancient smile)</div>\n                <div class="dialogue">Sure you will, sweetheart. Store it in the family vault next to the Seneca manuscripts.</div>\n                <div class="action">Merlin leans against the stainless steel counter, looking at them like a man who has watched empires rise, rot, and turn into museum exhibits.</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">You know, at the turn of 1600, people thought the sky was going to crack open. At the turn of 600, they thought the world was ending in mud. Now it’s 2099. Humanity turns a new century in fifteen minutes, and you two are in a back hallway arguing over administrative clearance. It’s criminal to spend a turn of the wheel this boring.</div>\n                <div class="character">CORNELIA</div>\n                <div class="parenthetical">(Holding the vial tightly)</div>\n                <div class="dialogue">Law and order aren't "boring."</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">Law is just the weather of the decade, Cornelia. But tonight? At midnight, the global grid resets its encryption keys for three seconds. The whole world is technically legal until the clock strikes 12:00:03.</div>\n                <div class="action">Julian looks at Merlin, genuinely unsettled by the guy's quiet, timeless gravity.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">Who the hell are you?</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Pushes off the wall, walking toward the exit)</div>\n                <div class="dialogue">Just an old friend of the family. Go enjoy the green light, Julian. The AI Fitzgerald in the conservatory is currently hallucinating a boat rowing against the current, and he’s dying for someone to talk to.</div>\n                <div class="action">Merlin slips through the service doors into the rain.</div>\n                <div class="action">Cornelia stands under the harsh fluorescent bulb of the hallway. She looks at the tiny amber vial in her palm. Through the door, she sees Chloe casually toss her shoes into a champagne fountain while three trillionaires laugh like schoolboys.</div>\n                <div class="action">Cornelia uncaps the vial.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">Cornelia, wait—what are you—</div>\n                <div class="action">Without a word, Cornelia downs the ampoule in one smooth, defiant swallow.</div>\n                <div class="action">She snaps the empty glass vial into the recycling chute, adjusts her diamonds, and looks at Julian with wide, unblinking eyes as her pupils begin to dilate into sudden, terrifying clarity.</div>\n                <div class="character">CORNELIA</div>\n                <div class="parenthetical">(Her voice unnervingly calm)</div>\n                <div class="dialogue">Let’s go to the party, Julian. I want to see what happens when the encryption breaks.</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-6">INT. SERVICE CORRIDOR - GATSBY GALA - NIGHT</div>\n                <div class="action">JULIAN (28) stands by the stainless-steel counter. Next to him, OLLIE (27) is unbuttoning his tight collar, looking thoroughly miserable in his tux.</div>\n                <div class="character">OLLIE</div>\n                <div class="dialogue">I hate 1920s parties. The pants have no stretch. Why did people in the 1900s hate flexible waistbands?</div>\n                <div class="action">MERLIN (30) doesn't look up from his vials. He’s balancing amber drops on a digital micro-scale.</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">Because they had self-control, Ollie. A concept your lineage clearly lost somewhere around the invention of the automated pantry.</div>\n                <div class="character">OLLIE</div>\n                <div class="parenthetical">(Points a finger at Merlin)</div>\n                <div class="dialogue">Hey. I came back here for ice. I didn't sign up to be body-shamed by a guy who looks like he lives in an abandoned MRI machine.</div>\n                <div class="action">Julian ignores them, staring through the glass portal of the service door at Chloe, who is effortlessly commanding a circle of diplomats in the main room.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">Where’s Lance, Merlin?</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">Lance is in the Tier-2 district, kissing the rings of three FDA inspectors who think they understand neuro-chemistry. Lance is a salesman. I’m the guy who actually writes the code your brain runs on.</div>\n                <div class="action">CAL (26) bursts through the service door, her heels clicking like gunshots. Her posture is military-grade perfection, eyes sharp with OCD panic.</div>\n                <div class="character">CAL</div>\n                <div class="dialogue">Julian! Your father is three minutes away from announcing the North Grid merger, and you’re standing in the scullery with a... drug dealer and a guy eating catering olives out of a tub.</div>\n                <div class="character">OLLIE</div>\n                <div class="parenthetical">(Chewing)</div>\n                <div class="dialogue">They’re stuffed with pimento, Cal. It’s a classic.</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Scans Cal from head to toe, letting out a dry, ruthless quiet laugh)</div>\n                <div class="dialogue">Look at you. Calpurnia Cinna. Daughter of the Vaults. You’ve got four hundred terabytes of unencrypted anxiety humming behind your eyes, and you’re wearing a dress that costs more than a municipal water pump.</div>\n                <div class="character">CAL</div>\n                <div class="parenthetical">(Glaring at Merlin)</div>\n                <div class="dialogue">Do not analyze me. You aren't on the family payroll.</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">I don't need to be on your payroll to read your specs, sweetheart. You’re running on 95% cortisol and 5% filial obligation. You haven't had a spontaneous thought since 2096.</div>\n                <div class="character">CAL</div>\n                <div class="parenthetical">(Jaw locked, voice icy)</div>\n                <div class="dialogue">Julian, we are leaving.</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Picks up a tiny amber ampoule, holding it to the light)</div>\n                <div class="dialogue">You could leave. Go back out there. Smile for her dad’s cameras. Or you could take this. Dual-phase neural catalyst. It doesn't give you answers, Cal. It just turns off the script you’ve been memorizing since you were six years old.</div>\n                <div class="character">CAL</div>\n                <div class="dialogue">It’s unsanctioned. It’s criminal.</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Leans in, voice dropping into a low, hypnotic drawl)</div>\n                <div class="dialogue">Law is just the weather of the decade, Cal. And in seven minutes, at midnight, the global grid resets its master encryption keys. For three seconds, the whole world is technically unrecorded. You want to spend the turn of the century being a good girl, or do you want to see what your brain feels like when nobody's watching?</div>\n                <div class="action">Ollie looks between Merlin and Cal, taking another olive.</div>\n                <div class="character">OLLIE</div>\n                <div class="dialogue">I mean... he’s kind of making a point about the pants.</div>\n                <div class="action">Cal stares at the amber vial in Merlin’s hand. She looks through the glass door at Chloe laughing effortlessly with Julian's father.</div>\n                <div class="action">Without another word, Cal snatches the vial, unplugs the stopper, and downs it in one smooth, terrifyingly calm swallow.</div>\n                <div class="character">OLLIE</div>\n                <div class="parenthetical">(Gasping)</div>\n                <div class="dialogue">Whoa. Okay. We’re doing that now?</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-7">INT. SERVICE CORRIDOR - GATSBY GALA - NIGHT</div>\n                <div class="action">JULIAN (28) stands by the stainless-steel counter. Next to him, OLLIE (27) is unbuttoning his tight collar, digging through a tub of catering olives.</div>\n                <div class="character">OLLIE</div>\n                <div class="dialogue">I hate 1920s parties. The pants have no stretch. Why did people in the 1900s hate flexible waistbands?</div>\n                <div class="action">MERLIN (30) doesn't look up from his vials. He’s balancing amber drops on a digital micro-scale.</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">Because they had self-control, Ollie. A concept your lineage clearly lost somewhere around the invention of the automated pantry.</div>\n                <div class="action">The heavy service door swings open. CAL (26) steps through in her pristine silk gown. She takes one look at Merlin’s hand near Julian’s coat pocket.</div>\n                <div class="character">CAL</div>\n                <div class="dialogue">Julian! What is going on back here?</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Hands up, smirking, deadpan)</div>\n                <div class="dialogue">I swear, officer, I don't know how her hands got on my packages.</div>\n                <div class="character">CAL</div>\n                <div class="parenthetical">(Ignoring Merlin, eyes flashing at Julian)</div>\n                <div class="dialogue">Your father and my father are standing by the fireplace discussing the Atlantic archive leases, and you’re in the scullery with a dealer and a guy eating pimentos out of a bucket.</div>\n                <div class="character">OLLIE</div>\n                <div class="parenthetical">(Chewing)</div>\n                <div class="dialogue">They’re stuffed with pimento, Cal. It’s a classic.</div>\n                <div class="character">CAL</div>\n                <div class="parenthetical">(Stepping up to Merlin, sharp and authoritative)</div>\n                <div class="dialogue">Hand those over. They aren't micro-stamped or verified. You’re distributing uncertified biologicals on private property. I’m confiscating them for our Archiater to log.</div>\n                <div class="action">Merlin doesn't flinch. He casually hands her the small, amber glass ampoule with zero resistance.</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Shrugs)</div>\n                <div class="dialogue">Be my guest, sweetheart. Threaten me with administrative compliance. See how far that gets you.</div>\n                <div class="character">CAL</div>\n                <div class="parenthetical">(Inspecting the glass, disgusted)</div>\n                <div class="dialogue">Ew. Taking indiscriminate white powder or unverified liquid from a random stranger in a hallway? I’d rather die.</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(In flawless, liquid Mandarin, with a lazy smirk)</div>\n                <div class="parenthetical">(Translation: "Suit yourself, Miss Cinna. Meet you in the next life, love.")</div>\n                <div class="action">Cal blinks, momentarily caught off-guard by his accent. She clenches the vial tightly in her hand, her posture stiffening.</div>\n                <div class="action">Through the glass portal of the service door, she sees Chloe.</div>\n                <div class="action">Chloe isn't doing anything crazy—she’s just leaning against the mantelpiece, casually talking to Cal’s father, Lucius, and Julian’s father, Victor. She’s discussing a recent academic paper on the new mitochondrial organelle trial, introducing a quiet kid from her volunteering group as a prospective study participant. Both trillionaire fathers are listening to Chloe with rapt, smiling attention.</div>\n                <div class="action">Cal’s stomach drops. She’s spent her entire life memorizing data, maintaining perfect etiquette, and trying to win her father’s approval—and Chloe just glides in and commands the room without even trying.</div>\n                <div class="action">Cal looks down at the tiny amber vial in her palm.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">Cal? Come on, let’s just go back out—</div>\n                <div class="action">Without a word, driven by a sudden, quiet spike of pure desperation to feel that effortless "cool," Cal pops the seal and downs the liquid in one smooth, reckless swallow.</div>\n                <div class="action">Ollie stops chewing. Julian’s jaw drops.</div>\n                <div class="character">OLLIE</div>\n                <div class="dialogue">...Whoa. Okay. We’re drinking the sketchy hallway science now?</div>\n                <div class="action">Merlin just leans against the counter, a slow, dangerous smile spreading across his face.</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">Happy 2100, Cal. Three-second encryption drop is in five minutes. Let's see what happens when the script runs out.</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-8">INT. SERVICE CORRIDOR - GATSBY GALA - NIGHT</div>\n                <div class="action">OLLIE (27) stands in his tight tuxedo, double-fisting two coupe glasses of champagne while staring out the glass service door at the ballroom.</div>\n                <div class="character">OLLIE</div>\n                <div class="dialogue">I hate Gatsby parties. Why does everyone think this is the epitome of American excess? The Great American Novel? More like Great American Navel-Gazing. I’m so sick of pretending coupes of champagne are somehow 'glitzy.' Who is Leo even gesturing to out there? The camera?</div>\n                <div class="action">MERLIN (30) sits on the edge of an open terrace window, the cold rain misting behind him. He isn't sloshing beakers; he’s flicking a heavy brass Zippo lighter open and closed—clack, flick, flame, snap—staring absentmindedly at the stars through a small handheld brass monocular.</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Without looking down)</div>\n                <div class="dialogue">The great Fitzgerald was telling a tale as old as time, Ollie: the rise before the fall. The climax of excess. We herald it because it was fun—and to some, hilarious.</div>\n                <div class="character">OLLIE</div>\n                <div class="dialogue">Easy for you to say. You aren't wearing wool pants with zero stretch while your cousin’s dad explains the Atlantic archive leases for the fourth time.</div>\n                <div class="action">JULIAN (28) leans against the wall nearby, his eyes heavy, his smile a little too loose. He’s already floating on an earlier dose Merlin gave him—distanced from the noise, just trying to survive the night.</div>\n                <div class="action">The service door swings open. CAL (26) steps through in her pristine silk gown. Her posture is military-grade perfection, but her eyes are sharp with OCD panic. She spots Merlin’s jacket lining—stuffed with vacuum-sealed, matte-black ampoules.</div>\n                <div class="character">CAL</div>\n                <div class="dialogue">Julian! What is this? You’re in the scullery with a dealer?</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Snaps the lighter shut, deadpan)</div>\n                <div class="dialogue">I swear, officer, I don't know how his hands got on my packages.</div>\n                <div class="character">CAL</div>\n                <div class="parenthetical">(Ignoring Merlin, voice tight)</div>\n                <div class="dialogue">Your father is looking for you. He’s two minutes away from announcing the North Grid merger, and you’re back here looking... spacey.</div>\n                <div class="action">She steps right up to Merlin, her voice dropping into an authoritative, sharp hiss.</div>\n                <div class="character">CAL</div>\n                <div class="dialogue">Hand over those ampoules. They aren't micro-stamped or verified. You’re distributing uncertified biologicals on private property. I’m confiscating them for our Archiater to log.</div>\n                <div class="action">Merlin doesn't fight her. He casually reaches into his lining, pulls out a single, vacuum-sealed matte-black ampoule, and drops it into her open palm with a lazy smirk.</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">Be my guest, Miss Cinna. Threaten me with administrative compliance. See how far that gets you.</div>\n                <div class="character">CAL</div>\n                <div class="parenthetical">(Inspecting the sleek seal, disgusted)</div>\n                <div class="dialogue">Ew. Taking indiscriminate white powder or unverified liquid from a stranger in a hallway? I’d rather die.</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(In flawless, liquid Mandarin, with a slow, ancient smile)</div>\n                <div class="parenthetical">(Translation: "Suit yourself, Miss Cinna. Meet you in the next life, love.")</div>\n                <div class="action">Cal blinks, momentarily thrown by his accent. She stiffens, shoving the vacuum-sealed ampoule deep into her vintage clutch.</div>\n                <div class="character">CAL</div>\n                <div class="dialogue">Julian. We are going back out there. Now.</div>\n                <div class="action">Julian just nods lazily, offering her an easy, detached arm.</div>\n                <div class="action">As they walk back toward the ballroom, Cal clutches her bag tightly against her side. She looks through the glass door and sees Chloe standing by the hearth—effortlessly discussing an academic paper on the new organelle with Cal’s own father, who is smiling warmly at her.</div>\n                <div class="action">Nobody in the hallway notices the tiny, desperate flash in Cal’s eyes as her fingers tighten around the stolen ampoule in her bag.</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-9">INT. JULIAN'S APARTMENT - MORNING (09:00 AM)</div>\n                <div class="action">Julian sits on the edge of his bed, head pounding. Sunlight streams through the glass. The apartment is dead quiet—except for a faint, muffled audio track looping in his head.</div>\n                <div class="action">FLASHBACK FRAGMENT (0.5 SECONDS):</div>\n                <div class="action">A sudden, harsh strobe light. Tupac's voice echoes through a cavernous warehouse. We see a close-up of Chloe's hand grabbing Julian’s wrist in the dark, pulling him toward a service door.</div>\n                <div class="action">BACK TO PRESENT:</div>\n                <div class="action">Julian blinks. Was that from the Y2K warehouse? Or did he imagine it? He reaches into his coat pocket and pulls out a crumpled physical paper napkin.</div>\n                <div class="action">Written on it in red ink: "12:01 AM wasn't an accident. Ask Merlin."</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-10">INT. FARADAY TUNNEL - MEATPACKING WAREHOUSE - NIGHT</div>\n                <div class="action">The tunnel walls are copper mesh and raw lead sheeting. The moment the group walks through, the subtle blue hum beneath their thumb and index fingers dies.</div>\n                <div class="action">CAL (26) stops dead in her tracks, staring down at her right hand.</div>\n                <div class="character">CAL</div>\n                <div class="dialogue">My node just dropped. My Atlantic archive feed is offline. Is... is the grid down?</div>\n                <div class="action">CHLOE (24)</div>\n                <div class="parenthetical">(Walking past her, completely unbothered)</div>\n                <div class="dialogue">It’s a Faraday cage, Cal. Relax. You’re back in the late 1900s.</div>\n                <div class="action">JULIAN (28)</div>\n                <div class="parenthetical">(Holding his hand up, staring at blank skin)</div>\n                <div class="dialogue">How long are we in here for?</div>\n                <div class="character">CHLOE</div>\n                <div class="parenthetical">(Smiles over her shoulder)</div>\n                <div class="dialogue">Could be four hours. Could be the rest of our lives. You’ll survive.</div>\n                <div class="action">OLLIE (27) looks at his hand, then looks at MERLIN (30).</div>\n                <div class="character">OLLIE</div>\n                <div class="dialogue">I haven't been off-grid since I was nine. What do I do with my hands when I'm walking? Do I just... let them swing?</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">Put them in your pockets, Ollie. Try not to panic while your brain remembers what quiet feels like.</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-11">INT. MAIN WAREHOUSE - NIGHT</div>\n                <div class="action">They step out of the tunnel into a cavernous, dimly lit industrial space.</div>\n                <div class="action">Three hundred people are gathered—all dressed in pristine, matching monochrome linen. Half the room is on the elevated iron balcony; half is on the ground floor.</div>\n                <div class="action">In the center, standing on a simple wooden riser between the two levels, is JESU (26). He holds a vintage wired microphone, his voice echoing through the room like a mix between a Malcolm X rally, a Sunday pastor, and an Ibiza DJ doing a 2 AM crowd check.</div>\n                <div class="character">JESU</div>\n                <div class="parenthetical">(Over the mic, low, magnetic, authoritative)</div>\n                <div class="dialogue">...They told you 2100 was coming. They told you the turn of the century meant something new. But you’re still using their energy, running on their clocks, breathing their recycled air! Tonight, humanity turned legal. Welcome to Year One.</div>\n                <div class="action">The crowd sways in silent, locked-in agreement.</div>\n                <div class="character">OLLIE</div>\n                <div class="parenthetical">(Whispering to Julian)</div>\n                <div class="dialogue">Is this a cult? Because if this is a cult, I didn't bring the right shoes.</div>\n                <div class="character">JULIAN</div>\n                <div class="parenthetical">(Eyes fixed on Jesu)</div>\n                <div class="dialogue">I don't think it’s a cult. I think they just... actually believe him.</div>\n                <div class="action">A server in a white robe walks past holding a silver tray with a crystal decanter containing a dark, thick liquid. He offers glasses to the group.</div>\n                <div class="character">CAL</div>\n                <div class="parenthetical">(Peaking hard on Merlin's drug, eyes wide with paranoid OCD)</div>\n                <div class="dialogue">What is that? Is that blood? Is that unpasteurized Welch’s? Is there creatine in that?</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Taking a sip from his own glass, unbothered)</div>\n                <div class="dialogue">It’s raisin juice, Cal. Calm down.</div>\n                <div class="character">CAL</div>\n                <div class="parenthetical">(Whispering furiously to Merlin)</div>\n                <div class="dialogue">You don't know that! This has total Stone Mason meets island-conspiracy vibes! We’re going to end up on an unindexed server memory log!</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Deadpan)</div>\n                <div class="dialogue">Cal, if these dorks were organized enough to run a global conspiracy, someone in this room would have brought a chair. It’s just grape juice and ego. Drink it or don't.</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-12">EXT. HUDSON RIVER FERRY - MORNING (08:04 AM)</div>\n                <div class="action">A cold, crisp New York morning. The river is flat as glass.</div>\n                <div class="action">JULIAN (28) wakes up on a hard plastic bench on the outdoor deck of a commuter ferry. He’s wearing a rumpled, vintage velvet tuxedo jacket. His hair is a mess.</div>\n                <div class="action">He groans, rubbing his face. He raises his right hand to check his time-feed—holding up his thumb and index finger in the "L-Frame" gesture.</div>\n                <div class="action">Nothing. The subdermal skin node between his fingers is dark, completely dead.</div>\n                <div class="action">He reaches into his jacket pocket for a phone or tablet. Instead, his fingers wrap around a physical, crumpled paper cocktail napkin. He pulls it out. Written on it in smeared red lipstick:</div>\n                <div class="action">> "12:01 AM wasn't a glitch. Ask Merlin."</div>\n                <div class="action">CUT TO:</div>\n                <div class="scene-heading" id="scene-13">INT. LOW-GRID DINER - SAME TIME</div>\n                <div class="action">OLLIE (27) is sitting in a booth wearing a mismatched diner apron over his tuxedo pants, aggressively eating a plate of greasy physical bacon.</div>\n                <div class="action">Across from him, MERLIN (30) is quietly sipping black coffee, using a fountain pen to write complex bio-chemical equations directly onto a paper placemat.</div>\n                <div class="character">OLLIE</div>\n                <div class="parenthetical">(Chewing, deadpan)</div>\n                <div class="dialogue">I don't know where my shoes are, Merlin. I don't know where my helicopter is. And I'm pretty sure I kissed your client’s fiancée in the dark.</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Without looking up)</div>\n                <div class="dialogue">You kissed Cal. She was high. You were bored. The helicopter is on a roof in the Meatpacking District. Eat your bacon.</div>\n                <div class="action">CUT TO:</div>\n                <div class="scene-heading" id="scene-14">INT. LUXURY DUPLEX LOFT - SAME TIME</div>\n                <div class="action">CAL (26) wakes up face-down on a plush velvet couch in a high-rise loft she’s never seen before. She’s wearing an oversized silk shirt that isn't hers. Her hair, usually pinned in a military-grade bun, is wild and untamed.</div>\n                <div class="action">She sits up in a panic, checking her wrists, her posture, her surroundings.</div>\n                <div class="action">Across the room, CHLOE (24) is standing by a floor-to-ceiling window in her bare feet, sipping green tea, looking out at the skyline.</div>\n                <div class="character">CAL</div>\n                <div class="parenthetical">(Voice cracking, OCD rising)</div>\n                <div class="dialogue">Where are my clothes? Where is my father? What time is it?</div>\n                <div class="character">CHLOE</div>\n                <div class="parenthetical">(Turns around, smiling serenely)</div>\n                <div class="dialogue">It’s 8:05 AM, Cal. Happy new century. You slept for four hours.</div>\n                <div class="character">CAL</div>\n                <div class="parenthetical">(Hyperventilating)</div>\n                <div class="dialogue">Did we... did I... what happened after the power went out at midnight?</div>\n                <div class="character">CHLOE</div>\n                <div class="dialogue">You really don't remember?</div>\n                <div class="parenthetical">(Off Cal's terrified, wide-eyed realization that her memory is completely blank—)</div>\n                <div class="action">TITLE CARD: KARDASHEV</div>\n                <div class="parenthetical">(FLASH-BACK SMASH CUT TO: 12 HOURS EARLIER — 8:00 PM, DEC 31, 2099)</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-15">INT. GATSBY BALLROOM - NIGHT (11:59:50 PM)</div>\n                <div class="action">The digital clock on the wall counts down: 10... 9... 8...</div>\n                <div class="action">Julian is standing near the champagne tower, eyes locked on Chloe across the room. Cal (having secretly swallowed Merlin's ampoule five minutes prior in the bathroom) is standing next to Ollie, her pupils beginning to dilate into terrifying clarity.</div>\n                <div class="action">3... 2... 1...</div>\n                <div class="action">12:00:00 AM — JANUARY 1, 2100.</div>\n                <div class="action">Confetti drops. Music swells. Couples embrace. Julian steps toward Chloe. In the crowd surge, they bump into each other—an accidental, electric, breath-catching moment where their lips brush.</div>\n                <div class="action">Then, at 12:01:00 AM—</div>\n                <div class="character">BOOM.</div>\n                <div class="action">The entire estate drops into PITCH BLACK.</div>\n                <div class="action">The micro-climate heaters shut off. The wireless energy loops die. The room temperature drops 15 degrees in two seconds. Panic ripples through the darkness.</div>\n                <div class="scene-heading" id="scene-16">INT. BASEMENT POWER SUB-STATION - SAME TIME</div>\n                <div class="action">Down in the estate’s heavy fusion basement, the digital telemetry meters are spinning backward.</div>\n                <div class="action">BENNETT VANE (48), the corporate CEO, is standing with Julian’s father, VICTOR KARDASHEV (60s). They are staring at a massive diagnostic screen glowing red.</div>\n                <div class="character">VICTOR</div>\n                <div class="parenthetical">(Shouting over the emergency alarms)</div>\n                <div class="dialogue">Is it a grid failure? Did the orbital relay drop?</div>\n                <div class="character">BENNETT VANE</div>\n                <div class="parenthetical">(Staring at the bio-frequency sensor readings, pale)</div>\n                <div class="dialogue">No. It’s not the grid. The grid didn't fail.</div>\n                <div class="character">VICTOR</div>\n                <div class="dialogue">Then what the hell just sucked 500 megawatts out of the building in one second?!</div>\n                <div class="action">Bennett looks at the bio-scanner readout on his console. Two glowing spike-points are pulsing right in the center of the estate layout—one in the ballroom (Chloe), and one four miles away in the Meatpacking District (Jesu).</div>\n                <div class="character">BENNETT VANE</div>\n                <div class="parenthetical">(Sober, terrified)</div>\n                <div class="dialogue">They're syncing, Victor. The kids are feeding.</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-17">INT. BALLROOM - DARKNESS (12:01:03 AM)</div>\n                <div class="action">In the pitch-black ballroom, Julian can't see anything. But in the dark, Chloe’s skin is faintly, impossibly glowing with static bio-electricity.</div>\n                <div class="action">She leans in close to Julian’s ear in the dark. Her voice is a soft, magnetic whisper.</div>\n                <div class="character">CHLOE</div>\n                <div class="dialogue">Don't be scared, Julian. It’s just three seconds. Nobody's watching.</div>\n                <div class="parenthetical">(CLICK.)</div>\n                <div class="action">12:01:04 AM. The emergency generators kick back on. The lights flash up.</div>\n                <div class="action">Julian blinks in the bright light. Chloe is gone.</div>\n                <div class="action">Standing right in front of him instead is Cal, looking at him with wide, unblinking eyes—her face flushed, her breathing shallow, completely transformed by Merlin's drug.</div>\n                <div class="action">Julian looks down at his right hand. Printed on his skin in faint, glowing bio-luminescent residue from where Chloe touched his wrist is a tiny set of GPS coordinates pointing to the Meatpacking District.</div>\n                <div class="character">OLLIE</div>\n                <div class="parenthetical">(Stepping up, unbuttoning his collar, totally unfazed)</div>\n                <div class="dialogue">So... who's taking my helicopter to the after-party?</div>\n                <div class="character">FADE TO BLACK.</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-18">INT. LOW-GRID DINER - MORNING</div>\n                <div class="action">OLLIE (27) sits across from MERLIN (30), staring at a small glass data-drive he just bought from a street vendor outside. He taps it against his thumb-node, trying to force a sync.</div>\n                <div class="character">OLLIE</div>\n                <div class="dialogue">My thone is three days behind on the local lexicon patch. I tried to order a coffee outside, and the vendor looked at me like I was speaking Old English because I didn't use the new verb for "decaf."</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Sipping his black coffee)</div>\n                <div class="dialogue">You were data-fasting, Ollie. That’s what happens when you turn off your feed to feel deep.</div>\n                <div class="character">OLLIE</div>\n                <div class="dialogue">I wasn't trying to feel deep! I was high on your off-menu ampoule and my battery died! Now it’s going to cost me sixty energy credits just to burst-sync my node back to 8:00 AM.</div>\n                <div class="character">MERLIN</div>\n                <div class="parenthetical">(Smirks)</div>\n                <div class="dialogue">A pleb would have to spend three weeks working off that lag. Count your blessings, cousin. Pay the fee, take the data-drop, and learn the new word for coffee.</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-19">INT. ELENA'S HOSPITAL ROOM - NIGHT</div>\n                <div class="action">VICTOR KARDASHEV (60s) stands by his wife’s stasis bed, quietly reviewing a glowing blue transaction ledger on his thone. JULIAN (28) sits in a chair in the corner, holding his mother’s limp hand.</div>\n                <div class="action">Victor doesn't look up from his screen.</div>\n                <div class="character">VICTOR</div>\n                <div class="dialogue">Lucius Cinna wants another two percent on the Atlantic Vault leases. He knows we need the historical data buffer for the Q1 orbital launch. I’m going to concede the two percent tomorrow.</div>\n                <div class="action">Julian closes his eyes. For three seconds, his breath hitches. A quiet, high-frequency ringing fills his ears—a 3-second absence seizure. His vision flashes with a faint, geometric map of the room's energy flow.</div>\n                <div class="action">He blinks, coming back. His eyes are dead calm.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">Don't give him the two percent.</div>\n                <div class="character">VICTOR</div>\n                <div class="parenthetical">(Scoffs, not looking up)</div>\n                <div class="dialogue">Julian, please. I’m running a trillion-dollar grid integration. You don't know Lucius.</div>\n                <div class="character">JULIAN</div>\n                <div class="parenthetical">(Voice low, precise, unnervingly steady)</div>\n                <div class="dialogue">Lucius isn't looking for yield, Dad. He’s looking for leverage because his sub-Atlantic cooling line failed six hours ago. He’s running hot. If you hold out until 10:00 AM tomorrow, he’ll drop his price by five percent just so we route our excess coolant through his sub-station.</div>\n                <div class="action">Victor stops scrolling. He slowly turns his head, staring at his son.</div>\n                <div class="character">VICTOR</div>\n                <div class="dialogue">...Who told you his cooling line failed?</div>\n                <div class="character">JULIAN</div>\n                <div class="parenthetical">(Staring at the floorboards, feeling his pulse steadily beat)</div>\n                <div class="dialogue">Nobody told me. He was standing too close to the fireplace at the party, Dad. He kept adjusting his collar. A guy who owns the coldest data vault in the world doesn't sweat unless his heat-sink is dying.</div>\n                <div class="action">Victor stares at Julian. For the first time in ten years, Victor doesn't see a soft, weary boy—he sees a predator.</div>\n                <div class="character">VICTOR</div>\n                <div class="parenthetical">(Quietly)</div>\n                <div class="dialogue">Sit up straight, Julian. Tell me what else you saw.</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-20">INT. ELENA'S HOSPITAL ROOM - NIGHT</div>\n                <div class="action">VICTOR KARDASHEV (60s) stands near his wife’s stasis bed, quietly reviewing a live diagnostic stream on his thone. The room is dead silent, save for the soft, hummed pulse of the atmospheric misting.</div>\n                <div class="action">JULIAN (28) sits in a low chair, holding his mother’s hand.</div>\n                <div class="action">Victor doesn't look up from his screen.</div>\n                <div class="character">VICTOR</div>\n                <div class="dialogue">Lucius Cinna wants to renegotiate the sub-Atlantic data leases. He’s asking for an additional forty petajoules of direct CMB Parity on the Q1 allocation. I’m leaning toward granting it. We need his vault’s quantum shielding for the new orbital array.</div>\n                <div class="action">Julian closes his eyes. For three seconds, his breath hitches. A quiet, high-frequency ringing fills his ears—the sudden, silent absence seizure. His vision flashes with a faint, geometric map of the room's electromagnetic currents.</div>\n                <div class="action">He blinks, coming back. His eyes are dead calm, the exhaustion completely drained from his posture.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">Don't give him the Parity.</div>\n                <div class="character">VICTOR</div>\n                <div class="parenthetical">(Scoffs softly, not looking up)</div>\n                <div class="dialogue">Julian, please. I’m balancing the planetary baseline reserve. Lucius holds forty percent of the un-corrupted historical archives.</div>\n                <div class="character">JULIAN</div>\n                <div class="parenthetical">(Voice low, precise, unnervingly steady)</div>\n                <div class="dialogue">Lucius isn't asking for Parity because he wants yield, Dad. He’s asking because his sub-Atlantic cooling line failed six hours ago. His local reserves are bleeding heat. He’s running on emergency thermal reserves right now.</div>\n                <div class="action">Victor stops scrolling. He slowly turns his head, staring at his son.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">If you grant him Parity, you’re just funding his repair bills. If you hold out until 10:00 AM tomorrow, he’ll drop his archive lease price by half—just so we route our excess coolant through his sub-station to keep his servers from melting.</div>\n                <div class="action">Victor stares at Julian. The room feels suddenly colder. For the first time in ten years, Victor doesn't see a weary, spacey boy hiding in the shadow of the family name. He sees a mind calculating thermodynamic leverage in real-time.</div>\n                <div class="character">VICTOR</div>\n                <div class="dialogue">...How do you know his cooling line failed?</div>\n                <div class="character">JULIAN</div>\n                <div class="parenthetical">(Staring at his own hand, feeling his pulse beat in sync with the room's hum)</div>\n                <div class="dialogue">He was standing too close to the fireplace at the party, Dad. He kept unbuttoning his collar. A man who controls the coldest data vault on the Eastern seaboard doesn't sweat in a seventy-degree room unless his heat-sink is dying.</div>\n                <div class="action">Victor looks at his son, a slow, dangerous realization dawning on his face.</div>\n                <div class="character">VICTOR</div>\n                <div class="parenthetical">(Quietly, stepping closer)</div>\n                <div class="dialogue">Sit up, Julian. What else did you feel in that room?</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-21">INT. GATSBY BALLROOM - NIGHT</div>\n                <div class="action">OLLIE (27) pulls a small obsidian Metabolic Sandglass from his tuxedo pocket and holds it up to the light. The inner plasma is glowing a frantic, bubbling purple.</div>\n                <div class="character">OLLIE</div>\n                <div class="dialogue">Look at this. I haven't even touched the champagne yet, and my Sandglass looks like a neon sign in a cheap arcade.</div>\n                <div class="action">MERLIN (30) doesn't pull out a device. He casually reaches into his pocket and pops a small iridescent Stutter-Pill into his mouth, chewing slowly.</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">That’s because you’re standing next to Julian, Ollie. He’s running so hot right now his body heat is literally cooking your baseline.</div>\n                <div class="action">JULIAN (28) stands three feet away, staring rigidly at Chloe across the room. His hands are buried in his pockets, but his shoulders are tight as piano wire.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">I’m fine. I’m Parity-Clean.</div>\n                <div class="character">OLLIE</div>\n                <div class="dialogue">Julian, brother, you’re three seconds away from a spill. Your eyes are bloodshot and you haven't blinked since 11:40 PM. If your dad sees you feverish like this, he’s going to put you in a Snooze-Vault until 2105.</div>\n                <div class="character">JULIAN</div>\n                <div class="parenthetical">(Voice unnervingly calm, eyes cold)</div>\n                <div class="dialogue">Let him try to snooze me. I just found out how Lucius Cinna cools his vaults. My hands have never been colder.</div>\n                <div class="transition">CUT TO:</div>\n\n                <div class="scene-heading" id="scene-22">INT. GATSBY BALLROOM - NIGHT</div>\n                <div class="action">OLLIE (27) presses his index finger firmly against his left wrist. Under his skin, a faint, pulsing violet light glows beneath his cuff.</div>\n                <div class="character">OLLIE</div>\n                <div class="parenthetical">(Sucking in a breath)</div>\n                <div class="dialogue">Julian, stop talking about your father’s sub-stations. You’re violetting me. My cortisol is spiking through my silk sleeve.</div>\n                <div class="action">JULIAN (28) doesn't even press his wrist. He’s standing completely still, watching Chloe across the room. His posture is cool, low-entropy, absolute zero.</div>\n                <div class="character">JULIAN</div>\n                <div class="dialogue">You’re acting like a dreena, Ollie. Calm down.</div>\n                <div class="character">OLLIE</div>\n                <div class="dialogue">I can’t calm down! I haven't ooofed in six months, my thone is three days behind on the lexicon patch, and Dr. Vance is over by the raw bar making a list on a digital slate.</div>\n                <div class="action">Ollie gestures across the floor. DR. VANE (50s), an impeccably tailored geneticist with silver hair, is chatting warmly with a group of diplomats while making light notes on a small glass tablet.</div>\n                <div class="character">OLLIE</div>\n                <div class="dialogue">He looked at me five minutes ago, pressed his wrist, frowned, and literally crossed my name off his screen. I’ve been officially categorized as an evolutionary dead end before midnight.</div>\n                <div class="character">JULIAN</div>\n                <div class="parenthetical">(Dryly)</div>\n                <div class="dialogue">You are an evolutionary dead end, Ollie. You eat pimentos out of a bucket.</div>\n                <div class="character">OLLIE</div>\n                <div class="dialogue">That’s not the point! He thinks the birth rate drop is because we’re speciating! He wants to build a private island for the Organelle kids!</div>\n                <div class="action">MERLIN (30) steps up beside them, casually popping a salted olive into his mouth.</div>\n                <div class="character">MERLIN</div>\n                <div class="dialogue">Let Vance make his lists. The guy’s an academic pervert. He thinks he’s predicting the future of the human race, but he doesn't realize Chloe and Jesu are already ooming right past his entire thesis.</div>\n                <div class="character">JULIAN</div>\n                <div class="parenthetical">(Eyes narrowing as Chloe glances toward him)</div>\n                <div class="dialogue">Let's see what happens when the grid drops at midnight. I’m tired of oozing. It’s time to make a move.</div>\n                <div class="transition">CUT TO:</div>\n
             </div>
         </div>
         
@@ -982,16 +468,16 @@
             locations: []
         };
         
-        // Populate default values from the original extraction for testing (you can delete or edit these)
-        appState.characters = [
-            { id: Date.now()+1, name: "ARTHUR", color: "#e74c3c" },
-            { id: Date.now()+2, name: "ELENA", color: "#3498db" },
-            { id: Date.now()+3, name: "LEO", color: "#2ecc71" },
-            { id: Date.now()+4, name: "VANYA", color: "#9b59b6" }
-        ];
+        let dynamicCounts = {
+            characters: {},
+            locations: {}
+        };
+        
+        let highlightPositions = {}; // id -> current index being viewed
 
         // Highlight tracking
         let activeHighlights = new Set();
+        let activeHighlightRanges = {}; // id -> array of nodes/ranges
 
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -1006,6 +492,47 @@
             }
         }
 
+        // Generate a random pleasant color
+        function getRandomColor() {
+            const hue = Math.floor(Math.random() * 360);
+            return `hsl(${hue}, 70%, 60%)`;
+        }
+
+        function extractEntities() {
+            dynamicCounts = { characters: {}, locations: {} };
+            
+            // Extract Characters
+            document.querySelectorAll('.character').forEach(node => {
+                let name = node.innerText.replace(/\s*\(.*?\)/g, '').trim().toUpperCase();
+                if (!name) return;
+                dynamicCounts.characters[name] = (dynamicCounts.characters[name] || 0) + 1;
+                
+                // Add to appState if missing
+                if (!appState.characters.find(c => c.name === name)) {
+                    appState.characters.push({ id: Date.now() + Math.random(), name: name, color: getRandomColor() });
+                }
+            });
+            
+            // Extract Locations
+            document.querySelectorAll('.scene-heading').forEach(node => {
+                let text = node.innerText.trim().toUpperCase();
+                let match = text.match(/^(?:INT\.|EXT\.|I\/E\.|INT\/EXT\.)\s+(.*?)(?:\s+-\s+.*)?$/);
+                let name = match ? match[1].trim() : text;
+                if (!name) return;
+                dynamicCounts.locations[name] = (dynamicCounts.locations[name] || 0) + 1;
+                
+                if (!appState.locations.find(l => l.name === name)) {
+                    appState.locations.push({ id: Date.now() + Math.random(), name: name, color: getRandomColor() });
+                }
+            });
+            
+            // Sort state alphabetically for display, prioritizing higher counts
+            appState.characters.sort((a, b) => (dynamicCounts.characters[b.name] || 0) - (dynamicCounts.characters[a.name] || 0));
+            appState.locations.sort((a, b) => (dynamicCounts.locations[b.name] || 0) - (dynamicCounts.locations[a.name] || 0));
+            
+            renderLists();
+        }
+
         function renderLists() {
             const charList = document.getElementById('characters-list');
             const locList = document.getElementById('locations-list');
@@ -1013,14 +540,20 @@
             locList.innerHTML = '';
             
             appState.characters.forEach(item => {
-                charList.appendChild(createListItemEl(item, 'characters'));
+                const count = dynamicCounts.characters[item.name] || 0;
+                if (count > 0 || activeHighlights.has(item.id)) {
+                    charList.appendChild(createListItemEl(item, 'characters', count));
+                }
             });
             appState.locations.forEach(item => {
-                locList.appendChild(createListItemEl(item, 'locations'));
+                const count = dynamicCounts.locations[item.name] || 0;
+                if (count > 0 || activeHighlights.has(item.id)) {
+                    locList.appendChild(createListItemEl(item, 'locations', count));
+                }
             });
         }
 
-        function createListItemEl(item, type) {
+        function createListItemEl(item, type, count) {
             const li = document.createElement('li');
             li.className = 'list-item';
             if (activeHighlights.has(item.id)) li.classList.add('highlighted');
@@ -1028,11 +561,17 @@
             const left = document.createElement('div');
             left.style.display = 'flex';
             left.style.alignItems = 'center';
-            left.innerHTML = `<span class="list-item-color" style="background-color: ${item.color}"></span> ${item.name}`;
+            left.style.overflow = 'hidden';
+            left.style.textOverflow = 'ellipsis';
+            left.style.whiteSpace = 'nowrap';
+            
+            left.innerHTML = `<span class="list-item-color" style="background-color: ${item.color}"></span> 
+                              <span style="overflow: hidden; text-overflow: ellipsis;" title="${item.name}">${item.name}</span>
+                              <span class="item-count">${count}</span>`;
             
             li.onclick = (e) => {
                 if (e.target.tagName !== 'BUTTON') {
-                    toggleHighlight(item.id, item.name, item.color, li);
+                    handleListClick(item, li, type);
                 }
             };
             
@@ -1041,13 +580,15 @@
             
             const delBtn = document.createElement('button');
             delBtn.innerHTML = '×';
-            delBtn.title = "Delete";
+            delBtn.title = "Remove from list";
             delBtn.onclick = (e) => {
                 e.stopPropagation();
-                if (activeHighlights.has(item.id)) toggleHighlight(item.id, item.name, item.color, li); // turn off highlight
-                appState[type] = appState[type].filter(i => i.id !== item.id);
-                renderLists();
-                saveState(); // Record structural change
+                if (confirm(`Are you sure you want to remove '${item.name}' from your custom list?`)) {
+                    if (activeHighlights.has(item.id)) toggleHighlight(item, li, false); // turn off highlight
+                    appState[type] = appState[type].filter(i => i.id !== item.id);
+                    renderLists();
+                    saveState();
+                }
             };
             
             actions.appendChild(delBtn);
@@ -1063,32 +604,72 @@
             const name = nameInput.value.trim().toUpperCase();
             if (!name) return;
             
-            appState[type].push({
-                id: Date.now(),
-                name: name,
-                color: colorInput.value
-            });
+            if (!appState[type].find(i => i.name === name)) {
+                appState[type].push({
+                    id: Date.now() + Math.random(),
+                    name: name,
+                    color: colorInput.value
+                });
+            }
             
             nameInput.value = '';
-            renderLists();
+            extractEntities(); // Re-render and sort
             saveState();
         }
 
-        // --- CSS Custom Highlight API Engine ---
-        function toggleHighlight(id, name, color, liElement) {
+        // --- CSS Custom Highlight & Search Engine ---
+        function handleListClick(item, liElement, type) {
+            // If it's already highlighted, find next
+            if (activeHighlights.has(item.id)) {
+                jumpToNext(item.id);
+            } else {
+                // Not highlighted yet, turn on highlight and jump to first
+                toggleHighlight(item, liElement, true);
+            }
+        }
+        
+        function jumpToNext(id) {
+            const ranges = activeHighlightRanges[id];
+            if (!ranges || ranges.length === 0) return;
+            
+            if (highlightPositions[id] === undefined) {
+                highlightPositions[id] = 0;
+            } else {
+                highlightPositions[id] = (highlightPositions[id] + 1) % ranges.length;
+            }
+            
+            const range = ranges[highlightPositions[id]];
+            const node = range.startContainer;
+            if (node && node.parentElement) {
+                // Scroll into view
+                node.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Briefly flash the element background to help the user spot it
+                const oldBg = node.parentElement.style.backgroundColor;
+                node.parentElement.style.backgroundColor = "rgba(255,255,0,0.5)";
+                setTimeout(() => { node.parentElement.style.backgroundColor = oldBg; }, 800);
+            }
+        }
+
+        function toggleHighlight(item, liElement, forceOn) {
             if (!window.CSS || !CSS.highlights) {
-                alert("Your browser doesn't support the Modern CSS Highlight API yet.");
+                // Fallback for non-supported browsers
+                const firstHit = document.evaluate(`.//div[contains(text(), '${item.name}')]`, document.getElementById('editor-page'), null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                if(firstHit) firstHit.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
             
-            const hlName = "hl-" + id;
+            const id = item.id;
+            const hlName = "hl-" + id.toString().replace('.', '-');
             
             // Toggle OFF
-            if (activeHighlights.has(id)) {
+            if (!forceOn && activeHighlights.has(id)) {
                 if (CSS.highlights.has(hlName)) {
                     CSS.highlights.delete(hlName);
                 }
                 activeHighlights.delete(id);
+                delete activeHighlightRanges[id];
+                delete highlightPositions[id];
                 liElement.classList.remove('highlighted');
                 liElement.style.borderLeftColor = 'transparent';
                 return;
@@ -1097,13 +678,13 @@
             // Toggle ON
             activeHighlights.add(id);
             liElement.classList.add('highlighted');
-            liElement.style.borderLeftColor = color;
+            liElement.style.borderLeftColor = item.color;
             
             // Inject CSS Rule if not exists
             if (!document.getElementById("style-" + hlName)) {
                 const style = document.createElement('style');
                 style.id = "style-" + hlName;
-                style.innerHTML = `::highlight(${hlName}) { background-color: ${color}; color: #fff; }`;
+                style.innerHTML = `::highlight(${hlName}) { background-color: ${item.color}; color: #fff; }`;
                 document.head.appendChild(style);
             }
             
@@ -1113,15 +694,12 @@
             const ranges = [];
             
             // Escape special chars for regex
-            const safeName = name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+            const safeName = item.name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
             const regex = new RegExp(`\\b${safeName}\\b`, 'gi');
             
             while ((node = walker.nextNode())) {
                 let match;
-                // regex.exec on nodeValue
                 const text = node.nodeValue;
-                let startIndex = 0;
-                
                 while ((match = regex.exec(text)) !== null) {
                     const range = new Range();
                     range.setStart(node, match.index);
@@ -1133,6 +711,10 @@
             if (ranges.length > 0) {
                 const highlight = new Highlight(...ranges);
                 CSS.highlights.set(hlName, highlight);
+                activeHighlightRanges[id] = ranges;
+                jumpToNext(id); // Jump to first
+            } else {
+                activeHighlightRanges[id] = [];
             }
         }
 
@@ -1162,7 +744,8 @@
                 historyIndex--;
                 document.getElementById('editor-page').innerHTML = historyStack[historyIndex];
                 buildToc();
-                refreshAllHighlights(); // Re-apply highlights to new DOM nodes
+                extractEntities();
+                refreshAllHighlights();
                 isUndoRedo = false;
             }
         }
@@ -1173,6 +756,7 @@
                 historyIndex++;
                 document.getElementById('editor-page').innerHTML = historyStack[historyIndex];
                 buildToc();
+                extractEntities();
                 refreshAllHighlights();
                 isUndoRedo = false;
             }
@@ -1185,12 +769,15 @@
             currentlyActive.forEach(id => {
                 let item = appState.characters.find(c => c.id === id) || appState.locations.find(l => l.id === id);
                 if (item) {
-                    const hlName = "hl-" + id;
+                    const hlName = "hl-" + id.toString().replace('.', '-');
                     if (CSS.highlights.has(hlName)) CSS.highlights.delete(hlName);
                     activeHighlights.delete(id);
-                    // find list item
-                    const li = document.querySelector(`.list-item-color[style*="${item.color}"]`).parentNode.parentNode;
-                    toggleHighlight(item.id, item.name, item.color, li);
+                    delete activeHighlightRanges[id];
+                    
+                    const li = document.querySelector(`.list-item-color[style*="${item.color}"]`);
+                    if (li) {
+                        toggleHighlight(item, li.parentNode.parentNode, true);
+                    }
                 }
             });
         }
@@ -1253,6 +840,7 @@
             if (node && node.parentNode && node.parentNode.id === 'editor-page') {
                 node.className = className;
                 buildToc();
+                extractEntities();
                 saveState();
             } else if (node && node.id === 'editor-page') {
                 document.execCommand('formatBlock', false, 'DIV');
@@ -1264,12 +852,13 @@
         
         let debounceTimer;
         function handleInput() {
-            buildToc(); 
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
+                buildToc(); 
+                extractEntities();
                 saveState();
-                refreshAllHighlights(); // Update highlight ranges as text changes
-            }, 500);
+                refreshAllHighlights();
+            }, 1000);
         }
         
         let draggedSceneId = null;
@@ -1328,7 +917,6 @@
             
             if (!sourceHeading || !targetHeading) return;
             
-            // Collect all nodes for the source scene (everything up to the next scene heading)
             const nodesToMove = [sourceHeading];
             let curr = sourceHeading.nextElementSibling;
             while (curr && !curr.classList.contains('scene-heading')) {
@@ -1336,7 +924,6 @@
                 curr = curr.nextElementSibling;
             }
             
-            // Move them before targetHeading
             nodesToMove.forEach(node => {
                 editor.insertBefore(node, targetHeading);
             });
@@ -1345,7 +932,6 @@
             buildToc();
             refreshAllHighlights();
             
-            // Scroll to the moved scene
             document.getElementById(sourceId).scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
@@ -1414,11 +1000,11 @@
                         const data = JSON.parse(contents);
                         editor.innerHTML = '';
                         
-                        // Handle new format or old array format
                         const scriptData = data.script ? data.script : data;
                         if (data.lists) {
                             appState = data.lists;
-                            renderLists();
+                        } else {
+                            appState = { characters: [], locations: [] };
                         }
                         
                         scriptData.forEach(item => {
@@ -1428,11 +1014,13 @@
                             editor.appendChild(div);
                         });
                         buildToc();
+                        extractEntities();
                         saveState();
                     } catch (err) { alert("Invalid JSON format."); }
                 } else {
                     editor.innerHTML = '<div class="action">' + contents.replace(/\n/g, '<br>') + '</div>';
                     buildToc();
+                    extractEntities();
                     saveState();
                 }
             };
@@ -1447,7 +1035,9 @@
         });
 
         document.getElementById('editor-page').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') setTimeout(buildToc, 10);
+            if (e.key === 'Enter') {
+                setTimeout(() => { buildToc(); extractEntities(); }, 10);
+            }
             if (e.key === 'Tab') {
                 e.preventDefault();
                 const selection = window.getSelection();
@@ -1462,13 +1052,15 @@
                     else if (currentClass === 'parenthetical') node.className = 'dialogue';
                     else if (currentClass === 'dialogue') node.className = 'action';
                     else node.className = 'action';
+                    
                     saveState();
+                    extractEntities();
                 }
             }
         });
 
         window.onload = () => {
-            renderLists();
+            extractEntities(); // Natively builds the lists from DOM
             saveState(); 
             buildToc();
         };

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Keeping Up with the Kardashevs - Final Draft Editor</title>
+    <title>Final Draft Editor</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -223,11 +223,21 @@
         .list-item-color {
             width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px;
             box-shadow: 0 0 2px rgba(0,0,0,0.5);
+            flex-shrink: 0;
         }
         .item-actions button {
             background: transparent; border: none; color: #999; cursor: pointer; font-size: 1rem; margin-left: 5px;
         }
-        .item-actions button:hover { color: #fff; }
+        .item-actions button:hover { color: #ff5555; }
+        
+        .item-count {
+            background: rgba(255,255,255,0.1);
+            color: #ccc;
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
 
         .add-input-group {
             padding: 15px;
@@ -257,6 +267,7 @@
             overflow-y: auto;
             background-color: #2b2b2b;
             padding: 40px 20px;
+            scroll-behavior: smooth;
         }
 
         /* Script Page */
@@ -458,11 +469,16 @@
             locations: []
         };
         
-        // Populate default values from the original extraction for testing (you can delete or edit these)
-        appState.characters = [];
+        let dynamicCounts = {
+            characters: {},
+            locations: {}
+        };
+        
+        let highlightPositions = {}; // id -> current index being viewed
 
         // Highlight tracking
         let activeHighlights = new Set();
+        let activeHighlightRanges = {}; // id -> array of nodes/ranges
 
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -477,6 +493,47 @@
             }
         }
 
+        // Generate a random pleasant color
+        function getRandomColor() {
+            const hue = Math.floor(Math.random() * 360);
+            return `hsl(${hue}, 70%, 60%)`;
+        }
+
+        function extractEntities() {
+            dynamicCounts = { characters: {}, locations: {} };
+            
+            // Extract Characters
+            document.querySelectorAll('.character').forEach(node => {
+                let name = node.innerText.replace(/\\s*\\(.*?\\)/g, '').trim().toUpperCase();
+                if (!name) return;
+                dynamicCounts.characters[name] = (dynamicCounts.characters[name] || 0) + 1;
+                
+                // Add to appState if missing
+                if (!appState.characters.find(c => c.name === name)) {
+                    appState.characters.push({ id: Date.now() + Math.random(), name: name, color: getRandomColor() });
+                }
+            });
+            
+            // Extract Locations
+            document.querySelectorAll('.scene-heading').forEach(node => {
+                let text = node.innerText.trim().toUpperCase();
+                let match = text.match(/^(?:INT\\.|EXT\\.|I\\/E\\.|INT\\/EXT\\.)\\s+(.*?)(?:\\s+-\\s+.*)?$/);
+                let name = match ? match[1].trim() : text;
+                if (!name) return;
+                dynamicCounts.locations[name] = (dynamicCounts.locations[name] || 0) + 1;
+                
+                if (!appState.locations.find(l => l.name === name)) {
+                    appState.locations.push({ id: Date.now() + Math.random(), name: name, color: getRandomColor() });
+                }
+            });
+            
+            // Sort state alphabetically for display, prioritizing higher counts
+            appState.characters.sort((a, b) => (dynamicCounts.characters[b.name] || 0) - (dynamicCounts.characters[a.name] || 0));
+            appState.locations.sort((a, b) => (dynamicCounts.locations[b.name] || 0) - (dynamicCounts.locations[a.name] || 0));
+            
+            renderLists();
+        }
+
         function renderLists() {
             const charList = document.getElementById('characters-list');
             const locList = document.getElementById('locations-list');
@@ -484,14 +541,20 @@
             locList.innerHTML = '';
             
             appState.characters.forEach(item => {
-                charList.appendChild(createListItemEl(item, 'characters'));
+                const count = dynamicCounts.characters[item.name] || 0;
+                if (count > 0 || activeHighlights.has(item.id)) {
+                    charList.appendChild(createListItemEl(item, 'characters', count));
+                }
             });
             appState.locations.forEach(item => {
-                locList.appendChild(createListItemEl(item, 'locations'));
+                const count = dynamicCounts.locations[item.name] || 0;
+                if (count > 0 || activeHighlights.has(item.id)) {
+                    locList.appendChild(createListItemEl(item, 'locations', count));
+                }
             });
         }
 
-        function createListItemEl(item, type) {
+        function createListItemEl(item, type, count) {
             const li = document.createElement('li');
             li.className = 'list-item';
             if (activeHighlights.has(item.id)) li.classList.add('highlighted');
@@ -499,11 +562,17 @@
             const left = document.createElement('div');
             left.style.display = 'flex';
             left.style.alignItems = 'center';
-            left.innerHTML = `<span class="list-item-color" style="background-color: ${item.color}"></span> ${item.name}`;
+            left.style.overflow = 'hidden';
+            left.style.textOverflow = 'ellipsis';
+            left.style.whiteSpace = 'nowrap';
+            
+            left.innerHTML = `<span class="list-item-color" style="background-color: ${item.color}"></span> 
+                              <span style="overflow: hidden; text-overflow: ellipsis;" title="${item.name}">${item.name}</span>
+                              <span class="item-count">${count}</span>`;
             
             li.onclick = (e) => {
                 if (e.target.tagName !== 'BUTTON') {
-                    toggleHighlight(item.id, item.name, item.color, li);
+                    handleListClick(item, li, type);
                 }
             };
             
@@ -512,13 +581,15 @@
             
             const delBtn = document.createElement('button');
             delBtn.innerHTML = '×';
-            delBtn.title = "Delete";
+            delBtn.title = "Remove from list";
             delBtn.onclick = (e) => {
                 e.stopPropagation();
-                if (activeHighlights.has(item.id)) toggleHighlight(item.id, item.name, item.color, li); // turn off highlight
-                appState[type] = appState[type].filter(i => i.id !== item.id);
-                renderLists();
-                saveState(); // Record structural change
+                if (confirm(`Are you sure you want to remove '${item.name}' from your custom list?`)) {
+                    if (activeHighlights.has(item.id)) toggleHighlight(item, li, false); // turn off highlight
+                    appState[type] = appState[type].filter(i => i.id !== item.id);
+                    renderLists();
+                    saveState();
+                }
             };
             
             actions.appendChild(delBtn);
@@ -534,32 +605,72 @@
             const name = nameInput.value.trim().toUpperCase();
             if (!name) return;
             
-            appState[type].push({
-                id: Date.now(),
-                name: name,
-                color: colorInput.value
-            });
+            if (!appState[type].find(i => i.name === name)) {
+                appState[type].push({
+                    id: Date.now() + Math.random(),
+                    name: name,
+                    color: colorInput.value
+                });
+            }
             
             nameInput.value = '';
-            renderLists();
+            extractEntities(); // Re-render and sort
             saveState();
         }
 
-        // --- CSS Custom Highlight API Engine ---
-        function toggleHighlight(id, name, color, liElement) {
+        // --- CSS Custom Highlight & Search Engine ---
+        function handleListClick(item, liElement, type) {
+            // If it's already highlighted, find next
+            if (activeHighlights.has(item.id)) {
+                jumpToNext(item.id);
+            } else {
+                // Not highlighted yet, turn on highlight and jump to first
+                toggleHighlight(item, liElement, true);
+            }
+        }
+        
+        function jumpToNext(id) {
+            const ranges = activeHighlightRanges[id];
+            if (!ranges || ranges.length === 0) return;
+            
+            if (highlightPositions[id] === undefined) {
+                highlightPositions[id] = 0;
+            } else {
+                highlightPositions[id] = (highlightPositions[id] + 1) % ranges.length;
+            }
+            
+            const range = ranges[highlightPositions[id]];
+            const node = range.startContainer;
+            if (node && node.parentElement) {
+                // Scroll into view
+                node.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Briefly flash the element background to help the user spot it
+                const oldBg = node.parentElement.style.backgroundColor;
+                node.parentElement.style.backgroundColor = "rgba(255,255,0,0.5)";
+                setTimeout(() => { node.parentElement.style.backgroundColor = oldBg; }, 800);
+            }
+        }
+
+        function toggleHighlight(item, liElement, forceOn) {
             if (!window.CSS || !CSS.highlights) {
-                alert("Your browser doesn't support the Modern CSS Highlight API yet.");
+                // Fallback for non-supported browsers
+                const firstHit = document.evaluate(`.//div[contains(text(), '${item.name}')]`, document.getElementById('editor-page'), null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                if(firstHit) firstHit.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
             
-            const hlName = "hl-" + id;
+            const id = item.id;
+            const hlName = "hl-" + id.toString().replace('.', '-');
             
             // Toggle OFF
-            if (activeHighlights.has(id)) {
+            if (!forceOn && activeHighlights.has(id)) {
                 if (CSS.highlights.has(hlName)) {
                     CSS.highlights.delete(hlName);
                 }
                 activeHighlights.delete(id);
+                delete activeHighlightRanges[id];
+                delete highlightPositions[id];
                 liElement.classList.remove('highlighted');
                 liElement.style.borderLeftColor = 'transparent';
                 return;
@@ -568,13 +679,13 @@
             // Toggle ON
             activeHighlights.add(id);
             liElement.classList.add('highlighted');
-            liElement.style.borderLeftColor = color;
+            liElement.style.borderLeftColor = item.color;
             
             // Inject CSS Rule if not exists
             if (!document.getElementById("style-" + hlName)) {
                 const style = document.createElement('style');
                 style.id = "style-" + hlName;
-                style.innerHTML = `::highlight(${hlName}) { background-color: ${color}; color: #fff; }`;
+                style.innerHTML = `::highlight(${hlName}) { background-color: ${item.color}; color: #fff; }`;
                 document.head.appendChild(style);
             }
             
@@ -584,15 +695,12 @@
             const ranges = [];
             
             // Escape special chars for regex
-            const safeName = name.replace(/[-[\]{}()*+?.,\\\\^$|#\s]/g, '\\\\$&');
+            const safeName = item.name.replace(/[-[\\]{}()*+?.,\\\\^$|#\\s]/g, '\\\\$&');
             const regex = new RegExp(`\\\\b${safeName}\\\\b`, 'gi');
             
             while ((node = walker.nextNode())) {
                 let match;
-                // regex.exec on nodeValue
                 const text = node.nodeValue;
-                let startIndex = 0;
-                
                 while ((match = regex.exec(text)) !== null) {
                     const range = new Range();
                     range.setStart(node, match.index);
@@ -604,6 +712,10 @@
             if (ranges.length > 0) {
                 const highlight = new Highlight(...ranges);
                 CSS.highlights.set(hlName, highlight);
+                activeHighlightRanges[id] = ranges;
+                jumpToNext(id); // Jump to first
+            } else {
+                activeHighlightRanges[id] = [];
             }
         }
 
@@ -633,7 +745,8 @@
                 historyIndex--;
                 document.getElementById('editor-page').innerHTML = historyStack[historyIndex];
                 buildToc();
-                refreshAllHighlights(); // Re-apply highlights to new DOM nodes
+                extractEntities();
+                refreshAllHighlights();
                 isUndoRedo = false;
             }
         }
@@ -644,6 +757,7 @@
                 historyIndex++;
                 document.getElementById('editor-page').innerHTML = historyStack[historyIndex];
                 buildToc();
+                extractEntities();
                 refreshAllHighlights();
                 isUndoRedo = false;
             }
@@ -656,12 +770,15 @@
             currentlyActive.forEach(id => {
                 let item = appState.characters.find(c => c.id === id) || appState.locations.find(l => l.id === id);
                 if (item) {
-                    const hlName = "hl-" + id;
+                    const hlName = "hl-" + id.toString().replace('.', '-');
                     if (CSS.highlights.has(hlName)) CSS.highlights.delete(hlName);
                     activeHighlights.delete(id);
-                    // find list item
-                    const li = document.querySelector(`.list-item-color[style*="${item.color}"]`).parentNode.parentNode;
-                    toggleHighlight(item.id, item.name, item.color, li);
+                    delete activeHighlightRanges[id];
+                    
+                    const li = document.querySelector(`.list-item-color[style*="${item.color}"]`);
+                    if (li) {
+                        toggleHighlight(item, li.parentNode.parentNode, true);
+                    }
                 }
             });
         }
@@ -724,6 +841,7 @@
             if (node && node.parentNode && node.parentNode.id === 'editor-page') {
                 node.className = className;
                 buildToc();
+                extractEntities();
                 saveState();
             } else if (node && node.id === 'editor-page') {
                 document.execCommand('formatBlock', false, 'DIV');
@@ -735,12 +853,13 @@
         
         let debounceTimer;
         function handleInput() {
-            buildToc(); 
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
+                buildToc(); 
+                extractEntities();
                 saveState();
-                refreshAllHighlights(); // Update highlight ranges as text changes
-            }, 500);
+                refreshAllHighlights();
+            }, 1000);
         }
         
         let draggedSceneId = null;
@@ -799,7 +918,6 @@
             
             if (!sourceHeading || !targetHeading) return;
             
-            // Collect all nodes for the source scene (everything up to the next scene heading)
             const nodesToMove = [sourceHeading];
             let curr = sourceHeading.nextElementSibling;
             while (curr && !curr.classList.contains('scene-heading')) {
@@ -807,7 +925,6 @@
                 curr = curr.nextElementSibling;
             }
             
-            // Move them before targetHeading
             nodesToMove.forEach(node => {
                 editor.insertBefore(node, targetHeading);
             });
@@ -816,7 +933,6 @@
             buildToc();
             refreshAllHighlights();
             
-            // Scroll to the moved scene
             document.getElementById(sourceId).scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
@@ -885,11 +1001,11 @@
                         const data = JSON.parse(contents);
                         editor.innerHTML = '';
                         
-                        // Handle new format or old array format
                         const scriptData = data.script ? data.script : data;
                         if (data.lists) {
                             appState = data.lists;
-                            renderLists();
+                        } else {
+                            appState = { characters: [], locations: [] };
                         }
                         
                         scriptData.forEach(item => {
@@ -899,11 +1015,13 @@
                             editor.appendChild(div);
                         });
                         buildToc();
+                        extractEntities();
                         saveState();
                     } catch (err) { alert("Invalid JSON format."); }
                 } else {
                     editor.innerHTML = '<div class="action">' + contents.replace(/\\n/g, '<br>') + '</div>';
                     buildToc();
+                    extractEntities();
                     saveState();
                 }
             };
@@ -918,7 +1036,9 @@
         });
 
         document.getElementById('editor-page').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') setTimeout(buildToc, 10);
+            if (e.key === 'Enter') {
+                setTimeout(() => { buildToc(); extractEntities(); }, 10);
+            }
             if (e.key === 'Tab') {
                 e.preventDefault();
                 const selection = window.getSelection();
@@ -933,13 +1053,15 @@
                     else if (currentClass === 'parenthetical') node.className = 'dialogue';
                     else if (currentClass === 'dialogue') node.className = 'action';
                     else node.className = 'action';
+                    
                     saveState();
+                    extractEntities();
                 }
             }
         });
 
         window.onload = () => {
-            renderLists();
+            extractEntities(); // Natively builds the lists from DOM
             saveState(); 
             buildToc();
         };
