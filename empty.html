@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keeping Up with the Kardashevs - Final Draft Editor</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --topbar-bg: rgba(40, 40, 40, 0.85);
+            --sidebar-bg: #222;
+            --text-color: #eee;
+            --border-color: #444;
+            --accent-color: #007bff;
+            --page-bg: #ffffff;
+            --page-text: #000000;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Bar */
+        #top-bar {
+            height: 50px;
+            background: var(--topbar-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .menu-item {
+            position: relative;
+            cursor: pointer;
+            padding: 10px 15px;
+            font-weight: 600;
+            user-select: none;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .menu-item:hover, .menu-item:focus-within {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: var(--sidebar-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            display: none;
+            flex-direction: column;
+            min-width: 150px;
+            overflow: hidden;
+        }
+        .menu-item:focus-within .dropdown, .menu-item:hover .dropdown {
+            display: flex;
+        }
+        .dropdown div {
+            padding: 10px 15px;
+            font-size: 0.9rem;
+        }
+        .dropdown div:hover {
+            background: var(--accent-color);
+        }
+
+        .toolbar {
+            margin-left: 30px;
+            display: flex;
+            gap: 10px;
+        }
+        .toolbar button {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid transparent;
+            color: var(--text-color);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+        }
+        .toolbar button:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: var(--border-color);
+        }
+
+        /* Main Area */
+        #main-container {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebars */
+        #sidebar, #right-sidebar {
+            width: 250px;
+            min-width: 150px;
+            max-width: 500px;
+            background-color: var(--sidebar-bg);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+        #sidebar { border-right: 1px solid var(--border-color); }
+        #right-sidebar { border-left: 1px solid var(--border-color); }
+        
+        .resizer {
+            width: 5px;
+            background-color: transparent;
+            cursor: ew-resize;
+            z-index: 10;
+            transition: background 0.2s;
+        }
+        .resizer:hover {
+            background-color: var(--accent-color);
+        }
+
+        .sidebar-section {
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar-section:not(:last-child) {
+            border-bottom: 1px solid var(--border-color);
+        }
+        .collapsible {
+            margin: 0;
+            padding: 12px 15px;
+            font-size: 1rem;
+            cursor: pointer;
+            background: rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        .collapsible:hover { background: rgba(0,0,0,0.4); }
+        .collapsible span {
+            font-size: 0.7rem;
+            transition: transform 0.2s;
+        }
+        .collapsible.collapsed span { transform: rotate(-90deg); }
+        .section-content {
+            padding: 15px;
+            overflow-y: auto;
+        }
+        .collapsed + .section-content { display: none; }
+        
+        #toc-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        #toc-list li { margin-bottom: 8px; }
+        #toc-list a {
+            color: #ccc; text-decoration: none; font-size: 0.85rem; cursor: pointer; display: block; padding: 4px; border-radius: 3px;
+        }
+        #toc-list a:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+        /* Right Sidebar Tabs */
+        .tabs-header {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            padding: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            opacity: 0.6;
+        }
+        .tab-btn.active {
+            opacity: 1;
+            background: rgba(255,255,255,0.05);
+            border-bottom: 2px solid var(--accent-color);
+        }
+        .tab-content {
+            display: none;
+            flex-direction: column;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+        .tab-content.active { display: flex; }
+
+        .list-items {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+            list-style: none;
+            margin: 0;
+        }
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            cursor: pointer;
+            border-left: 4px solid transparent;
+            font-size: 0.9rem;
+        }
+        .list-item:hover { background: rgba(255,255,255,0.1); }
+        .list-item.highlighted {
+            background: rgba(255,255,255,0.2);
+        }
+        .list-item-color {
+            width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px;
+            box-shadow: 0 0 2px rgba(0,0,0,0.5);
+        }
+        .item-actions button {
+            background: transparent; border: none; color: #999; cursor: pointer; font-size: 1rem; margin-left: 5px;
+        }
+        .item-actions button:hover { color: #fff; }
+
+        .add-input-group {
+            padding: 15px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 5px;
+        }
+        .add-input-group input[type="text"] {
+            flex-grow: 1;
+            padding: 6px;
+            background: #333;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 3px;
+        }
+        .add-input-group input[type="color"] {
+            width: 30px; height: 30px; padding: 0; border: none; background: transparent; cursor: pointer;
+        }
+        .add-input-group button {
+            background: var(--accent-color);
+            border: none; color: white; border-radius: 3px; cursor: pointer; padding: 0 10px; font-weight: bold;
+        }
+
+        /* Editor Wrapper */
+        #editor-wrapper {
+            flex-grow: 1;
+            overflow-y: auto;
+            background-color: #2b2b2b;
+            padding: 40px 20px;
+        }
+
+        /* Script Page */
+        .page {
+            margin: 0 auto;
+            background-color: var(--page-bg);
+            color: var(--page-text);
+            width: 8.5in;
+            min-height: 11in; 
+            height: fit-content;
+            padding: 1in 1in 1in 1.5in;
+            box-sizing: border-box;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            font-family: 'Courier Prime', 'Courier New', Courier, monospace;
+            font-size: 12pt;
+            line-height: 1.1;
+            outline: none; 
+            transition: zoom 0.1s;
+        }
+        
+        /* Simulated Page Breaks */
+        .page.show-breaks {
+            background-image: linear-gradient(to bottom, transparent 10.95in, #ccc 10.95in, #ccc 11in);
+            background-size: 100% 11in;
+        }
+        
+        /* Script Elements */
+        .page > div {
+            white-space: pre-wrap;
+            min-height: 1em; /* Allow empty lines */
+        }
+        .scene-heading {
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-top: 24pt;
+            margin-bottom: 12pt;
+        }
+        .action {
+            margin-top: 12pt;
+            margin-bottom: 12pt;
+            width: 6in;
+        }
+        .character {
+            text-transform: uppercase;
+            margin-left: 2.2in;
+            margin-top: 12pt;
+            margin-bottom: 0;
+        }
+        .dialogue {
+            margin-left: 1.2in;
+            width: 3.3in;
+            margin-top: 0;
+            margin-bottom: 12pt;
+        }
+        .parenthetical {
+            margin-left: 1.7in;
+            width: 2in;
+            margin-top: 0;
+            margin-bottom: 0;
+        }
+        .transition {
+            text-transform: uppercase;
+            margin-left: 4.5in;
+            margin-top: 12pt;
+            margin-bottom: 12pt;
+        }
+        .center-title {
+            text-align: center;
+            text-transform: uppercase;
+            font-weight: bold;
+            text-decoration: underline;
+            margin-bottom: 40pt;
+        }
+
+        /* Print Media */
+        @media print {
+            body, #main-container, #editor-wrapper {
+                background: white; height: auto; overflow: visible; display: block;
+            }
+            #top-bar, #sidebar, #right-sidebar, .resizer { display: none; }
+            .page {
+                box-shadow: none; margin: 0; padding: 0; width: 100%; min-height: auto; zoom: 1 !important; background-image: none !important;
+            }
+            .scene-heading, .character { page-break-after: avoid; break-after: avoid; }
+            .dialogue { page-break-before: avoid; break-before: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="top-bar">
+        <div class="menu-item" tabindex="0">
+            File
+            <div class="dropdown">
+                <div onclick="document.getElementById('file-input').click()">Load Script...</div>
+                <div onclick="saveJSON()">Save (.json)</div>
+                <div onclick="window.print()">Export as PDF</div>
+                <div onclick="exportMD()">Export as Markdown</div>
+                <div onclick="exportTXT()">Export as Text</div>
+            </div>
+        </div>
+        <input type="file" id="file-input" style="display: none;" accept=".json,.md,.txt" onchange="loadFile(event)">
+        
+        <div class="toolbar">
+            <button onclick="formatBlock('scene-heading')">Scene Heading</button>
+            <button onclick="formatBlock('action')">Action</button>
+            <button onclick="formatBlock('character')">Character</button>
+            <button onclick="formatBlock('parenthetical')">Parenthetical</button>
+            <button onclick="formatBlock('dialogue')">Dialogue</button>
+            <button onclick="formatBlock('transition')">Transition</button>
+            
+            <button onclick="undo()" style="margin-left: 20px;" title="Undo (Ctrl+Z)">↶</button>
+            <button onclick="redo()" title="Redo (Ctrl+Y)">↷</button>
+        </div>
+    </div>
+
+    <div id="main-container">
+        <!-- Left Sidebar -->
+        <div id="sidebar">
+            <div class="sidebar-section">
+                <h2 class="collapsible" onclick="toggleSection(this)">View Controls <span>▼</span></h2>
+                <div class="section-content">
+                    <label style="font-size: 0.85rem; display:block; margin-bottom:5px;">Zoom: <span id="zoom-val">100</span>%</label>
+                    <input type="range" id="zoom-slider" min="20" max="200" value="100" style="width:100%" oninput="updateZoom()">
+                    
+                    <label style="font-size: 0.85rem; margin-top: 15px; display:flex; align-items:center; gap: 8px; cursor:pointer;">
+                        <input type="checkbox" id="page-breaks-toggle" onchange="togglePageBreaks()"> Show Visual Page Breaks
+                    </label>
+                </div>
+            </div>
+        
+            <div class="sidebar-section">
+                <h2 class="collapsible collapsed" onclick="toggleSection(this)">Instructions <span>▼</span></h2>
+                <div class="section-content" style="font-size: 0.85rem; color: #bbb;">
+                    <p>Use <b>Ctrl+Z</b> and <b>Ctrl+Y</b> to undo and redo changes.</p>
+                    <p>Click anywhere in the script to edit.</p>
+                    <p>Use the formatting toolbar to change the style of the current line.</p>
+                    <p>Press <b>Enter</b> to create a new line. The editor will automatically maintain formatting blocks.</p>
+                    <p>To export to PDF, choose "Export as PDF" and use your browser's Print to PDF feature.</p>
+                </div>
+            </div>
+            
+            <div class="sidebar-section" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden;">
+                <h2 class="collapsible" onclick="toggleSection(this)">Navigator <span>▼</span></h2>
+                <div class="section-content" id="toc-content" style="flex-grow: 1;">
+                    <ul id="toc-list">
+                        <!-- TOC injected via JS -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="resizer" id="left-resizer"></div>
+        
+        <!-- Editor -->
+        <div id="editor-wrapper">
+            <div id="editor-page" class="page" contenteditable="true" oninput="handleInput()">
+                <div class="center-title">Keeping Up with the Kardashevs - Pilot Scenes</div>
+
+
+            </div>
+        </div>
+        
+        <div class="resizer" id="right-resizer"></div>
+        
+        <!-- Right Sidebar -->
+        <div id="right-sidebar">
+            <div class="tabs-header">
+                <button class="tab-btn active" onclick="switchTab('characters')">Characters</button>
+                <button class="tab-btn" onclick="switchTab('locations')">Locations</button>
+            </div>
+            
+            <!-- Characters Tab -->
+            <div id="tab-characters" class="tab-content active">
+                <ul class="list-items" id="characters-list"></ul>
+                <div class="add-input-group">
+                    <input type="text" id="new-char-name" placeholder="Name (e.g. ARTHUR)">
+                    <input type="color" id="new-char-color" value="#ff5555">
+                    <button onclick="addListItem('characters')">+</button>
+                </div>
+            </div>
+            
+            <!-- Locations Tab -->
+            <div id="tab-locations" class="tab-content">
+                <ul class="list-items" id="locations-list"></ul>
+                <div class="add-input-group">
+                    <input type="text" id="new-loc-name" placeholder="Location (e.g. LAB)">
+                    <input type="color" id="new-loc-color" value="#5555ff">
+                    <button onclick="addListItem('locations')">+</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        let appState = {
+            characters: [],
+            locations: []
+        };
+        
+        // Populate default values from the original extraction for testing (you can delete or edit these)
+        appState.characters = [];
+
+        // Highlight tracking
+        let activeHighlights = new Set();
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            if (tabName === 'characters') {
+                document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+                document.getElementById('tab-characters').classList.add('active');
+            } else {
+                document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+                document.getElementById('tab-locations').classList.add('active');
+            }
+        }
+
+        function renderLists() {
+            const charList = document.getElementById('characters-list');
+            const locList = document.getElementById('locations-list');
+            charList.innerHTML = '';
+            locList.innerHTML = '';
+            
+            appState.characters.forEach(item => {
+                charList.appendChild(createListItemEl(item, 'characters'));
+            });
+            appState.locations.forEach(item => {
+                locList.appendChild(createListItemEl(item, 'locations'));
+            });
+        }
+
+        function createListItemEl(item, type) {
+            const li = document.createElement('li');
+            li.className = 'list-item';
+            if (activeHighlights.has(item.id)) li.classList.add('highlighted');
+            
+            const left = document.createElement('div');
+            left.style.display = 'flex';
+            left.style.alignItems = 'center';
+            left.innerHTML = `<span class="list-item-color" style="background-color: ${item.color}"></span> ${item.name}`;
+            
+            li.onclick = (e) => {
+                if (e.target.tagName !== 'BUTTON') {
+                    toggleHighlight(item.id, item.name, item.color, li);
+                }
+            };
+            
+            const actions = document.createElement('div');
+            actions.className = 'item-actions';
+            
+            const delBtn = document.createElement('button');
+            delBtn.innerHTML = '×';
+            delBtn.title = "Delete";
+            delBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (activeHighlights.has(item.id)) toggleHighlight(item.id, item.name, item.color, li); // turn off highlight
+                appState[type] = appState[type].filter(i => i.id !== item.id);
+                renderLists();
+                saveState(); // Record structural change
+            };
+            
+            actions.appendChild(delBtn);
+            li.appendChild(left);
+            li.appendChild(actions);
+            return li;
+        }
+
+        function addListItem(type) {
+            const nameInput = type === 'characters' ? document.getElementById('new-char-name') : document.getElementById('new-loc-name');
+            const colorInput = type === 'characters' ? document.getElementById('new-char-color') : document.getElementById('new-loc-color');
+            
+            const name = nameInput.value.trim().toUpperCase();
+            if (!name) return;
+            
+            appState[type].push({
+                id: Date.now(),
+                name: name,
+                color: colorInput.value
+            });
+            
+            nameInput.value = '';
+            renderLists();
+            saveState();
+        }
+
+        // --- CSS Custom Highlight API Engine ---
+        function toggleHighlight(id, name, color, liElement) {
+            if (!window.CSS || !CSS.highlights) {
+                alert("Your browser doesn't support the Modern CSS Highlight API yet.");
+                return;
+            }
+            
+            const hlName = "hl-" + id;
+            
+            // Toggle OFF
+            if (activeHighlights.has(id)) {
+                if (CSS.highlights.has(hlName)) {
+                    CSS.highlights.delete(hlName);
+                }
+                activeHighlights.delete(id);
+                liElement.classList.remove('highlighted');
+                liElement.style.borderLeftColor = 'transparent';
+                return;
+            }
+            
+            // Toggle ON
+            activeHighlights.add(id);
+            liElement.classList.add('highlighted');
+            liElement.style.borderLeftColor = color;
+            
+            // Inject CSS Rule if not exists
+            if (!document.getElementById("style-" + hlName)) {
+                const style = document.createElement('style');
+                style.id = "style-" + hlName;
+                style.innerHTML = `::highlight(${hlName}) { background-color: ${color}; color: #fff; }`;
+                document.head.appendChild(style);
+            }
+            
+            const editor = document.getElementById('editor-page');
+            const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+            const ranges = [];
+            
+            // Escape special chars for regex
+            const safeName = name.replace(/[-[\]{}()*+?.,\\\\^$|#\s]/g, '\\\\$&');
+            const regex = new RegExp(`\\\\b${safeName}\\\\b`, 'gi');
+            
+            while ((node = walker.nextNode())) {
+                let match;
+                // regex.exec on nodeValue
+                const text = node.nodeValue;
+                let startIndex = 0;
+                
+                while ((match = regex.exec(text)) !== null) {
+                    const range = new Range();
+                    range.setStart(node, match.index);
+                    range.setEnd(node, match.index + match[0].length);
+                    ranges.push(range);
+                }
+            }
+            
+            if (ranges.length > 0) {
+                const highlight = new Highlight(...ranges);
+                CSS.highlights.set(hlName, highlight);
+            }
+        }
+
+        // --- Undo/Redo State ---
+        let historyStack = [];
+        let historyIndex = -1;
+        let isUndoRedo = false;
+        
+        function saveState() {
+            if (isUndoRedo) return;
+            const editor = document.getElementById('editor-page');
+            const content = editor.innerHTML;
+            
+            if (historyIndex >= 0 && historyStack[historyIndex] === content) return;
+            
+            if (historyIndex < historyStack.length - 1) {
+                historyStack = historyStack.slice(0, historyIndex + 1);
+            }
+            historyStack.push(content);
+            historyIndex++;
+            if (historyStack.length > 50) { historyStack.shift(); historyIndex--; }
+        }
+        
+        function undo() {
+            if (historyIndex > 0) {
+                isUndoRedo = true;
+                historyIndex--;
+                document.getElementById('editor-page').innerHTML = historyStack[historyIndex];
+                buildToc();
+                refreshAllHighlights(); // Re-apply highlights to new DOM nodes
+                isUndoRedo = false;
+            }
+        }
+        
+        function redo() {
+            if (historyIndex < historyStack.length - 1) {
+                isUndoRedo = true;
+                historyIndex++;
+                document.getElementById('editor-page').innerHTML = historyStack[historyIndex];
+                buildToc();
+                refreshAllHighlights();
+                isUndoRedo = false;
+            }
+        }
+        
+        function refreshAllHighlights() {
+            if (!window.CSS || !CSS.highlights) return;
+            const currentlyActive = Array.from(activeHighlights);
+            // clear state internally and retoggle to rebuild ranges
+            currentlyActive.forEach(id => {
+                let item = appState.characters.find(c => c.id === id) || appState.locations.find(l => l.id === id);
+                if (item) {
+                    const hlName = "hl-" + id;
+                    if (CSS.highlights.has(hlName)) CSS.highlights.delete(hlName);
+                    activeHighlights.delete(id);
+                    // find list item
+                    const li = document.querySelector(`.list-item-color[style*="${item.color}"]`).parentNode.parentNode;
+                    toggleHighlight(item.id, item.name, item.color, li);
+                }
+            });
+        }
+
+        // --- Layout Controls ---
+        function updateZoom() {
+            const val = document.getElementById('zoom-slider').value;
+            document.getElementById('zoom-val').innerText = val;
+            document.getElementById('editor-page').style.zoom = val / 100;
+        }
+
+        function togglePageBreaks() {
+            const show = document.getElementById('page-breaks-toggle').checked;
+            const page = document.getElementById('editor-page');
+            if (show) page.classList.add('show-breaks');
+            else page.classList.remove('show-breaks');
+        }
+
+        // Resizers
+        function setupResizer(resizerId, targetId, isRight) {
+            const resizer = document.getElementById(resizerId);
+            const target = document.getElementById(targetId);
+            let resizing = false;
+            resizer.addEventListener('mousedown', (e) => {
+                resizing = true;
+                document.body.style.cursor = 'ew-resize';
+                e.preventDefault();
+            });
+            document.addEventListener('mousemove', (e) => {
+                if (!resizing) return;
+                let newWidth;
+                if (isRight) {
+                    newWidth = document.body.clientWidth - e.clientX;
+                } else {
+                    newWidth = e.clientX;
+                }
+                newWidth = Math.max(150, Math.min(500, newWidth));
+                target.style.width = newWidth + 'px';
+            });
+            document.addEventListener('mouseup', () => {
+                resizing = false;
+                document.body.style.cursor = '';
+            });
+        }
+        setupResizer('left-resizer', 'sidebar', false);
+        setupResizer('right-resizer', 'right-sidebar', true);
+        
+        function toggleSection(headerEl) { headerEl.classList.toggle('collapsed'); }
+
+        // --- Formatting & TOC ---
+        function formatBlock(className) {
+            const selection = window.getSelection();
+            if (!selection.rangeCount) return;
+            
+            let node = selection.anchorNode;
+            while (node && node.parentNode && node.parentNode.id !== 'editor-page' && node.id !== 'editor-page') {
+                node = node.parentNode;
+            }
+            
+            if (node && node.parentNode && node.parentNode.id === 'editor-page') {
+                node.className = className;
+                buildToc();
+                saveState();
+            } else if (node && node.id === 'editor-page') {
+                document.execCommand('formatBlock', false, 'DIV');
+                const divs = node.querySelectorAll('div:not([class])');
+                divs.forEach(d => d.className = className);
+                saveState();
+            }
+        }
+        
+        let debounceTimer;
+        function handleInput() {
+            buildToc(); 
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                saveState();
+                refreshAllHighlights(); // Update highlight ranges as text changes
+            }, 500);
+        }
+        
+        let draggedSceneId = null;
+
+        function buildToc() {
+            const editor = document.getElementById('editor-page');
+            const tocList = document.getElementById('toc-list');
+            tocList.innerHTML = '';
+            
+            const headings = editor.querySelectorAll('.scene-heading');
+            headings.forEach((heading, idx) => {
+                if (!heading.id) heading.id = 'scene-' + Date.now() + '-' + idx;
+                
+                const li = document.createElement('li');
+                li.draggable = true;
+                li.dataset.sceneId = heading.id;
+                
+                li.addEventListener('dragstart', (e) => {
+                    draggedSceneId = heading.id;
+                    e.dataTransfer.effectAllowed = 'move';
+                    li.style.opacity = '0.4';
+                });
+                li.addEventListener('dragend', () => {
+                    li.style.opacity = '1';
+                    draggedSceneId = null;
+                });
+                li.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    li.style.borderTop = '2px solid var(--accent-color)';
+                });
+                li.addEventListener('dragleave', () => {
+                    li.style.borderTop = '';
+                });
+                li.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    li.style.borderTop = '';
+                    if (draggedSceneId && draggedSceneId !== heading.id) {
+                        moveScene(draggedSceneId, heading.id);
+                    }
+                });
+
+                const a = document.createElement('a');
+                a.innerText = heading.innerText || "EMPTY SCENE";
+                a.onclick = () => heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+                li.appendChild(a);
+                tocList.appendChild(li);
+            });
+        }
+        
+        function moveScene(sourceId, targetId) {
+            const editor = document.getElementById('editor-page');
+            const sourceHeading = document.getElementById(sourceId);
+            const targetHeading = document.getElementById(targetId);
+            
+            if (!sourceHeading || !targetHeading) return;
+            
+            // Collect all nodes for the source scene (everything up to the next scene heading)
+            const nodesToMove = [sourceHeading];
+            let curr = sourceHeading.nextElementSibling;
+            while (curr && !curr.classList.contains('scene-heading')) {
+                nodesToMove.push(curr);
+                curr = curr.nextElementSibling;
+            }
+            
+            // Move them before targetHeading
+            nodesToMove.forEach(node => {
+                editor.insertBefore(node, targetHeading);
+            });
+            
+            saveState();
+            buildToc();
+            refreshAllHighlights();
+            
+            // Scroll to the moved scene
+            document.getElementById(sourceId).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // --- Export / Import ---
+        function downloadFile(filename, content, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportTXT() {
+            const editor = document.getElementById('editor-page');
+            const lines = [];
+            for (let child of editor.children) {
+                if (child.classList.contains('center-title')) lines.push("          " + child.innerText + "\\n");
+                else if (child.classList.contains('scene-heading') || child.classList.contains('transition')) lines.push("\\n" + child.innerText + "\\n");
+                else if (child.classList.contains('action')) lines.push(child.innerText + "\\n");
+                else if (child.classList.contains('character')) lines.push("\\n          " + child.innerText);
+                else if (child.classList.contains('parenthetical')) lines.push("        " + child.innerText);
+                else if (child.classList.contains('dialogue')) lines.push("      " + child.innerText);
+            }
+            downloadFile('script.txt', lines.join("\\n"), 'text/plain');
+        }
+        
+        function exportMD() {
+            const editor = document.getElementById('editor-page');
+            const lines = [];
+            for (let child of editor.children) {
+                if (child.classList.contains('scene-heading')) lines.push("**" + child.innerText + "**\\n");
+                else if (child.classList.contains('character')) lines.push("\\n**" + child.innerText + "**");
+                else if (child.classList.contains('parenthetical')) lines.push("*" + child.innerText + "*");
+                else lines.push(child.innerText + "\\n");
+            }
+            downloadFile('script.md', lines.join("\\n"), 'text/markdown');
+        }
+
+        function saveJSON() {
+            const editor = document.getElementById('editor-page');
+            const data = [];
+            for (let child of editor.children) {
+                if(child.className) {
+                    data.push({ type: child.className, text: child.innerText });
+                }
+            }
+            const exportData = {
+                script: data,
+                lists: appState
+            };
+            downloadFile('script.json', JSON.stringify(exportData, null, 2), 'application/json');
+        }
+
+        function loadFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const contents = e.target.result;
+                const editor = document.getElementById('editor-page');
+                
+                if (file.name.endsWith('.json')) {
+                    try {
+                        const data = JSON.parse(contents);
+                        editor.innerHTML = '';
+                        
+                        // Handle new format or old array format
+                        const scriptData = data.script ? data.script : data;
+                        if (data.lists) {
+                            appState = data.lists;
+                            renderLists();
+                        }
+                        
+                        scriptData.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = item.type;
+                            div.innerText = item.text;
+                            editor.appendChild(div);
+                        });
+                        buildToc();
+                        saveState();
+                    } catch (err) { alert("Invalid JSON format."); }
+                } else {
+                    editor.innerHTML = '<div class="action">' + contents.replace(/\\n/g, '<br>') + '</div>';
+                    buildToc();
+                    saveState();
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // --- Keyboard Shortcuts ---
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); } 
+            else if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
+        });
+
+        document.getElementById('editor-page').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') setTimeout(buildToc, 10);
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const selection = window.getSelection();
+                if (!selection.rangeCount) return;
+                let node = selection.anchorNode;
+                while (node && node.parentNode && node.parentNode.id !== 'editor-page' && node.id !== 'editor-page') node = node.parentNode;
+                
+                if (node && node.parentNode && node.parentNode.id === 'editor-page') {
+                    const currentClass = node.className;
+                    if (currentClass === 'action') node.className = 'character';
+                    else if (currentClass === 'character') node.className = 'parenthetical';
+                    else if (currentClass === 'parenthetical') node.className = 'dialogue';
+                    else if (currentClass === 'dialogue') node.className = 'action';
+                    else node.className = 'action';
+                    saveState();
+                }
+            }
+        });
+
+        window.onload = () => {
+            renderLists();
+            saveState(); 
+            buildToc();
+        };
+    </script>
+</body>
+</html>
