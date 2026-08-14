@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Final Drafter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = ''; // Disabled to run locally without CORS issues
+    </script>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -442,7 +446,53 @@
             .scene-heading, .character { page-break-after: avoid; break-after: avoid; }
             .dialogue { page-break-before: avoid; break-before: avoid; }
         }
+
+        /* Settings Modal */
+        #settings-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: var(--sidebar-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            width: 400px;
+            max-width: 90%;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            color: var(--text-color);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .modal-header h2 { margin: 0; font-size: 1.2rem; }
+        .close-btn { background: transparent; border: none; color: #ccc; cursor: pointer; font-size: 1.2rem; }
+        .close-btn:hover { color: #fff; }
+        .stat-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed rgba(255,255,255,0.1); }
+        .stat-value { font-weight: bold; color: var(--accent-color); }
+        
+        .settings-btn {
+            background: transparent;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 1.2rem;
+            margin-left: auto;
+            margin-right: 15px;
+        }
+        .settings-btn:hover { color: #fff; }
     </style>
+
 </head>
 <body>
 
@@ -467,10 +517,13 @@
             <button onclick="formatBlock('dialogue')">Dialogue</button>
             <button onclick="formatBlock('transition')">Transition</button>
             
+
             <button onclick="undo()" style="margin-left: 20px;" title="Undo (Ctrl+Z)">↶</button>
             <button onclick="redo()" title="Redo (Ctrl+Y)">↷</button>
         </div>
+        <button class="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
     </div>
+
 
     <div id="main-container">
         <!-- Left Sidebar -->
@@ -487,16 +540,19 @@
                 </div>
             </div>
         
+            
             <div class="sidebar-section">
-                <h2 class="collapsible collapsed" onclick="toggleSection(this)">Instructions <span>▼</span></h2>
-                <div class="section-content" style="font-size: 0.85rem; color: #bbb;">
-                    <p>Use <b>Ctrl+Z</b> and <b>Ctrl+Y</b> to undo and redo changes.</p>
-                    <p>Click anywhere in the script to edit.</p>
-                    <p>Use the formatting toolbar to change the style of the current line.</p>
-                    <p>Press <b>Enter</b> to create a new line. The editor will automatically maintain formatting blocks.</p>
-                    <p>To export to PDF, choose "Export as PDF" and use your browser's Print to PDF feature.</p>
+                <h2 class="collapsible" onclick="toggleSection(this)">Document Statistics <span>▼</span></h2>
+                <div class="section-content" id="doc-stats" style="font-size: 0.85rem; color: #ccc;">
+                    <div class="stat-row"><span>Pages:</span> <span class="stat-value" id="stat-pages">0</span></div>
+                    <div class="stat-row"><span>Locations:</span> <span class="stat-value" id="stat-locations">0</span></div>
+                    <div class="stat-row"><span>Characters:</span> <span class="stat-value" id="stat-chars">0</span></div>
+                    <div class="stat-row"><span>Words:</span> <span class="stat-value" id="stat-words">0</span></div>
+                    <div class="stat-row"><span>Letters:</span> <span class="stat-value" id="stat-letters">0</span></div>
+                    <div class="stat-row" style="margin-top: 10px;"><span>Est. Runtime:</span> <span class="stat-value" id="stat-runtime">0 min</span></div>
                 </div>
             </div>
+
             
             <div class="sidebar-section" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden;">
                 <h2 class="collapsible" onclick="toggleSection(this)">Navigator <span>▼</span></h2>
@@ -742,6 +798,7 @@
                     });
                     if (activeHighlights.has(item.id)) toggleHighlight(item, li, false);
                     extractEntities();
+                    updateStatistics();
                     saveState();
                 }
             };
@@ -958,6 +1015,65 @@
             });
         }
 
+        
+        // --- Settings Modal ---
+        function openSettings() {
+            document.getElementById('settings-modal').style.display = 'flex';
+        }
+        function closeSettings() {
+            document.getElementById('settings-modal').style.display = 'none';
+        }
+        function updateZoomModal() {
+            const val = document.getElementById('zoom-slider-modal').value;
+            document.getElementById('zoom-slider').value = val;
+            updateZoom();
+            document.getElementById('zoom-val-modal').innerText = val + '%';
+        }
+        function togglePageBreaksModal() {
+            const isChecked = document.getElementById('page-breaks-toggle-modal').checked;
+            document.getElementById('page-breaks-toggle').checked = isChecked;
+            togglePageBreaks();
+        }
+
+        // --- Document Statistics ---
+        function updateStatistics() {
+            const editor = document.getElementById('editor-page');
+            
+            // 1. Calculate Pages
+            const pageHeight = editor.scrollHeight;
+            const pixelsPerPage = 1056; // 11in
+            const numPages = Math.max(1, Math.ceil(pageHeight / pixelsPerPage));
+            document.getElementById('stat-pages').innerText = numPages;
+            
+            // Estimated runtime: 1 page = 1 min
+            const hrs = Math.floor(numPages / 60);
+            const mins = numPages % 60;
+            document.getElementById('stat-runtime').innerText = hrs > 0 ? `${hrs} hr ${mins} min` : `${mins} min`;
+            
+            // 2. Element Counts
+            let locations = 0;
+            let characters = 0;
+            let totalWords = 0;
+            let totalLetters = 0;
+            
+            Array.from(editor.children).forEach(child => {
+                if (child.id === 'page-numbers-container' || child.classList.contains('page-break-spacer')) return;
+                
+                if (child.classList.contains('scene-heading')) locations++;
+                if (child.classList.contains('character')) characters++;
+                
+                const text = child.innerText || '';
+                const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+                totalWords += words.length;
+                totalLetters += text.replace(/\s+/g, '').length;
+            });
+            
+            document.getElementById('stat-locations').innerText = locations;
+            document.getElementById('stat-chars').innerText = characters;
+            document.getElementById('stat-words').innerText = totalWords.toLocaleString();
+            document.getElementById('stat-letters').innerText = totalLetters.toLocaleString();
+        }
+
         // --- Layout Controls & Pagination ---
         function updateZoom() {
             const val = document.getElementById('zoom-slider').value;
@@ -1044,6 +1160,7 @@
                 node.className = className;
                 buildToc();
                 extractEntities();
+                updateStatistics();
                 saveState();
             } else if (node && node.id === 'editor-page') {
                 document.execCommand('formatBlock', false, 'DIV');
@@ -1053,12 +1170,53 @@
             }
         }
         
+        
+        function paginateSimulated() {
+            const editor = document.getElementById('editor-page');
+            const PAGE_HEIGHT = 1056; // 11in
+            const BOTTOM_MARGIN = 96; // 1in
+            const TOP_MARGIN = 96; // 1in
+            
+            let children = Array.from(editor.children);
+            for (let i = 0; i < children.length; i++) {
+                let child = children[i];
+                if (child.id === 'page-numbers-container') continue;
+                
+                // Reset any previously applied pagination margin
+                if (child.dataset.pageMargin) {
+                    child.style.marginTop = child.dataset.originalMargin || '';
+                    delete child.dataset.pageMargin;
+                    delete child.dataset.originalMargin;
+                }
+            }
+            
+            for (let i = 0; i < children.length; i++) {
+                let child = children[i];
+                if (child.id === 'page-numbers-container') continue;
+                
+                let topOffset = child.offsetTop; // Relative to offsetParent (editor)
+                let pageNum = Math.floor(topOffset / PAGE_HEIGHT);
+                let pageBottom = (pageNum + 1) * PAGE_HEIGHT - BOTTOM_MARGIN;
+                
+                if (topOffset + child.offsetHeight > pageBottom) {
+                    let originalMargin = window.getComputedStyle(child).marginTop;
+                    child.dataset.originalMargin = originalMargin;
+                    
+                    let pushAmount = (pageNum + 1) * PAGE_HEIGHT + TOP_MARGIN - topOffset + parseFloat(originalMargin);
+                    child.style.marginTop = pushAmount + 'px';
+                    child.dataset.pageMargin = "true";
+                }
+            }
+        }
+
         let debounceTimer;
         function handleInput() {
+            paginateSimulated();
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
                 buildToc(); 
                 extractEntities();
+                updateStatistics();
                 saveState();
                 refreshAllHighlights();
             }, 1000);
@@ -1193,9 +1351,121 @@
             downloadFile('script.json', JSON.stringify(exportData, null, 2), 'application/json');
         }
 
-        function loadFile(event) {
+                async function loadFile(event) {
             const file = event.target.files[0];
             if (!file) return;
+            const editor = document.getElementById('editor-page');
+            
+            if (file.name.toLowerCase().endsWith('.pdf')) {
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    
+                    let pn = document.getElementById('page-numbers-container');
+                    if (!pn) {
+                        pn = document.createElement('div');
+                        pn.id = 'page-numbers-container';
+                        pn.contentEditable = "false";
+                    }
+                    editor.innerHTML = '';
+                    editor.appendChild(pn);
+                    
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        
+                        let lastY = -1;
+                        let textLines = [];
+                        let currentLine = { str: "", x: 0, y: 0 };
+                        
+                        const items = textContent.items.sort((a, b) => {
+                            if (Math.abs(a.transform[5] - b.transform[5]) > 5) {
+                                return b.transform[5] - a.transform[5];
+                            }
+                            return a.transform[4] - b.transform[4];
+                        });
+
+                        items.forEach(item => {
+                            if (lastY !== -1 && Math.abs(item.transform[5] - lastY) > 5) {
+                                textLines.push(currentLine);
+                                currentLine = { str: item.str, x: item.transform[4], y: item.transform[5] };
+                            } else {
+                                if (currentLine.str === "") {
+                                    currentLine.x = item.transform[4];
+                                    currentLine.y = item.transform[5];
+                                }
+                                currentLine.str += (currentLine.str.length > 0 && !currentLine.str.endsWith(' ') && !item.str.startsWith(' ') ? ' ' : '') + item.str;
+                            }
+                            lastY = item.transform[5];
+                        });
+                        if (currentLine.str) textLines.push(currentLine);
+                        
+                        
+                        let prevY = -1;
+                        let lastDiv = null;
+                        
+                        textLines.forEach(lineTextObj => {
+                            const trimmed = lineTextObj.str.trim();
+                            if (!trimmed) return;
+                            const x = lineTextObj.x;
+                            const y = lineTextObj.y;
+                            
+                            let className = 'action';
+                            if (i === 1 && Math.abs(x - (8.5*72)/2) < 150 && trimmed.toUpperCase() !== trimmed) {
+                                className = 'cover-title';
+                            } else if (x > 350) {
+                                className = 'transition';
+                            } else if (x > 240 && trimmed === trimmed.toUpperCase() && !trimmed.includes('.') && !trimmed.includes(',')) {
+                                className = 'character';
+                            } else if (x > 200 && trimmed.startsWith('(')) {
+                                className = 'parenthetical';
+                            } else if (x > 140 && x <= 200) {
+                                className = 'dialogue';
+                            } else if (trimmed === trimmed.toUpperCase() && (trimmed.startsWith('INT.') || trimmed.startsWith('EXT.') || trimmed.startsWith('I/E.') || trimmed.startsWith('INT/EXT.'))) {
+                                className = 'scene-heading';
+                            }
+                            
+                            let yDiff = 0;
+                            if (prevY !== -1) {
+                                yDiff = Math.abs(prevY - y);
+                            }
+                            prevY = y;
+                            
+                            // Group with previous div if same class and close together
+                            if (lastDiv && lastDiv.className === className && yDiff < 24 && className !== 'character' && className !== 'scene-heading') {
+                                lastDiv.innerHTML += '<br>' + trimmed;
+                                return;
+                            }
+                            
+                            const div = document.createElement('div');
+                            if (yDiff > 24) { 
+                                div.style.marginTop = (yDiff - 14) + 'px';
+                            }
+                            
+                            div.className = className;
+                            div.innerText = trimmed;
+                            if (className === 'cover-title') {
+                                div.style.textAlign = 'center';
+                                div.style.width = '100%';
+                                div.style.marginLeft = '-1in';
+                            }
+                            editor.appendChild(div);
+                            lastDiv = div;
+                        });
+
+                    }
+                    if (typeof paginateSimulated === 'function') paginateSimulated();
+                    buildToc();
+                    extractEntities();
+                    updateStatistics();
+                    saveState();
+                } catch (err) {
+                    console.error(err);
+                    alert("Error loading PDF file.");
+                }
+                event.target.value = '';
+                return;
+            }
             const reader = new FileReader();
             reader.onload = function(e) {
                 const contents = e.target.result;
@@ -1227,8 +1497,10 @@
                             div.innerText = item.text;
                             editor.appendChild(div);
                         });
+                        if (typeof paginateSimulated === 'function') paginateSimulated();
                         buildToc();
                         extractEntities();
+                        updateStatistics();
                         saveState();
                     } catch (err) { alert("Invalid JSON format."); }
                 } else {
@@ -1236,8 +1508,10 @@
                     block.className = 'action';
                     block.innerHTML = contents.replace(/\n/g, '<br>');
                     editor.appendChild(block);
+                    if (typeof paginateSimulated === 'function') paginateSimulated();
                     buildToc();
                     extractEntities();
+                    updateStatistics();
                     saveState();
                 }
             };
@@ -1281,7 +1555,45 @@
             extractEntities(); 
             saveState(); 
             buildToc();
+            updateStatistics();
         };
     </script>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Settings & Instructions</h2>
+                <button class="close-btn" onclick="closeSettings()">✕</button>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h3 style="margin-top:0; font-size:1rem; border-bottom:1px solid #444; padding-bottom:5px;">Instructions</h3>
+                <div style="font-size: 0.85rem; color: #bbb; line-height: 1.4;">
+                    <p>Use <b>Ctrl+Z</b> and <b>Ctrl+Y</b> to undo and redo changes.</p>
+                    <p>Click anywhere in the script to edit.</p>
+                    <p>Use the formatting toolbar to change the style of the current line.</p>
+                    <p>Press <b>Enter</b> to create a new line. The editor will automatically maintain formatting blocks.</p>
+                    <p>To export to PDF, choose "Export as PDF" and use your browser's Print to PDF feature.</p>
+                </div>
+            </div>
+            
+            <div>
+                <h3 style="font-size:1rem; border-bottom:1px solid #444; padding-bottom:5px;">Layout Settings</h3>
+                <div style="padding: 10px 0;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:5px;">
+                        <span>Zoom</span>
+                        <span id="zoom-val-modal">100%</span>
+                    </div>
+                    <input type="range" id="zoom-slider-modal" min="20" max="200" value="100" style="width:100%" oninput="updateZoomModal()">
+                    
+                    <label style="font-size: 0.85rem; margin-top: 15px; display:flex; align-items:center; gap: 8px; cursor:pointer;">
+                        <input type="checkbox" id="page-breaks-toggle-modal" onchange="togglePageBreaksModal()"> Show Visual Page Breaks
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
