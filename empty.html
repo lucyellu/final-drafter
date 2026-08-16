@@ -417,15 +417,68 @@
             margin-bottom: 40pt;
         }
 
+        /* PDF Exact View */
+        #pdf-viewer {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .pdf-page {
+            position: relative;
+            background: #fff;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        .pdf-page canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .pdf-text-layer {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            line-height: 1;
+            transform-origin: 0 0;
+        }
+        .pdf-text-layer span, .pdf-text-layer br {
+            color: transparent;
+            position: absolute;
+            white-space: pre;
+            cursor: text;
+            transform-origin: 0% 0%;
+        }
+        .pdf-text-layer ::selection { background: rgba(0,123,255,0.3); }
+
+        .view-toggle {
+            display: none;
+            margin-left: 20px;
+            gap: 4px;
+        }
+        .view-toggle button {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid transparent;
+            color: var(--text-color);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .view-toggle button.active {
+            background: var(--accent-color);
+        }
+
         /* Print Media */
         @media print {
             body, #main-container, #editor-wrapper {
                 background: white; height: auto; overflow: visible; display: block; padding: 0; margin: 0;
             }
-            #top-bar, #sidebar, #right-sidebar, .resizer, #page-numbers-container { display: none; }
+            #top-bar, #sidebar, #right-sidebar, .resizer, #page-numbers-container, .view-toggle { display: none; }
             .page {
                 box-shadow: none; margin: 0; padding: 0; width: 8.5in; min-height: auto; zoom: 1 !important; background-image: none !important;
             }
+            .pdf-page { box-shadow: none; margin: 0 auto; }
             
             /* Add print page numbers using CSS counters */
             @page {
@@ -507,7 +560,7 @@
                 <div onclick="exportTXT()">Export as Text</div>
             </div>
         </div>
-        <input type="file" id="file-input" style="display: none;" accept=".json,.md,.txt" onchange="loadFile(event)">
+        <input type="file" id="file-input" style="display: none;" accept=".json,.md,.txt,.pdf" onchange="loadFile(event)">
         
         <div class="toolbar">
             <button onclick="formatBlock('scene-heading')">Scene Heading</button>
@@ -520,6 +573,10 @@
 
             <button onclick="undo()" style="margin-left: 20px;" title="Undo (Ctrl+Z)">↶</button>
             <button onclick="redo()" title="Redo (Ctrl+Y)">↷</button>
+        </div>
+        <div class="view-toggle" id="view-toggle">
+            <button id="view-btn-exact" onclick="switchPdfView('exact')" title="Pixel-perfect replica of the source PDF">Exact View</button>
+            <button id="view-btn-editable" onclick="switchPdfView('editable')" title="Reflowed, editable screenplay format">Editable Script</button>
         </div>
         <button class="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
     </div>
@@ -572,6 +629,7 @@
                 <div id="page-numbers-container" contenteditable="false"></div>
 
             </div>
+            <div id="pdf-viewer"></div>
         </div>
         
         <div class="resizer" id="right-resizer"></div>
@@ -1079,6 +1137,7 @@
             const val = document.getElementById('zoom-slider').value;
             document.getElementById('zoom-val').innerText = val;
             document.getElementById('editor-page').style.zoom = val / 100;
+            document.getElementById('pdf-viewer').style.zoom = val / 100;
         }
 
         function togglePageBreaks() {
@@ -1296,6 +1355,329 @@
             document.getElementById(sourceId).scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
+        // --- Text/Markdown Import Parsing ---
+        // Interprets plain text or markdown (Fountain-style conventions) as screenplay
+        // blocks so imported .txt/.md files land as editable, properly-formatted elements
+        // rather than one unstructured blob.
+        function parseTextToBlocks(contents) {
+            const SCENE_RE = /^(INT\.|EXT\.|I\/E\.|INT\/EXT\.)\s+.+/i;
+            const TRANSITION_RE = /^[A-Z][A-Z0-9 .'\-]*\bTO:$/;
+            const CHARACTER_RE = /^[A-Z][A-Z0-9 .'\-]{0,38}$/;
+
+            function stripMd(line) {
+                return line
+                    .replace(/^#{1,6}\s+/, '')
+                    .replace(/^\*\*(.*)\*\*$/, '$1')
+                    .replace(/^\*(.*)\*$/, '$1')
+                    .replace(/^_(.*)_$/, '$1')
+                    .trim();
+            }
+
+            const paragraphs = contents.split(/\r?\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0);
+            const blocks = [];
+
+            paragraphs.forEach(paragraph => {
+                const rawLines = paragraph.split(/\r?\n/);
+                const wasHeader = /^#{1,6}\s+/.test(rawLines[0]);
+                const lines = rawLines.map(stripMd).filter(l => l.length > 0);
+                if (lines.length === 0) return;
+
+                if (lines.length === 1) {
+                    const line = lines[0];
+                    if (SCENE_RE.test(line)) {
+                        blocks.push({ type: 'scene-heading', text: line.toUpperCase() });
+                    } else if (/^\(.+\)$/.test(line)) {
+                        blocks.push({ type: 'parenthetical', text: line });
+                    } else if (TRANSITION_RE.test(line)) {
+                        blocks.push({ type: 'transition', text: line });
+                    } else if (wasHeader) {
+                        blocks.push({ type: 'center-title', text: line });
+                    } else if (CHARACTER_RE.test(line) && line === line.toUpperCase()) {
+                        blocks.push({ type: 'character', text: line });
+                    } else {
+                        blocks.push({ type: 'action', text: line });
+                    }
+                } else {
+                    const first = lines[0];
+                    if (SCENE_RE.test(first)) {
+                        blocks.push({ type: 'scene-heading', text: first.toUpperCase() });
+                        blocks.push({ type: 'action', text: lines.slice(1).join(' ') });
+                    } else if (CHARACTER_RE.test(first) && first === first.toUpperCase()) {
+                        blocks.push({ type: 'character', text: first });
+                        lines.slice(1).forEach(line => {
+                            if (/^\(.+\)$/.test(line)) {
+                                blocks.push({ type: 'parenthetical', text: line });
+                            } else {
+                                blocks.push({ type: 'dialogue', text: line });
+                            }
+                        });
+                    } else {
+                        blocks.push({ type: 'action', text: lines.join(' ') });
+                    }
+                }
+            });
+
+            return blocks;
+        }
+
+        // --- PDF Import: Exact View rendering + text extraction ---
+        // Converts PDF points (1/72in) to the CSS px scale the rest of the app assumes
+        // (96dpi, matching the 8.5in = 816px editable page), so the exact-view replica
+        // sits at the same visual size as the editable script view.
+        const PDF_CSS_SCALE = 96 / 72;
+        const PDF_RENDER_SCALE = 2; // supersample the canvas for crisp text at 100% zoom
+
+        let pdfLoaded = false;
+
+        function setPdfLoaded(loaded) {
+            pdfLoaded = loaded;
+            document.getElementById('view-toggle').style.display = loaded ? 'flex' : 'none';
+            if (!loaded) {
+                document.getElementById('pdf-viewer').innerHTML = '';
+                document.getElementById('pdf-viewer').style.display = 'none';
+                document.getElementById('editor-page').style.display = '';
+            } else {
+                switchPdfView('exact');
+            }
+        }
+
+        function switchPdfView(mode) {
+            const editorPage = document.getElementById('editor-page');
+            const pdfViewer = document.getElementById('pdf-viewer');
+            document.getElementById('view-btn-exact').classList.toggle('active', mode === 'exact');
+            document.getElementById('view-btn-editable').classList.toggle('active', mode === 'editable');
+
+            if (mode === 'exact') {
+                pdfViewer.style.display = 'flex';
+                editorPage.style.display = 'none';
+            } else {
+                pdfViewer.style.display = 'none';
+                editorPage.style.display = '';
+                // Pagination/stats depend on layout (scrollHeight, offsetTop), which reads
+                // as 0 while editor-page was display:none — recompute now that it's visible.
+                if (typeof paginateSimulated === 'function') paginateSimulated();
+                drawPageNumbers();
+                updateStatistics();
+            }
+        }
+
+        // Renders one PDF page as a pixel-perfect canvas with an invisible, selectable
+        // text layer on top (pdf.js's own approach) — same look as the source PDF,
+        // including cover pages, fonts, and layout quirks the block classifier can't.
+        function withTimeout(promise, ms) {
+            let timer;
+            const timeout = new Promise((_, reject) => {
+                timer = setTimeout(() => reject(new Error('timeout')), ms);
+            });
+            return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+        }
+
+        async function renderPdfExactPage(page) {
+            const baseViewport = page.getViewport({ scale: 1 });
+            const cssWidth = baseViewport.width * PDF_CSS_SCALE;
+            const cssHeight = baseViewport.height * PDF_CSS_SCALE;
+
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'pdf-page';
+            pageDiv.style.width = cssWidth + 'px';
+            pageDiv.style.height = cssHeight + 'px';
+
+            const renderViewport = page.getViewport({ scale: PDF_CSS_SCALE * PDF_RENDER_SCALE });
+            const canvas = document.createElement('canvas');
+            canvas.width = renderViewport.width;
+            canvas.height = renderViewport.height;
+            const renderTask = page.render({ canvasContext: canvas.getContext('2d'), viewport: renderViewport });
+            try {
+                // A stuck render (e.g. a pathological embedded font) must not block every
+                // later page forever — fall back to a blank page with just the selectable
+                // text layer on top rather than hanging the whole import.
+                await withTimeout(renderTask.promise, 20000);
+            } catch (err) {
+                console.error('PDF page render timed out or failed:', err);
+                if (renderTask.cancel) renderTask.cancel();
+            }
+            pageDiv.appendChild(canvas);
+
+            const textLayerDiv = document.createElement('div');
+            textLayerDiv.className = 'pdf-text-layer';
+            textLayerDiv.style.width = cssWidth + 'px';
+            textLayerDiv.style.height = cssHeight + 'px';
+            const textContent = await page.getTextContent();
+            await pdfjsLib.renderTextLayer({
+                textContentSource: textContent,
+                container: textLayerDiv,
+                viewport: page.getViewport({ scale: PDF_CSS_SCALE }),
+            }).promise;
+            pageDiv.appendChild(textLayerDiv);
+
+            document.getElementById('pdf-viewer').appendChild(pageDiv);
+        }
+
+        // Groups a PDF page's text items into lines by y-proximity, keeping x so
+        // classifyPdfLines() can derive this document's own margins from it.
+        async function extractPdfPageLines(page, pageNum) {
+            const textContent = await page.getTextContent();
+            const items = textContent.items.slice().sort((a, b) => {
+                if (Math.abs(a.transform[5] - b.transform[5]) > 5) return b.transform[5] - a.transform[5];
+                return a.transform[4] - b.transform[4];
+            });
+
+            const lines = [];
+            let lastY = -1;
+            let lastXEnd = 0;
+            let current = null;
+            items.forEach(item => {
+                if (!item.str) return;
+                const x = item.transform[4];
+                const y = item.transform[5];
+                const fontSize = item.height || Math.abs(item.transform[3]) || 10;
+                if (lastY !== -1 && Math.abs(y - lastY) > 5) {
+                    if (current) lines.push(current);
+                    current = { str: item.str, x, y, page: pageNum };
+                } else if (current) {
+                    // Insert a space only when the gap to the previous glyph run looks like
+                    // a real word-break, not per-glyph kerning — some PDFs emit letter-spaced
+                    // titles as one text item per character, and joining those unconditionally
+                    // (as the old importer did) corrupts "INT." into "I N T ." and breaks every
+                    // downstream regex that depends on it.
+                    const gap = x - lastXEnd;
+                    const needsSpace = !current.str.endsWith(' ') && !item.str.startsWith(' ') && gap > fontSize * 0.25;
+                    current.str += (needsSpace ? ' ' : '') + item.str;
+                } else {
+                    current = { str: item.str, x, y, page: pageNum };
+                }
+                lastY = y;
+                lastXEnd = x + (item.width || 0);
+            });
+            if (current) lines.push(current);
+            return lines;
+        }
+
+        // Classifies extracted PDF lines into screenplay blocks using each PDF's own
+        // margins rather than fixed pixel thresholds (the latter is why the old importer
+        // was wildly inconsistent across different PDFs — 664 "characters" and 0
+        // "locations" on one real screenplay). Margins (action column, character-cue
+        // column) are derived per-document from a position histogram, then combined
+        // with the same text-pattern rules used for plain text/markdown import so a
+        // stray all-caps action fragment like "BLACK..." (sitting at the action margin)
+        // isn't mistaken for a character cue (sitting at the indented cue column).
+        function classifyPdfLines(allLines) {
+            const SCENE_RE = /^(INT\.|EXT\.|I\/E\.|INT\/EXT\.)\s+.+/i;
+            const TRANSITION_RE = /^[A-Z][A-Z0-9 .'\-]*\bTO:$/;
+            const CHARACTER_SHAPE_RE = /^[A-Z][A-Z0-9 .'\-()\/]{0,42}$/;
+
+            const lines = [];
+            allLines.forEach(line => {
+                let text = line.str.trim();
+                if (!text) return;
+                text = text.replace(/^\d{1,4}\s+(?=[A-Za-z(])/, '').replace(/\s+\d{1,4}$/, '').trim();
+                if (!text) return;
+                lines.push({ text, x: line.x, y: line.y, page: line.page });
+            });
+            if (lines.length === 0) return [];
+
+            // Action margin: leftmost frequently-used x among prose (lowercase-containing) lines.
+            const proseXCounts = {};
+            lines.forEach(l => {
+                if (/[a-z]/.test(l.text)) {
+                    const bucket = Math.round(l.x / 4) * 4;
+                    proseXCounts[bucket] = (proseXCounts[bucket] || 0) + 1;
+                }
+            });
+            const frequentProseX = Object.entries(proseXCounts).filter(([, c]) => c >= 3).map(([x]) => parseFloat(x));
+            const baseX = frequentProseX.length ? Math.min(...frequentProseX) : Math.min(...lines.map(l => l.x));
+
+            // Character-cue column: mode x among short ALL-CAPS lines that aren't scene headings.
+            const charXCounts = {};
+            lines.forEach(l => {
+                const upper = l.text.toUpperCase();
+                if (l.text === upper && CHARACTER_SHAPE_RE.test(l.text) && !SCENE_RE.test(upper) && l.x - baseX > 15) {
+                    const bucket = Math.round(l.x / 4) * 4;
+                    charXCounts[bucket] = (charXCounts[bucket] || 0) + 1;
+                }
+            });
+            let charX = null, charXCount = 0;
+            Object.entries(charXCounts).forEach(([x, c]) => { if (c > charXCount) { charXCount = c; charX = parseFloat(x); } });
+
+            const blocks = [];
+            let seenSceneHeading = false;
+            let prevY = null, prevPage = null, prevType = null;
+
+            lines.forEach(l => {
+                const text = l.text;
+                const upper = text.toUpperCase();
+                const indent = l.x - baseX;
+                const isNewPage = prevPage !== null && l.page !== prevPage;
+                const gap = (prevY !== null && !isNewPage) ? Math.abs(prevY - l.y) : 999;
+
+                let type;
+                if (SCENE_RE.test(upper)) {
+                    type = 'scene-heading';
+                } else if (/^\(.+\)$/.test(text)) {
+                    type = 'parenthetical';
+                } else if (TRANSITION_RE.test(upper) && indent > 60) {
+                    type = 'transition';
+                } else if (text === upper && CHARACTER_SHAPE_RE.test(text) &&
+                           (charX !== null ? Math.abs(l.x - charX) < 20 : indent > 25)) {
+                    type = 'character';
+                } else if (l.page === 1 && !seenSceneHeading && indent > 15 && text.length < 60) {
+                    type = 'center-title';
+                } else {
+                    type = 'action';
+                }
+                if (type === 'scene-heading') seenSceneHeading = true;
+
+                const canMerge = !isNewPage && gap <= 20 && prevType === type && type === 'action';
+                if (canMerge && blocks.length) {
+                    blocks[blocks.length - 1].text += ' ' + text;
+                } else {
+                    blocks.push({ type, text, indent });
+                }
+
+                prevY = l.y;
+                prevPage = l.page;
+                prevType = type;
+            });
+
+            // A 'character'-typed guess sitting right next to a title-page line (e.g. the
+            // film title itself, which is short/all-caps and can coincidentally land in the
+            // character-cue column) is almost certainly part of the same title block, not a
+            // cue — title lines can only exist here in the first place, so adjacency to one
+            // is a reliable enough signal to override the coincidental column match.
+            for (let i = 0; i < blocks.length; i++) {
+                if (blocks[i].type !== 'character') continue;
+                const prev = blocks[i - 1];
+                const next = blocks[i + 1];
+                if ((prev && prev.type === 'center-title') || (next && next.type === 'center-title')) {
+                    blocks[i].type = 'center-title';
+                }
+            }
+
+            // An 'action'-typed line immediately following a character cue or dialogue,
+            // that is ALSO indented off the action margin, is really dialogue — action
+            // beats between lines of dialogue stay flush with the action margin instead.
+            for (let i = 1; i < blocks.length; i++) {
+                const prev = blocks[i - 1];
+                if (blocks[i].type === 'action' && blocks[i].indent > 15 &&
+                    (prev.type === 'character' || prev.type === 'parenthetical' || prev.type === 'dialogue')) {
+                    blocks[i].type = 'dialogue';
+                }
+            }
+
+            // Re-merge runs that became the same type after reclassification.
+            const merged = [];
+            blocks.forEach(b => {
+                const last = merged[merged.length - 1];
+                if (last && last.type === b.type && (b.type === 'dialogue' || b.type === 'action')) {
+                    last.text += ' ' + b.text;
+                } else {
+                    merged.push({ type: b.type, text: b.text });
+                }
+            });
+
+            return merged;
+        }
+
         // --- Export / Import ---
         function downloadFile(filename, content, mimeType) {
             const blob = new Blob([content], { type: mimeType });
@@ -1360,7 +1742,7 @@
                 try {
                     const arrayBuffer = await file.arrayBuffer();
                     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                    
+
                     let pn = document.getElementById('page-numbers-container');
                     if (!pn) {
                         pn = document.createElement('div');
@@ -1369,96 +1751,47 @@
                     }
                     editor.innerHTML = '';
                     editor.appendChild(pn);
-                    
+
+                    // Text extraction (for the sidebar/editable view) is fast — pull it
+                    // for every page up front so the app becomes usable immediately,
+                    // rather than waiting on canvas rendering of every page first.
+                    const allLines = [];
+                    const pages = [];
                     for (let i = 1; i <= pdf.numPages; i++) {
                         const page = await pdf.getPage(i);
-                        const textContent = await page.getTextContent();
-                        
-                        let lastY = -1;
-                        let textLines = [];
-                        let currentLine = { str: "", x: 0, y: 0 };
-                        
-                        const items = textContent.items.sort((a, b) => {
-                            if (Math.abs(a.transform[5] - b.transform[5]) > 5) {
-                                return b.transform[5] - a.transform[5];
-                            }
-                            return a.transform[4] - b.transform[4];
-                        });
-
-                        items.forEach(item => {
-                            if (lastY !== -1 && Math.abs(item.transform[5] - lastY) > 5) {
-                                textLines.push(currentLine);
-                                currentLine = { str: item.str, x: item.transform[4], y: item.transform[5] };
-                            } else {
-                                if (currentLine.str === "") {
-                                    currentLine.x = item.transform[4];
-                                    currentLine.y = item.transform[5];
-                                }
-                                currentLine.str += (currentLine.str.length > 0 && !currentLine.str.endsWith(' ') && !item.str.startsWith(' ') ? ' ' : '') + item.str;
-                            }
-                            lastY = item.transform[5];
-                        });
-                        if (currentLine.str) textLines.push(currentLine);
-                        
-                        
-                        let prevY = -1;
-                        let lastDiv = null;
-                        
-                        textLines.forEach(lineTextObj => {
-                            const trimmed = lineTextObj.str.trim();
-                            if (!trimmed) return;
-                            const x = lineTextObj.x;
-                            const y = lineTextObj.y;
-                            
-                            let className = 'action';
-                            if (i === 1 && Math.abs(x - (8.5*72)/2) < 150 && trimmed.toUpperCase() !== trimmed) {
-                                className = 'cover-title';
-                            } else if (x > 350) {
-                                className = 'transition';
-                            } else if (x > 240 && trimmed === trimmed.toUpperCase() && !trimmed.includes('.') && !trimmed.includes(',')) {
-                                className = 'character';
-                            } else if (x > 200 && trimmed.startsWith('(')) {
-                                className = 'parenthetical';
-                            } else if (x > 140 && x <= 200) {
-                                className = 'dialogue';
-                            } else if (trimmed === trimmed.toUpperCase() && (trimmed.startsWith('INT.') || trimmed.startsWith('EXT.') || trimmed.startsWith('I/E.') || trimmed.startsWith('INT/EXT.'))) {
-                                className = 'scene-heading';
-                            }
-                            
-                            let yDiff = 0;
-                            if (prevY !== -1) {
-                                yDiff = Math.abs(prevY - y);
-                            }
-                            prevY = y;
-                            
-                            // Group with previous div if same class and close together
-                            if (lastDiv && lastDiv.className === className && yDiff < 24 && className !== 'character' && className !== 'scene-heading') {
-                                lastDiv.innerHTML += '<br>' + trimmed;
-                                return;
-                            }
-                            
-                            const div = document.createElement('div');
-                            if (yDiff > 24) { 
-                                div.style.marginTop = (yDiff - 14) + 'px';
-                            }
-                            
-                            div.className = className;
-                            div.innerText = trimmed;
-                            if (className === 'cover-title') {
-                                div.style.textAlign = 'center';
-                                div.style.width = '100%';
-                                div.style.marginLeft = '-1in';
-                            }
-                            editor.appendChild(div);
-                            lastDiv = div;
-                        });
-
+                        pages.push(page);
+                        allLines.push(...(await extractPdfPageLines(page, i)));
                     }
+
+                    const blocks = classifyPdfLines(allLines);
+                    blocks.forEach(b => {
+                        const div = document.createElement('div');
+                        div.className = b.type;
+                        div.innerText = b.text;
+                        editor.appendChild(div);
+                    });
+
+                    setPdfLoaded(true);
                     if (typeof paginateSimulated === 'function') paginateSimulated();
                     buildToc();
                     extractEntities();
                     updateStatistics();
+                    // The reflow-based page estimate needs editor-page to be laid out
+                    // (display:none while Exact View is active reads as 0 height), and
+                    // in any case the PDF's own page count is more meaningful here.
+                    document.getElementById('stat-pages').innerText = pdf.numPages;
                     saveState();
+
+                    // Exact-view canvas pages render progressively in the background —
+                    // each page's div appears in the DOM as soon as it's ready, without
+                    // blocking the (already-usable) editable view or sidebar above.
+                    const pdfViewer = document.getElementById('pdf-viewer');
+                    pdfViewer.innerHTML = '';
+                    (async () => {
+                        for (const page of pages) {
+                            await renderPdfExactPage(page);
+                        }
+                    })();
                 } catch (err) {
                     console.error(err);
                     alert("Error loading PDF file.");
@@ -1466,11 +1799,12 @@
                 event.target.value = '';
                 return;
             }
+            setPdfLoaded(false);
             const reader = new FileReader();
             reader.onload = function(e) {
                 const contents = e.target.result;
                 const editor = document.getElementById('editor-page');
-                
+
                 // Keep the page numbers container
                 let pn = document.getElementById('page-numbers-container');
                 if (!pn) {
@@ -1480,7 +1814,7 @@
                 }
                 editor.innerHTML = '';
                 editor.appendChild(pn);
-                
+
                 if (file.name.endsWith('.json')) {
                     try {
                         const data = JSON.parse(contents);
@@ -1504,10 +1838,20 @@
                         saveState();
                     } catch (err) { alert("Invalid JSON format."); }
                 } else {
-                    const block = document.createElement('div');
-                    block.className = 'action';
-                    block.innerHTML = contents.replace(/\n/g, '<br>');
-                    editor.appendChild(block);
+                    const blocks = parseTextToBlocks(contents);
+                    if (blocks.length === 0) {
+                        const empty = document.createElement('div');
+                        empty.className = 'action';
+                        empty.innerText = ' ';
+                        editor.appendChild(empty);
+                    } else {
+                        blocks.forEach(b => {
+                            const div = document.createElement('div');
+                            div.className = b.type;
+                            div.innerText = b.text;
+                            editor.appendChild(div);
+                        });
+                    }
                     if (typeof paginateSimulated === 'function') paginateSimulated();
                     buildToc();
                     extractEntities();
