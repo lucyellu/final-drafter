@@ -18,6 +18,19 @@
             --accent-color: #007bff;
             --page-bg: #ffffff;
             --page-text: #000000;
+            /* Variation stacks: a warm "photocopied onion-skin" tint over the
+               page, with a slightly stronger tone for the rail and the leafed
+               page edges peeking out from behind a stacked passage. */
+            /* Opaque, not translucent: the bands behind consecutive blocks
+               overlap to close the gaps between them, and translucency would
+               turn every overlap into a visible seam. */
+            --stack-tint: #fbf3e1;
+            --stack-tint-hot: #f6e8c8;
+            --stack-tint-off: #eaf2fd;
+            --stack-edge: #c9973a;
+            --stack-leaf: #d9c9a3;
+            --diff-add: rgba(46, 160, 67, 0.28);
+            --diff-del: rgba(248, 81, 73, 0.28);
         }
 
         body {
@@ -548,6 +561,291 @@
         }
         #editor-page.show-page-numbers .page-number-label { display: block; }
 
+        /* ------------------------------------------------------------------
+           Variation stacks
+
+           EVERY rule in this section must be layout-neutral. reflowPages()
+           decides where each page break falls by measuring block heights and
+           margins, so a border, padding or margin added here would silently
+           re-paginate the script. Only backgrounds, box-shadows, outlines and
+           absolutely-positioned pseudo-elements are safe.
+           ------------------------------------------------------------------ */
+
+        /* Each block in the run gets one uniform band behind it, spanning the
+           full 6in text column no matter how the element itself is indented --
+           the alternative, tinting each block's own box, leaves a ragged right
+           edge that reads as highlighter rather than as an inserted page.
+           Blocks are indented differently per type, so each declares how far
+           back its band has to reach.
+
+           The band is opaque, and it only ever grows DOWNWARD, by the exact gap
+           to the next block of the run (measured in decorateStacks and handed
+           over as --stack-gap). Both halves of that matter: translucent bands
+           would darken into seams wherever they meet, and a band that grew
+           upward would paint over the preceding block's text -- blocks paint in
+           document order, so a later band covers an earlier block but never the
+           other way round. Growing downward means any overshoot is harmlessly
+           repainted by the next block instead of swallowing a character cue. */
+        .page > [data-stack]            { --stack-indent: 0in; }
+        .page > .character[data-stack]     { --stack-indent: 2.2in; }
+        .page > .dialogue[data-stack]      { --stack-indent: 1in; }
+        .page > .parenthetical[data-stack] { --stack-indent: 1.6in; }
+
+        .page > [data-stack]::before {
+            content: '';
+            position: absolute;
+            z-index: -1;
+            top: 0;
+            bottom: calc(-1 * var(--stack-gap, 12pt));
+            left: calc(-1 * var(--stack-indent) - 14px);
+            width: calc(6in + 14px);
+            background: var(--stack-tint);
+            border-left: 3px solid var(--stack-edge);
+            pointer-events: none;
+            transition: background-color .12s ease;
+        }
+        .page > [data-stack].stack-hot::before { background: var(--stack-tint-hot); }
+        /* The head of the run reaches a little into the blank space above it, so
+           the sheet doesn't start flush against its own first line. The foot is
+           handled by --stack-gap, which decorateStacks sets to a short tail on
+           the last block. */
+        .page > [data-stack-first]::before { top: -3pt; }
+
+        /* The gutter mark. One attribute drives one pseudo-element on purpose:
+           a scene heading that also heads a stack needs a single label in the
+           margin, not a scene number and a stack chip fighting for the same
+           corner. applyGutterLabels() decides what the string says. */
+        .page > [data-gutter]::after {
+            content: attr(data-gutter);
+            position: absolute;
+            top: -3pt;
+            left: calc(-1 * var(--stack-indent, 0in) - 14px);
+            transform: translateX(calc(-100% - 5px));
+            min-width: 11px;
+            padding: 1px 4px 2px;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            line-height: 1.25;
+            text-align: center;
+            color: #6b4c12;
+            background: #f5e4bd;
+            border: 1px solid var(--stack-edge);
+            border-radius: 2px;
+            /* Clipped corner + the hint of a second sheet behind it. */
+            clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 0 100%);
+            box-shadow: 2px 2px 0 -1px #f5e4bd, 2px 2px 0 0 var(--stack-edge);
+            cursor: pointer;
+            pointer-events: auto;
+            z-index: 20;
+        }
+        /* A plain scene number is a reference mark, not a stack of paper: no
+           card styling, no folded corner, nothing to click. */
+        .page > [data-gutter-kind="scene"]::after {
+            color: #8a8a8a;
+            background: none;
+            border: none;
+            border-radius: 0;
+            clip-path: none;
+            box-shadow: none;
+            font-weight: 600;
+            letter-spacing: .02em;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        /* The leafing: two sheets peeking out from behind the foot of the run,
+           so the passage reads as a stack of paper stapled onto the page rather
+           than as a highlighted one. It hangs off the band, not off the block,
+           so it lines up with the passage rather than with the last line's
+           ragged right edge. */
+        .page > [data-stack-last]::before {
+            box-shadow:
+                4px 4px 0 -1px var(--page-bg), 4px 4px 0 0 var(--stack-leaf),
+                8px 8px 0 -1px var(--page-bg), 8px 8px 0 0 var(--stack-leaf);
+        }
+        .page > [data-stack-last].stack-hot::before {
+            box-shadow:
+                4px 4px 0 -1px var(--page-bg), 4px 4px 0 0 var(--stack-edge),
+                9px 9px 0 -1px var(--page-bg), 9px 9px 0 0 var(--stack-edge);
+        }
+
+        /* While a card other than the top one is on screen, the whole passage
+           cools to blue: at a glance, this is not what will print. */
+        .page > [data-stack][data-stack-off]::before {
+            background: var(--stack-tint-off);
+            border-left-color: var(--accent-color);
+        }
+        .page > [data-stack-last][data-stack-off]::before {
+            box-shadow:
+                4px 4px 0 -1px var(--page-bg), 4px 4px 0 0 #a9c9ea,
+                8px 8px 0 -1px var(--page-bg), 8px 8px 0 0 #a9c9ea;
+        }
+        .page > [data-stack-off][data-gutter-kind="stack"]::after {
+            color: #0a3d6b; background: #cfe6ff; border-color: var(--accent-color);
+            box-shadow: 2px 2px 0 -1px #cfe6ff, 2px 2px 0 0 var(--accent-color);
+        }
+
+        /* The stacked-cards mark. Drawn rather than typed: the obvious Unicode
+           candidates (❐ ❏ ⧉) have no glyph in the default Windows UI font and
+           render as tofu. */
+        .stack-glyph {
+            display: inline-block;
+            width: 7px; height: 9px;
+            margin: 0 5px 1px 2px;
+            vertical-align: middle;
+            border: 1px solid currentColor;
+            border-radius: 1px;
+            box-shadow: 2px -2px 0 -1px var(--topbar-bg), 2px -2px 0 0 currentColor;
+        }
+
+        /* ---- The deck bar: the stack fanned out ---- */
+        #deck-bar {
+            position: fixed;
+            z-index: 300;
+            display: none;
+            align-items: center;
+            gap: 6px;
+            max-width: 92vw;
+            padding: 6px 8px;
+            background: #2b2b2b;
+            border: 1px solid var(--border-color);
+            border-radius: 8px 8px 4px 4px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.55);
+            font-size: .82rem;
+        }
+        #deck-bar.open { display: flex; }
+        #deck-bar .deck-count {
+            color: #aaa; font-size: .72rem; white-space: nowrap;
+            padding-right: 6px; border-right: 1px solid var(--border-color);
+        }
+        #deck-cards { display: flex; gap: 4px; overflow-x: auto; max-width: 46vw; padding: 1px; }
+        .deck-card {
+            display: flex; align-items: center; gap: 5px;
+            padding: 4px 9px; white-space: nowrap; cursor: pointer;
+            background: #3a3a3a; border: 1px solid #4d4d4d; border-radius: 4px 4px 2px 2px;
+            color: #ddd; font-size: .78rem;
+        }
+        .deck-card:hover { background: #474747; }
+        .deck-card.viewing { background: #f5e4bd; border-color: var(--stack-edge); color: #4a340c; font-weight: 600; }
+        .deck-card .star { color: var(--stack-edge); font-size: .8rem; min-width: 8px; }
+        .deck-card.viewing .star { color: #8a6410; }
+        .deck-card input {
+            background: transparent; border: none; color: inherit; font: inherit;
+            width: 11ch; outline: none; padding: 0;
+        }
+        #deck-bar button {
+            background: #3a3a3a; color: #ddd; border: 1px solid #4d4d4d;
+            border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: .76rem;
+            white-space: nowrap;
+        }
+        #deck-bar button:hover:not(:disabled) { background: #474747; }
+        #deck-bar button:disabled { opacity: .4; cursor: default; }
+        #deck-bar button.primary { background: var(--stack-edge); border-color: var(--stack-edge); color: #2b1e04; font-weight: 600; }
+        #deck-bar .deck-sep { width: 1px; align-self: stretch; background: var(--border-color); margin: 0 2px; }
+
+        /* ---- Compare view (hosted in the side pane) ---- */
+        #compare-viewer { display: none; height: 100%; flex-direction: column; overflow: hidden; }
+        #compare-viewer.active { display: flex; }
+        #compare-head {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            padding: 8px 10px; border-bottom: 1px solid var(--border-color); background: #262626;
+            font-size: .78rem;
+        }
+        #compare-head select {
+            background: #333; color: #eee; border: 1px solid var(--border-color);
+            border-radius: 4px; padding: 3px 6px; font-size: .78rem; max-width: 15ch;
+        }
+        #compare-head .swatch { display: inline-flex; align-items: center; gap: 4px; color: #999; }
+        #compare-body { flex: 1; overflow: auto; padding: 10px; }
+        .diff-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 3px; }
+        .diff-cell {
+            font-family: 'Courier Prime', 'Courier New', monospace;
+            font-size: 11px; line-height: 1.35; white-space: pre-wrap;
+            padding: 3px 6px; border-radius: 3px; background: #262626; color: #ddd;
+            border-left: 3px solid transparent; overflow-wrap: anywhere;
+        }
+        .diff-cell.empty { background: repeating-linear-gradient(45deg, #232323, #232323 5px, #1e1e1e 5px, #1e1e1e 10px); }
+        .diff-cell.same { opacity: .55; }
+        /* Nothing has changed yet: the whole passage is "unchanged", so dimming
+           it would render a freshly duplicated version as a wall of grey. */
+        #compare-body.diff-clean .diff-cell.same { opacity: .9; }
+        .compare-status {
+            padding: 1px 7px; border-radius: 10px; font-size: .72rem; font-weight: 600;
+            background: rgba(248, 81, 73, .18); color: #ffb3ae;
+        }
+        .compare-status.clean { background: rgba(255,255,255,.08); color: #9a9a9a; font-weight: 500; }
+        .compare-hint {
+            margin: 0 0 10px; padding: 7px 9px; border-radius: 4px;
+            background: rgba(0, 123, 255, .10); border-left: 3px solid var(--accent-color);
+            color: #b9c9db; font-size: .74rem; line-height: 1.45;
+        }
+        .compare-hint b { color: #e6eef7; }
+        .diff-cell.del { border-left-color: #f85149; }
+        .diff-cell.add { border-left-color: #3fb950; }
+        .diff-cell .kind { display: block; font-family: 'Segoe UI', sans-serif; font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: #888; }
+        .diff-cell ins { background: var(--diff-add); text-decoration: none; border-radius: 2px; }
+        .diff-cell del { background: var(--diff-del); text-decoration: line-through; border-radius: 2px; }
+        .diff-gap { text-align: center; color: #666; font-size: 10px; padding: 4px 0; letter-spacing: .2em; }
+        .diff-take {
+            float: right; margin-left: 6px; cursor: pointer; border: 1px solid #4d4d4d;
+            background: #3a3a3a; color: #ccc; border-radius: 3px; font-size: 9px;
+            padding: 0 5px; font-family: 'Segoe UI', sans-serif;
+        }
+        .diff-take:hover { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
+        #compare-empty { padding: 24px 16px; color: #888; font-size: .82rem; line-height: 1.5; }
+
+        /* ---- Navigator: scenes with their variation cards nested beneath ---- */
+        #toc-filter {
+            display: flex; gap: 0; margin: 0 0 8px; border: 1px solid var(--border-color);
+            border-radius: 4px; overflow: hidden;
+        }
+        #toc-filter button {
+            flex: 1; background: #2a2a2a; color: #aaa; border: none; cursor: pointer;
+            padding: 4px 6px; font-size: .7rem; font-family: inherit;
+        }
+        #toc-filter button.active { background: var(--accent-color); color: #fff; }
+        .toc-scene-row { display: flex; align-items: center; gap: 4px; }
+        .toc-twisty {
+            width: 14px; flex: 0 0 14px; text-align: center; cursor: pointer;
+            color: #888; font-size: .65rem; user-select: none;
+        }
+        .toc-twisty.leaf { visibility: hidden; }
+        /* Reference numbers, in the Navigator and on the deck tabs. Tabular
+           figures and a fixed width so the column of them lines up. */
+        .toc-num, .deck-num {
+            flex: 0 0 auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: .64rem;
+            letter-spacing: .01em;
+            color: #7d7d7d;
+            font-variant-numeric: tabular-nums;
+        }
+        ul.toc-cards li.top .toc-num.draft { color: var(--stack-edge); }
+        .deck-num { color: #9a9a9a; font-size: .62rem; }
+        .deck-card.viewing .deck-num { color: #7a5a12; }
+
+        .toc-chip {
+            flex: 0 0 auto; margin-left: auto; padding: 0 4px; border-radius: 2px;
+            background: #f5e4bd; color: #6b4c12; border: 1px solid var(--stack-edge);
+            font-size: .62rem; font-weight: 700; cursor: pointer;
+            clip-path: polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%);
+        }
+        ul.toc-cards { list-style: none; margin: 2px 0 6px; padding: 0 0 0 18px; }
+        ul.toc-cards li {
+            display: flex; align-items: center; gap: 5px; padding: 2px 4px;
+            font-size: .74rem; color: #bbb; cursor: pointer; border-radius: 3px;
+            border-left: 2px solid #444;
+        }
+        ul.toc-cards li:hover { background: rgba(255,255,255,.07); color: #eee; }
+        ul.toc-cards li.top { color: #f0d69a; border-left-color: var(--stack-edge); }
+        ul.toc-cards li.viewing { background: rgba(0,123,255,.18); }
+        /* Reserve the star's width whether or not it is there, so the draft
+           numbers below the top one still line up under it. */
+        ul.toc-cards li .star { flex: 0 0 9px; font-size: .7rem; }
+        ul.toc-cards li .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        ul.toc-cards li.drop-target { border-top: 2px solid var(--accent-color); }
+
         /* Script Elements */
         .page > div {
             white-space: pre-wrap;
@@ -693,6 +991,29 @@
             .doc-pane.hidden { display: none !important; }
             #editor-wrapper:not(.single-pane) #pane-exact { display: none !important; }
             #editor-page, #pdf-viewer { display: block !important; }
+            /* A printed script is the version that prints. The alternates are
+               simply not in the page -- there is no sensible way to put four
+               versions of a scene into one PDF and still have it read as a
+               script -- so all the on-screen apparatus comes off: no tint, no
+               rail, no leafed edges, no deck.
+               What CAN survive is the numbering, and only when it has been asked
+               for: a label like S004.D002 in the left margin is exactly how a
+               shooting script carries its scene numbers, and it is what tells a
+               reader of the PDF which draft of that scene they are holding. */
+            #deck-bar, #compare-viewer { display: none !important; }
+            .page > [data-stack] { background: none !important; box-shadow: none !important; }
+            .page > [data-stack]::before { display: none !important; }
+            .page > [data-gutter]:not([data-gutter-print])::after { display: none !important; }
+            .page > [data-gutter][data-gutter-print]::after {
+                color: #000 !important;
+                background: none !important;
+                border: none !important;
+                box-shadow: none !important;
+                clip-path: none !important;
+                font-family: 'Courier Prime', 'Courier New', Courier, monospace !important;
+                font-size: 9pt !important;
+                font-weight: 400 !important;
+            }
             .pdf-page { break-after: page; }
             .pdf-page:last-child { break-after: auto; }
             .page {
@@ -781,6 +1102,7 @@
                 <div onclick="document.getElementById('file-input').click()">Load Script...</div>
                 <div onclick="saveJSON()">Save (.json)</div>
                 <div onclick="saveJSONAs()">Save As...</div>
+                <div onclick="foldAltDrafts()" title="Turn hand-typed &quot;* ALT DRAFT *&quot; sections into variation stacks on the scenes they rewrite">Fold Alternates into Stacks…</div>
                 <div onclick="window.print()">Export as PDF</div>
                 <div onclick="exportMD()">Export as Markdown</div>
                 <div onclick="exportTXT()">Export as Text</div>
@@ -803,6 +1125,13 @@
 
             <button onclick="undo()" style="margin-left: 20px;" title="Undo (Ctrl+Z)">↶</button>
             <button onclick="redo()" title="Redo (Ctrl+Y)">↷</button>
+
+            <!-- Variations. With text selected, stacks exactly that selection;
+                 with only a caret, stacks the whole scene it sits in. -->
+            <button id="btn-add-variation" onclick="addVariation()" style="margin-left: 20px;"
+                    title="Add a variation (Ctrl+Shift+V)&#10;Nothing selected: varies the scene the cursor is in.&#10;Text selected: varies exactly that passage."><span class="stack-glyph"></span>+ Variation</button>
+            <button id="btn-open-deck" onclick="toggleDeckAtCursor()" disabled
+                    title="Fan out the stack the cursor is in"><span class="stack-glyph"></span><span id="btn-deck-count">0</span></button>
         </div>
         <div class="view-toggle" id="view-toggle">
             <button id="view-btn-exact" onclick="togglePane('exact')" title="Show/hide the pixel-perfect replica of the source PDF">Exact View</button>
@@ -862,10 +1191,16 @@
         <div id="editor-wrapper" class="single-pane">
             <div class="doc-pane hidden" id="pane-exact">
                 <div class="pane-header">
-                    <span class="pane-title">Exact View</span>
+                    <span class="pane-title" id="pane-title-exact">Exact View</span>
                     <button class="pane-close" id="pane-close-exact" onclick="closePane('exact')" title="Close this pane">✕</button>
                 </div>
-                <div class="pane-body"><div id="pdf-viewer"></div></div>
+                <!-- This pane is a slot with two possible occupants: the rendered
+                     source PDF, or the side-by-side variation diff. `paneState.sideMode`
+                     decides which one is showing. -->
+                <div class="pane-body"><div id="pdf-viewer"></div><div id="compare-viewer">
+                    <div id="compare-head"></div>
+                    <div id="compare-body"></div>
+                </div></div>
             </div>
             <div class="pane-splitter hidden" id="pane-splitter"></div>
             <div class="doc-pane" id="pane-editable">
@@ -909,6 +1244,20 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- The fanned-out stack. Anchored to the run it belongs to, but kept out of
+         #editor-page so it can never be caught by getBlocks() or moved by a reflow. -->
+    <div id="deck-bar">
+        <span class="deck-count" id="deck-count"></span>
+        <div id="deck-cards"></div>
+        <div class="deck-sep"></div>
+        <button id="deck-top" onclick="moveViewedToTop()" title="Restaple: make the version you're reading the one that prints">↑ Move to top</button>
+        <button id="deck-compare" onclick="toggleCompare()" title="Show this version beside another, side by side">⇄ Compare</button>
+        <button id="deck-new" onclick="addVariation()" title="Add another version of this passage">+ New</button>
+        <button id="deck-del" onclick="deleteViewedCard()" title="Delete the version you're reading">🗑</button>
+        <div class="deck-sep"></div>
+        <button onclick="closeDeck()" title="Close (Esc) — springs back to the top version">✕</button>
     </div>
 
     <script>
@@ -1255,13 +1604,18 @@
 
             reflowPages();
             const content = editor.innerHTML;
+            // Variation cards live off to the side of the DOM, so markup alone is
+            // no longer the whole document -- a snapshot has to carry the store
+            // with it or undo would restore blocks whose stacks had moved on.
+            const stacksJson = JSON.stringify(stacksForSave());
 
-            if (historyIndex >= 0 && historyStack[historyIndex] === content) return;
-            
+            const prev = historyIndex >= 0 ? historyStack[historyIndex] : null;
+            if (prev && prev.html === content && prev.stacks === stacksJson) return;
+
             if (historyIndex < historyStack.length - 1) {
                 historyStack = historyStack.slice(0, historyIndex + 1);
             }
-            historyStack.push(content);
+            historyStack.push({ html: content, stacks: stacksJson });
             historyIndex++;
             if (historyStack.length > 50) { historyStack.shift(); historyIndex--; }
         }
@@ -1272,13 +1626,19 @@
         // whole script sits in one frame). Restoring one therefore has to re-run
         // the reflow, or everything past the first page stays hidden behind
         // overflow:hidden.
-        function restoreSnapshot(html) {
+        function restoreSnapshot(snap) {
+            // Older snapshots were bare markup strings; tolerate both shapes.
+            const html = typeof snap === 'string' ? snap : snap.html;
+            if (typeof snap !== 'string') loadStacks(JSON.parse(snap.stacks));
             document.getElementById('editor-page').innerHTML = html;
             reflowPages();
+            refreshStacks();
             buildToc();
             extractEntities();
             updateStatistics();
             refreshAllHighlights();
+            if (openStackId) { renderDeck(); positionDeck(); }
+            if (compareWith !== null) renderCompare();
         }
 
         function undo() {
@@ -1492,6 +1852,7 @@
             const range = sel.getRangeAt(0);
             if (editor && editor.contains(range.commonAncestorContainer)) {
                 lastEditorRange = range.cloneRange();
+                updateDeckButton();
             }
         });
 
@@ -1915,6 +2276,11 @@
 
             pendingReflow = false;
             relabelFrames();
+            // Runs move between page frames on every reflow, so which block is
+            // the first and last of a stack has to be recomputed here rather
+            // than being stored anywhere.
+            if (Object.keys(stacks).length) { healStacks(); decorateStacks(); }
+            positionDeck();
         }
 
         let debounceTimer;
@@ -1922,29 +2288,128 @@
             reflowPages();
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
-                buildToc(); 
+                buildToc();
                 extractEntities();
                 updateStatistics();
                 saveState();
                 refreshAllHighlights();
+                // The comparison reads the live script for its right-hand
+                // column, so it has to be redrawn as the writer types -- without
+                // this it freezes at whatever the passage said when Compare was
+                // switched on, and edits appear to do nothing.
+                if (compareWith !== null) renderCompare();
             }, 1000);
         }
         
         let draggedSceneId = null;
 
+        // Navigator filter: 'all' lists every scene, 'stacked' narrows to the
+        // scenes that actually carry alternates. One tree either way -- a second
+        // flat list of variations would only have to be kept in sync with this
+        // one, and would say nothing this doesn't.
+        let tocFilter = 'all';
+        // Which draft lists the writer has opened. Stacks are shut by default:
+        // a script with alternates on twenty scenes would otherwise bury the
+        // scene list under its own drafts, and the count on the scene row
+        // already says there is something to open.
+        //
+        // Keyed by STACK id, never by scene-heading element id. Flipping a
+        // scene-level draft rebuilds the run's blocks -- and the scene heading
+        // is the first of them -- so the heading element that buildToc numbered
+        // a moment ago is gone and its id with it. Keying on that id meant every
+        // click on a draft silently reset the row to collapsed. Stack ids are
+        // handed out once and outlive any number of flips.
+        const tocExpanded = new Set();
+
+        // The expansion key for a Navigator row: the first stack it lists.
+        function tocRowKey(entries) {
+            return entries && entries.length ? 'stack:' + entries[0].id : '';
+        }
+
+        function setTocFilter(mode) { tocFilter = mode; buildToc(); }
+
+        // Every stack that begins inside a given scene, keyed by the scene
+        // heading that owns it. A stack whose first block *is* the heading
+        // belongs to that scene itself.
+        function stacksByScene() {
+            const blocks = getBlocks();
+            const map = new Map();
+            let currentScene = null;
+            const seen = new Set();
+            blocks.forEach(b => {
+                if (b.classList.contains('scene-heading')) currentScene = b;
+                const id = b.dataset.stack;
+                if (!id || seen.has(id) || !stacks[id]) return;
+                seen.add(id);
+                const key = currentScene || '__preamble__';
+                if (!map.has(key)) map.set(key, []);
+                map.get(key).push({ id: id, atHeading: b === currentScene, first: b });
+            });
+            return map;
+        }
+
         function buildToc() {
             const editor = document.getElementById('editor-page');
             const tocList = document.getElementById('toc-list');
             tocList.innerHTML = '';
-            
+
+            // Numbering first: the margin labels and the Navigator have to agree,
+            // so both are drawn from the same single pass over the script.
+            const numbering = numberScript();
+            applyGutterLabels(numbering);
+
+            const byScene = stacksByScene();
+            renderTocFilter(byScene);
+
+            // A script can open before its first scene heading -- The Social
+            // Network's whole cold-open V.O. lives there -- so a stack in that
+            // preamble needs a home in the tree rather than vanishing from it.
+            const pre = byScene.get('__preamble__');
+            if (pre && pre.length) {
+                const li = document.createElement('li');
+                const row = document.createElement('div');
+                row.className = 'toc-scene-row';
+                const preKey = tocRowKey(pre);
+                const tw = document.createElement('span');
+                tw.className = 'toc-twisty';
+                const preOpen = tocExpanded.has(preKey);
+                tw.innerText = preOpen ? '▾' : '▸';
+                tw.onclick = (e) => {
+                    e.stopPropagation();
+                    if (preOpen) tocExpanded.delete(preKey); else tocExpanded.add(preKey);
+                    buildToc();
+                };
+                row.appendChild(tw);
+                const num = document.createElement('span');
+                num.className = 'toc-num';
+                num.innerText = 'S000';
+                num.title = 'Before the first scene heading';
+                row.appendChild(num);
+                const a = document.createElement('a');
+                a.innerText = 'Before the first scene';
+                a.style.fontStyle = 'italic';
+                a.onclick = () => scrollToBlock(pre[0].first, 'start');
+                row.appendChild(a);
+                row.appendChild(tocStackChip(pre, numbering, () => {
+                    if (!preOpen) tocExpanded.add(preKey); else tocExpanded.delete(preKey);
+                    buildToc();
+                }));
+                li.appendChild(row);
+                if (preOpen) pre.forEach(m => li.appendChild(renderTocCards(m, numbering)));
+                tocList.appendChild(li);
+            }
+
             const headings = editor.querySelectorAll('.scene-heading');
             headings.forEach((heading, idx) => {
                 if (!heading.id) heading.id = 'scene-' + Date.now() + '-' + idx;
-                
+
+                const mine = byScene.get(heading) || [];
+                if (tocFilter === 'stacked' && !mine.length) return;
+
                 const li = document.createElement('li');
                 li.draggable = true;
                 li.dataset.sceneId = heading.id;
-                
+
                 li.addEventListener('dragstart', (e) => {
                     draggedSceneId = heading.id;
                     e.dataTransfer.effectAllowed = 'move';
@@ -1970,13 +2435,146 @@
                     }
                 });
 
+                const row = document.createElement('div');
+                row.className = 'toc-scene-row';
+
+                const rowKey = tocRowKey(mine);
+                const open = tocExpanded.has(rowKey);
+                const twisty = document.createElement('span');
+                twisty.className = 'toc-twisty' + (mine.length ? '' : ' leaf');
+                twisty.innerText = open ? '▾' : '▸';
+                twisty.onclick = (e) => {
+                    e.stopPropagation();
+                    if (open) tocExpanded.delete(rowKey); else tocExpanded.add(rowKey);
+                    buildToc();
+                };
+                row.appendChild(twisty);
+
+                const num = document.createElement('span');
+                num.className = 'toc-num';
+                num.innerText = heading.dataset.sceneNum || '';
+                row.appendChild(num);
+
                 const a = document.createElement('a');
                 a.innerText = heading.innerText || "EMPTY SCENE";
                 a.onclick = () => scrollToBlock(heading, 'start');
-                
-                li.appendChild(a);
+                row.appendChild(a);
+
+                if (mine.length) {
+                    row.appendChild(tocStackChip(mine, numbering, () => {
+                        if (!open) tocExpanded.add(rowKey); else tocExpanded.delete(rowKey);
+                        buildToc();
+                    }));
+                }
+                li.appendChild(row);
+
+                if (mine.length && open) {
+                    mine.forEach(m => li.appendChild(renderTocCards(m, numbering)));
+                }
                 tocList.appendChild(li);
             });
+
+            if (!tocList.children.length && tocFilter === 'stacked') {
+                const note = document.createElement('li');
+                note.style.cssText = 'color:#777;font-size:.75rem;padding:6px 4px;line-height:1.4;cursor:default';
+                note.innerText = 'No stacked passages yet. Put the cursor in a scene and press + Variation.';
+                tocList.appendChild(note);
+            }
+        }
+
+        function renderTocFilter(byScene) {
+            const host = document.getElementById('toc-content');
+            let bar = document.getElementById('toc-filter');
+            if (!bar) {
+                bar = document.createElement('div');
+                bar.id = 'toc-filter';
+                bar.innerHTML =
+                    '<button data-mode="all" onclick="setTocFilter(\'all\')">All scenes</button>' +
+                    '<button data-mode="stacked" onclick="setTocFilter(\'stacked\')">Has variations</button>';
+                host.insertBefore(bar, host.firstChild);
+            }
+            bar.querySelectorAll('button').forEach(b =>
+                b.classList.toggle('active', b.dataset.mode === tocFilter));
+            const n = byScene.size;
+            bar.querySelector('[data-mode="stacked"]').innerText =
+                n ? 'Has variations (' + n + ')' : 'Has variations';
+        }
+
+        // The count chip on a scene row. Clicking it opens the scene's drafts
+        // rather than jumping into one, so a click never changes the script.
+        function tocStackChip(entries, numbering, toggle) {
+            const chip = document.createElement('span');
+            chip.className = 'toc-chip';
+            const total = entries.reduce((n, m) => n + stacks[m.id].order.length, 0);
+            chip.innerText = String(total);
+            chip.title = entries.length === 1
+                ? total + ' versions of ' + (numbering.prefixOf.get(entries[0].id) || 'this passage') + ' — click to list them'
+                : entries.length + ' stacked passages in this scene — click to list them';
+            chip.onclick = (e) => { e.stopPropagation(); toggle(); };
+            return chip;
+        }
+
+        // A stack's cards, ranked. The top one is what prints; dragging reorders
+        // the stack and swaps the script to whatever ends up on top, clicking
+        // flips the script to that card to read it in place.
+        function renderTocCards(entry, numbering) {
+            const st = stacks[entry.id];
+            const ul = document.createElement('ul');
+            ul.className = 'toc-cards';
+            const viewing = viewedCard(st);
+            const prefix = numbering.prefixOf.get(entry.id) || 'S000';
+
+            st.order.forEach((cid, i) => {
+                const card = st.cards[cid];
+                const li = document.createElement('li');
+                li.draggable = true;
+                if (i === 0) li.classList.add('top');
+                if (cid === viewing && viewing !== st.order[0]) li.classList.add('viewing');
+                li.title = prefix + '.' + draftLabel(card) + ' — ' +
+                    (i === 0 ? 'this is the version that prints. ' : 'rank ' + (i + 1) + '. ') +
+                    'Click to read it in the script; drag to re-rank.';
+
+                const star = document.createElement('span');
+                star.className = 'star';
+                star.innerText = i === 0 ? '★' : '';
+                li.appendChild(star);
+
+                const dnum = document.createElement('span');
+                dnum.className = 'toc-num draft';
+                dnum.innerText = draftLabel(card);
+                li.appendChild(dnum);
+
+                const label = document.createElement('span');
+                label.className = 'label';
+                label.innerText = card.name;
+                li.appendChild(label);
+
+                li.onclick = () => {
+                    openDeck(entry.id);
+                    flipTo(entry.id, cid);
+                    scrollToBlock(blocksOfStack(entry.id)[0] || entry.first, 'center');
+                };
+                li.addEventListener('dragstart', e => {
+                    e.stopPropagation();
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', 'card:' + entry.id + ':' + cid);
+                });
+                li.addEventListener('dragover', e => {
+                    e.preventDefault(); e.stopPropagation();
+                    li.classList.add('drop-target');
+                });
+                li.addEventListener('dragleave', () => li.classList.remove('drop-target'));
+                li.addEventListener('drop', e => {
+                    e.preventDefault(); e.stopPropagation();
+                    li.classList.remove('drop-target');
+                    const raw = e.dataTransfer.getData('text/plain') || '';
+                    const parts = raw.split(':');
+                    if (parts[0] !== 'card' || parts[1] !== entry.id || parts[2] === cid) return;
+                    reorderCards(entry.id, parts[2], cid);
+                });
+                ul.appendChild(li);
+            });
+            return ul;
         }
         
         function moveScene(sourceId, targetId) {
@@ -2001,6 +2599,1155 @@
             refreshAllHighlights();
             
             scrollToBlock(document.getElementById(sourceId), 'center');
+        }
+
+        /* ==================================================================
+           VARIATION STACKS
+
+           A "stack" is a contiguous run of blocks that exists in more than one
+           version -- the digital equivalent of stapling alternate pages over a
+           passage in a printed script. Each version is a "card"; the cards are
+           ordered, and order[0] is the one that prints.
+
+           The document model here is DOM-as-truth and deliberately flat:
+           reflowPages() paginates by physically moving blocks between page
+           frames, and getBlocks()/buildToc()/statistics/export all assume every
+           block is a direct child of a .page-frame. Wrapping a stack's blocks in
+           a container element would break every one of those. So only the card
+           being *viewed* ever lives in the DOM; the rest sit in `stacks` off to
+           the side, and live blocks merely carry data-stack / data-variant.
+           Flipping a card is a splice: harvest the run out of the DOM into its
+           card, then build the incoming card's blocks in its place.
+           ================================================================== */
+
+        let stacks = {};
+        let stackSeq = 0;
+        // Which stack is fanned open, if any. Purely presentational -- the
+        // authoritative "which card am I looking at" lives on stack.viewing.
+        let openStackId = null;
+        let compareWith = null;
+
+        function newStackId() { return 'st' + (++stackSeq); }
+        function newCardId(st) {
+            let n = 1;
+            while (st.cards['v' + n]) n++;
+            return 'v' + n;
+        }
+        function topCard(st) { return st.order[0]; }
+        function viewedCard(st) {
+            return (st.viewing && st.cards[st.viewing]) ? st.viewing : st.order[0];
+        }
+
+        // Blocks currently in the document that belong to a given stack, in
+        // document order (which spans page frames correctly).
+        function blocksOfStack(id) {
+            return Array.from(document.querySelectorAll(
+                '#editor-page > .page-frame > [data-stack="' + id + '"]'));
+        }
+
+        // Classes the app paints on a block for the moment, which are no part of
+        // what the block *is*. They must never reach a saved card, or reloading
+        // it would restore a hover state as though it were formatting.
+        const TRANSIENT_CLASSES = new Set(['stack-hot', 'sync-flash', 'sync-line-flash']);
+
+        function blockType(n) {
+            const kept = Array.from(n.classList).filter(c => !TRANSIENT_CLASSES.has(c));
+            return kept.join(' ') || 'action';
+        }
+
+        function harvestBlocks(nodes) {
+            return nodes.map(n => ({ type: blockType(n), text: n.innerText }));
+        }
+
+        function buildBlockEl(b, stackId, cardId) {
+            const div = document.createElement('div');
+            div.className = b.type || 'action';
+            div.innerText = b.text;
+            if (stackId) { div.dataset.stack = stackId; div.dataset.variant = cardId; }
+            return div;
+        }
+
+        // Keeps the store and the document honest about each other. Typing
+        // inside a stack can produce blocks that never got the data attributes
+        // (and deleting a run can leave a stack with no blocks at all), so
+        // before drawing anything: re-mark everything between a stack's first
+        // and last surviving block, and drop stacks that no longer exist.
+        function healStacks() {
+            const ids = Object.keys(stacks);
+            if (!ids.length) return;
+            const blocks = getBlocks();
+            const bounds = {};
+            blocks.forEach((b, i) => {
+                const id = b.dataset.stack;
+                if (!id) return;
+                if (!stacks[id]) { delete b.dataset.stack; delete b.dataset.variant; return; }
+                if (bounds[id] === undefined) bounds[id] = [i, i];
+                else bounds[id][1] = i;
+            });
+            ids.forEach(id => {
+                const bd = bounds[id];
+                if (!bd) {
+                    // Only treat "no blocks" as deletion once the document
+                    // actually has content -- mid-load it means nothing yet.
+                    if (blocks.length) {
+                        delete stacks[id];
+                        if (openStackId === id) closeDeck(true);
+                    }
+                    return;
+                }
+                const vid = viewedCard(stacks[id]);
+                for (let i = bd[0]; i <= bd[1]; i++) {
+                    blocks[i].dataset.stack = id;
+                    blocks[i].dataset.variant = vid;
+                }
+            });
+        }
+
+        // Marks the ends of each run so the CSS can draw the gutter chip, the
+        // rail's square ends and the leafed page edges. Derived state only --
+        // recomputed from scratch every time, never persisted.
+        function decorateStacks() {
+            const editor = document.getElementById('editor-page');
+            editor.querySelectorAll('[data-stack], [data-stack-first], [data-stack-last], [data-stack-off]')
+                .forEach(el => {
+                    delete el.dataset.stackFirst;
+                    delete el.dataset.stackLast;
+                    delete el.dataset.stackCount;
+                    delete el.dataset.stackOff;
+                    el.style.removeProperty('--stack-gap');
+                });
+            Object.keys(stacks).forEach(id => {
+                const nodes = blocksOfStack(id);
+                if (!nodes.length) return;
+                const st = stacks[id];
+                // What the gutter mark *says* is applyGutterLabels' business --
+                // it depends on the numbering mode, and it has to be able to
+                // speak for a plain scene heading too. Here we only mark where
+                // the run starts and ends, for the band and the leafing.
+                nodes[0].dataset.stackFirst = '';
+                nodes[nodes.length - 1].dataset.stackLast = '';
+                if (viewedCard(st) !== topCard(st)) nodes.forEach(n => { n.dataset.stackOff = ''; });
+
+                // Hand each block the distance down to the next block of the
+                // run, so its band closes the gap exactly. Measured with
+                // offsetTop/offsetHeight rather than getBoundingClientRect
+                // because those are unzoomed layout pixels -- rect values would
+                // be double-scaled once the zoom slider leaves 100%.
+                nodes.forEach((n, i) => {
+                    const next = nodes[i + 1];
+                    let gap;
+                    if (!next) gap = 4;                                   // tail at the foot of the run
+                    else if (next.offsetParent !== n.offsetParent) gap = 5; // run continues on the next page
+                    else gap = Math.max(0, next.offsetTop - (n.offsetTop + n.offsetHeight)) + 1;
+                    n.style.setProperty('--stack-gap', gap + 'px');
+                });
+            });
+            updateDeckButton();
+        }
+
+        function refreshStacks() { healStacks(); decorateStacks(); }
+
+        // --- Numbering -----------------------------------------------------
+
+        // How much of the numbering to print into the script itself. The
+        // Navigator always shows it -- it is a table of contents, and numbers
+        // are what a table of contents is for -- but the script is the thing you
+        // send out, so labelling it there is opt-in.
+        //   'off'    nothing in the margin (the stack chip still shows a count)
+        //   'scene'  S004 beside every scene heading, like a shooting script
+        //   'draft'  S004.D002 -- which scene, and which draft of it is standing
+        let sceneNumberMode = 'off';
+
+        function pad3(n) { return String(n).padStart(3, '0'); }
+
+        // Walks the script once and works out, for every scene heading, its
+        // number; and for every stack, which scene it belongs to. A scene
+        // holding more than one stacked passage disambiguates them with a
+        // letter -- S004a, S004b -- so a label always names exactly one stack.
+        function numberScript() {
+            const blocks = getBlocks();
+            const prefixOf = new Map();
+            const perScene = new Map();
+            let sceneIdx = 0;
+            let currentScene = null;
+
+            blocks.forEach(b => {
+                if (b.classList.contains('scene-heading')) {
+                    sceneIdx++;
+                    currentScene = b;
+                    b.dataset.sceneNum = 'S' + pad3(sceneIdx);
+                } else if (b.dataset.sceneNum) {
+                    delete b.dataset.sceneNum;
+                }
+                const id = b.dataset.stack;
+                if (!id || !stacks[id] || prefixOf.has(id)) return;
+                prefixOf.set(id, null);
+                const key = currentScene || '__preamble__';
+                if (!perScene.has(key)) perScene.set(key, []);
+                perScene.get(key).push(id);
+            });
+
+            perScene.forEach((ids, key) => {
+                // A stack before the first scene heading -- a cold open, say --
+                // has no scene to belong to, so it gets S000.
+                const base = key === '__preamble__' ? 'S000' : key.dataset.sceneNum;
+                ids.forEach((id, i) => {
+                    prefixOf.set(id, ids.length > 1 ? base + String.fromCharCode(97 + i) : base);
+                });
+            });
+
+            return { prefixOf: prefixOf, sceneCount: sceneIdx };
+        }
+
+        // The full label for whichever card of a stack is currently standing.
+        function stackLabel(id, numbering, cardId) {
+            const st = stacks[id];
+            if (!st) return '';
+            const card = st.cards[cardId || viewedCard(st)];
+            return (numbering.prefixOf.get(id) || 'S000') + '.' + draftLabel(card);
+        }
+
+        // Writes the margin labels. One attribute drives one pseudo-element:
+        // a scene heading that also heads a stack needs a single mark, not two
+        // fighting for the same corner of the gutter.
+        function applyGutterLabels(numbering) {
+            const editor = document.getElementById('editor-page');
+            editor.querySelectorAll('[data-gutter]').forEach(el => {
+                delete el.dataset.gutter;
+                delete el.dataset.gutterKind;
+                delete el.dataset.gutterPrint;
+            });
+
+            if (sceneNumberMode !== 'off') {
+                editor.querySelectorAll('.scene-heading[data-scene-num]').forEach(el => {
+                    el.dataset.gutter = el.dataset.sceneNum;
+                    el.dataset.gutterKind = 'scene';
+                    el.dataset.gutterPrint = '1';
+                });
+            }
+
+            Object.keys(stacks).forEach(id => {
+                const first = blocksOfStack(id)[0];
+                if (!first) return;
+                if (sceneNumberMode === 'draft') {
+                    first.dataset.gutter = stackLabel(id, numbering);
+                    first.dataset.gutterPrint = '1';
+                } else if (sceneNumberMode === 'scene' && first.dataset.sceneNum) {
+                    first.dataset.gutter = first.dataset.sceneNum;
+                    first.dataset.gutterPrint = '1';
+                } else {
+                    // Nothing to name it with, so fall back to what the mark
+                    // meant before numbering existed: how deep the stack is.
+                    first.dataset.gutter = String(stacks[id].order.length);
+                    delete first.dataset.gutterPrint;
+                }
+                first.dataset.gutterKind = 'stack';
+            });
+        }
+
+        function setSceneNumberMode(mode) {
+            sceneNumberMode = mode;
+            const sel = document.getElementById('scene-number-mode');
+            if (sel && sel.value !== mode) sel.value = mode;
+            buildToc();
+        }
+
+        // --- Creating a variation ---------------------------------------
+
+        // No selection: the whole scene the cursor sits in. Selection: exactly
+        // what was selected. Returns an array of blocks, or null.
+        function resolveTargetRun() {
+            const blocks = getBlocks();
+            if (!blocks.length) return null;
+            const range = activeEditorRange();
+
+            if (range && !range.collapsed) {
+                const picked = blocksInRange(range);
+                if (picked.length) return picked;
+            }
+
+            let node = range ? findBlockNode(range.startContainer) : null;
+            let i = node ? blocks.indexOf(node) : -1;
+            if (i < 0) i = 0;
+            let s = i;
+            while (s > 0 && !blocks[s].classList.contains('scene-heading')) s--;
+            let e = i;
+            while (e < blocks.length - 1 && !blocks[e + 1].classList.contains('scene-heading')) e++;
+            return blocks.slice(s, e + 1);
+        }
+
+        function addVariation() {
+            const run = resolveTargetRun();
+            if (!run || !run.length) {
+                alert('Put the cursor in the script first, or select the passage you want to vary.');
+                return;
+            }
+
+            // Landing on an existing stack means "another version of this", not
+            // "a stack inside a stack" -- so add a card to what is already there
+            // rather than trying to nest or split runs.
+            const existing = run.map(b => b.dataset.stack).find(Boolean);
+            if (existing && stacks[existing]) {
+                addCardTo(existing);
+                return;
+            }
+
+            const id = newStackId();
+            const st = {
+                id: id,
+                order: [],
+                viewing: null,
+                seq: 0,
+                cards: {}
+            };
+            stacks[id] = st;
+
+            // The passage as it stands becomes the first card, and the new one
+            // is a copy of it -- you almost always write an alternate by riffing
+            // on what is already on the page, not from a blank.
+            const original = harvestBlocks(run);
+            st.cards.v1 = makeCard('Draft 1', original, nextCardNum(st));
+            st.order.push('v1');
+            run.forEach(b => { b.dataset.stack = id; b.dataset.variant = 'v1'; });
+
+            addCardTo(id);
+        }
+
+        // A card's number is its identity, handed out once at creation and never
+        // reused or reshuffled. Rank is a separate thing entirely -- it is the
+        // position in `order`, and the star marks whichever card is currently
+        // first. Keeping them apart is the whole point: if D002 were "the second
+        // one down" it would name a different piece of writing every time
+        // somebody re-ranked the stack, and "go back to S004.D002" in a note or
+        // an email would mean nothing a week later.
+        function nextCardNum(st) {
+            st.seq = (st.seq || 0) + 1;
+            return st.seq;
+        }
+
+        function makeCard(name, blocks, num) {
+            return {
+                num: num,
+                name: name,
+                note: '',
+                author: '',
+                created: new Date().toISOString(),
+                blocks: blocks
+            };
+        }
+
+        function draftLabel(card) {
+            return 'D' + String(card && card.num ? card.num : 1).padStart(3, '0');
+        }
+
+        function addCardTo(stackId) {
+            const st = stacks[stackId];
+            if (!st) return;
+            const from = viewedCard(st);
+            // Whatever is on screen is the newest truth for the card it belongs
+            // to; capture it before cloning.
+            const live = blocksOfStack(stackId);
+            if (live.length && st.cards[from]) st.cards[from].blocks = harvestBlocks(live);
+
+            const cid = newCardId(st);
+            const num = nextCardNum(st);
+            st.cards[cid] = makeCard('Draft ' + num,
+                JSON.parse(JSON.stringify(st.cards[from].blocks)), num);
+            // A newly stapled page goes on top of the stack, and it is what you
+            // are about to write, so show it and make it the one that prints.
+            st.order.unshift(cid);
+            st.viewing = cid;
+
+            swapRunTo(stackId, cid);
+            openDeck(stackId);
+            saveState();
+
+            // Put the caret in the new version rather than in its name field.
+            // The copy is identical to what it was cloned from, so nothing on
+            // screen changes at this moment -- landing the cursor in the script
+            // is what makes it clear that typing now edits this version, and
+            // that the passage is where the editing happens. The name is still
+            // one click away on the deck tab.
+            const first = blocksOfStack(stackId)[0];
+            if (first) {
+                const editor = document.getElementById('editor-page');
+                const range = document.createRange();
+                range.selectNodeContents(first);
+                range.collapse(true);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+                editor.focus();
+                lastEditorRange = range.cloneRange();
+                scrollToBlock(first, 'center');
+            }
+            updateDeckButton();
+        }
+
+        // --- Flipping ----------------------------------------------------
+
+        // Replaces the stack's run in the document with a different card's
+        // blocks, in place. Everything downstream (pagination, TOC, statistics,
+        // export) keeps seeing a plain flat list of blocks.
+        function swapRunTo(stackId, cardId) {
+            const st = stacks[stackId];
+            if (!st || !st.cards[cardId]) return;
+            const nodes = blocksOfStack(stackId);
+            if (!nodes.length) return;
+
+            const from = st.viewing;
+            if (from && from !== cardId && st.cards[from]) {
+                st.cards[from].blocks = harvestBlocks(nodes);
+            }
+
+            const anchor = nodes[nodes.length - 1];
+            const frame = anchor.parentNode;
+            const after = anchor.nextSibling;
+            // Scene headings are anchored by element id (the Navigator scrolls
+            // and reorders by it). Rebuilding the run would mint a fresh id for
+            // every heading inside it on every single flip, so carry the old one
+            // across where the incoming block is a heading too.
+            const carriedIds = nodes.map(n => (n.classList.contains('scene-heading') && n.id) ? n.id : null);
+            nodes.forEach(n => n.remove());
+
+            const frag = document.createDocumentFragment();
+            st.cards[cardId].blocks.forEach((b, i) => {
+                const el = buildBlockEl(b, stackId, cardId);
+                if (carriedIds[i] && el.classList.contains('scene-heading')) el.id = carriedIds[i];
+                frag.appendChild(el);
+            });
+            frame.insertBefore(frag, after);
+
+            st.viewing = cardId;
+            reflowPages();
+            buildToc();
+            extractEntities();
+            updateStatistics();
+            refreshAllHighlights();
+            if (compareWith !== null) renderCompare();
+            positionDeck();
+        }
+
+        function flipTo(stackId, cardId) {
+            const st = stacks[stackId];
+            if (!st) return;
+            if (viewedCard(st) === cardId) return;
+            swapRunTo(stackId, cardId);
+            renderDeck();
+            const first = blocksOfStack(stackId)[0];
+            if (first) scrollToBlock(first, 'center');
+        }
+
+        function flipBy(delta) {
+            if (!openStackId) return;
+            const st = stacks[openStackId];
+            if (!st) return;
+            const i = st.order.indexOf(viewedCard(st));
+            const next = st.order[(i + delta + st.order.length) % st.order.length];
+            flipTo(openStackId, next);
+        }
+
+        // Reading a card never reorders the stack -- restapling is this, and it
+        // is always explicit.
+        function moveViewedToTop() {
+            if (!openStackId) return;
+            const st = stacks[openStackId];
+            const cid = viewedCard(st);
+            st.order = [cid].concat(st.order.filter(x => x !== cid));
+            decorateStacks();
+            renderDeck();
+            buildToc();
+            saveState();
+        }
+
+        function deleteViewedCard() {
+            if (!openStackId) return;
+            const st = stacks[openStackId];
+            const cid = viewedCard(st);
+            if (st.order.length <= 1) {
+                if (!confirm('This is the last version. Deleting it removes the stack and leaves the passage as ordinary script. Continue?'))
+                    return;
+                unstack(openStackId);
+                return;
+            }
+            if (!confirm('Delete the version "' + st.cards[cid].name + '"?')) return;
+            const i = st.order.indexOf(cid);
+            st.order.splice(i, 1);
+            delete st.cards[cid];
+            const nextId = st.order[Math.min(i, st.order.length - 1)];
+            st.viewing = null;
+            swapRunTo(openStackId, nextId);
+            decorateStacks();
+            renderDeck();
+            buildToc();
+            saveState();
+        }
+
+        // Dissolves a stack, leaving whatever card is on screen as plain script.
+        function unstack(stackId) {
+            const nodes = blocksOfStack(stackId);
+            nodes.forEach(n => { delete n.dataset.stack; delete n.dataset.variant; });
+            delete stacks[stackId];
+            closeDeck(true);
+            decorateStacks();
+            buildToc();
+            saveState();
+        }
+
+        // --- The deck bar ------------------------------------------------
+
+        function openDeck(stackId) {
+            if (!stacks[stackId]) return;
+            openStackId = stackId;
+            document.getElementById('deck-bar').classList.add('open');
+            renderDeck();
+            positionDeck();
+        }
+
+        // Closing springs the passage back to the card that prints, the way a
+        // fanned stack of stapled pages falls back into order when you let go.
+        function closeDeck(skipSpring) {
+            const id = openStackId;
+            openStackId = null;
+            document.getElementById('deck-bar').classList.remove('open');
+            if (compareWith !== null) { compareWith = null; setSideMode('exact'); }
+            if (!skipSpring && id && stacks[id] && viewedCard(stacks[id]) !== topCard(stacks[id])) {
+                swapRunTo(id, topCard(stacks[id]));
+                decorateStacks();
+            }
+            updateDeckButton();
+        }
+
+        function springBackAll() {
+            if (openStackId) closeDeck();
+            Object.keys(stacks).forEach(id => {
+                const st = stacks[id];
+                if (viewedCard(st) !== topCard(st)) swapRunTo(id, topCard(st));
+            });
+            decorateStacks();
+        }
+
+        function stackAtCursor() {
+            const range = activeEditorRange();
+            const node = range ? findBlockNode(range.startContainer) : null;
+            const id = node && node.dataset ? node.dataset.stack : null;
+            return (id && stacks[id]) ? id : null;
+        }
+
+        function toggleDeckAtCursor() {
+            const id = stackAtCursor();
+            if (!id) return;
+            if (openStackId === id) closeDeck();
+            else openDeck(id);
+        }
+
+        function updateDeckButton() {
+            const btn = document.getElementById('btn-open-deck');
+            if (!btn) return;
+            const id = stackAtCursor();
+            btn.disabled = !id;
+            document.getElementById('btn-deck-count').innerText =
+                id ? String(stacks[id].order.length) : '0';
+        }
+
+        function renderDeck() {
+            if (!openStackId) return;
+            const st = stacks[openStackId];
+            if (!st) { closeDeck(true); return; }
+            const viewing = viewedCard(st);
+            const top = topCard(st);
+
+            document.getElementById('deck-count').innerText =
+                st.order.length + ' version' + (st.order.length === 1 ? '' : 's');
+
+            const wrap = document.getElementById('deck-cards');
+            wrap.innerHTML = '';
+            st.order.forEach((cid, idx) => {
+                const card = st.cards[cid];
+                const el = document.createElement('div');
+                el.className = 'deck-card' + (cid === viewing ? ' viewing' : '');
+                el.draggable = true;
+                el.title = draftLabel(card) + ' — ' +
+                    (cid === top ? 'this is the version that prints. ' : 'rank ' + (idx + 1) + '. ') +
+                    'Click to read it here in the script. Drag to re-rank; whatever lands on top is what prints.';
+
+                const star = document.createElement('span');
+                star.className = 'star';
+                star.innerText = cid === top ? '★' : '';
+                el.appendChild(star);
+
+                const dnum = document.createElement('span');
+                dnum.className = 'deck-num';
+                dnum.innerText = draftLabel(card);
+                el.appendChild(dnum);
+
+                const input = document.createElement('input');
+                input.value = card.name;
+                input.spellcheck = false;
+                input.addEventListener('change', () => {
+                    card.name = input.value.trim() || 'Untitled';
+                    buildToc();
+                    saveState();
+                });
+                input.addEventListener('keydown', e => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') input.blur();
+                });
+                input.addEventListener('mousedown', e => {
+                    // First click flips to the card; only once you are already
+                    // reading it does the field take the caret for renaming.
+                    if (cid !== viewedCard(st)) { e.preventDefault(); flipTo(openStackId, cid); }
+                });
+                el.appendChild(input);
+
+                el.addEventListener('click', e => {
+                    if (e.target === input) return;
+                    flipTo(openStackId, cid);
+                });
+                el.addEventListener('dragstart', e => {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', cid);
+                });
+                el.addEventListener('dragover', e => { e.preventDefault(); });
+                el.addEventListener('drop', e => {
+                    e.preventDefault();
+                    const src = e.dataTransfer.getData('text/plain');
+                    if (!src || src === cid) return;
+                    reorderCards(openStackId, src, cid);
+                });
+                wrap.appendChild(el);
+            });
+
+            document.getElementById('deck-top').disabled = viewing === top;
+            document.getElementById('deck-compare').classList.toggle('primary', compareWith !== null);
+        }
+
+        function reorderCards(stackId, srcId, beforeId) {
+            const st = stacks[stackId];
+            st.order = st.order.filter(x => x !== srcId);
+            st.order.splice(st.order.indexOf(beforeId), 0, srcId);
+            // Ranking IS the choice of which version stands: dragging a draft to
+            // the top has to put it on the page, not merely relabel the list.
+            if (viewedCard(st) !== topCard(st)) swapRunTo(stackId, topCard(st));
+            decorateStacks();
+            renderDeck();
+            buildToc();
+            saveState();
+        }
+
+        // The bar tracks the run it belongs to: it is anchored above the first
+        // block of the stack and clamped into view, so scrolling the script
+        // never leaves it stranded.
+        function positionDeck() {
+            const bar = document.getElementById('deck-bar');
+            if (!openStackId || !bar.classList.contains('open')) return;
+            const first = blocksOfStack(openStackId)[0];
+            const pane = document.getElementById('pane-editable');
+            if (!first || !pane) return;
+            const r = first.getBoundingClientRect();
+            const pr = pane.getBoundingClientRect();
+            const bw = bar.offsetWidth || 420;
+            const bh = bar.offsetHeight || 36;
+
+            let left = r.left - 4;
+            left = Math.max(pr.left + 6, Math.min(left, pr.right - bw - 6));
+            // Prefer sitting just above the run. With no room -- the passage is
+            // at the very top of the script -- pin under the pane header rather
+            // than dropping the bar into the middle of the passage it labels.
+            let top = r.top - bh - 8;
+            if (top < pr.top + 6) top = pr.top + 6;
+
+            bar.style.left = left + 'px';
+            bar.style.top = top + 'px';
+            // Scrolled entirely out of the pane: hide rather than float over
+            // unrelated script.
+            bar.style.visibility = (r.bottom < pr.top || r.top > pr.bottom) ? 'hidden' : 'visible';
+        }
+
+        // --- Compare (side-by-side diff in the side pane) -----------------
+
+        function toggleCompare() {
+            if (!openStackId) return;
+            if (compareWith !== null) {
+                compareWith = null;
+                setSideMode('exact');
+                renderDeck();
+                return;
+            }
+            const st = stacks[openStackId];
+            const viewing = viewedCard(st);
+            compareWith = st.order.find(c => c !== viewing) || viewing;
+            setSideMode('compare');
+            renderCompare();
+            renderDeck();
+        }
+
+        // The side pane is a slot: it holds the rendered source PDF or the
+        // comparison, never both. A project loaded from JSON has no PDF, so the
+        // slot is free and comparison simply takes it.
+        function setSideMode(mode) {
+            paneState.sideMode = mode;
+            const isCompare = mode === 'compare';
+            document.getElementById('compare-viewer').classList.toggle('active', isCompare);
+            document.getElementById('pdf-viewer').style.display = isCompare ? 'none' : '';
+            document.getElementById('pane-title-exact').innerText = isCompare ? 'Compare Versions' : 'Exact View';
+            if (isCompare) {
+                paneState.exact = true;
+                paneState.editable = true;
+                applyPaneLayout();
+            } else if (!pdfLoaded) {
+                paneState.exact = false;
+                paneState.editable = true;
+                applyPaneLayout();
+            }
+        }
+
+        function renderCompare() {
+            const head = document.getElementById('compare-head');
+            const body = document.getElementById('compare-body');
+            if (!openStackId || compareWith === null) {
+                head.innerHTML = '';
+                body.innerHTML = '<div id="compare-empty">Open a stack and press <b>⇄ Compare</b> to see two versions side by side.</div>';
+                return;
+            }
+            const st = stacks[openStackId];
+            const leftId = compareWith;
+            const rightId = viewedCard(st);
+
+            head.innerHTML = '';
+            const sel = document.createElement('select');
+            st.order.forEach(cid => {
+                const o = document.createElement('option');
+                o.value = cid;
+                o.text = st.cards[cid].name + (cid === topCard(st) ? ' ★' : '');
+                if (cid === leftId) o.selected = true;
+                sel.appendChild(o);
+            });
+            sel.onchange = () => { compareWith = sel.value; renderCompare(); };
+            head.appendChild(sel);
+            head.appendChild(Object.assign(document.createElement('span'), { innerText: '→' }));
+            head.appendChild(Object.assign(document.createElement('b'), {
+                innerText: st.cards[rightId].name + (rightId === topCard(st) ? ' ★' : ''),
+                title: 'The version currently open in the script'
+            }));
+            const a = st.cards[leftId].blocks;
+            const b = harvestBlocks(blocksOfStack(openStackId));
+            const diff = computeDiff(a, b);
+
+            const status = document.createElement('span');
+            status.className = 'compare-status' + (diff.changed ? '' : ' clean');
+            status.innerText = diff.changed
+                ? diff.changed + (diff.changed === 1 ? ' line differs' : ' lines differ')
+                : 'identical';
+            head.appendChild(status);
+
+            const legend = document.createElement('span');
+            legend.className = 'swatch';
+            legend.style.marginLeft = 'auto';
+            legend.innerHTML = diff.changed
+                ? '<span style="background:var(--diff-del);padding:0 5px;border-radius:2px">removed</span>' +
+                  '<span style="background:var(--diff-add);padding:0 5px;border-radius:2px">added</span>'
+                : '';
+            head.appendChild(legend);
+
+            body.innerHTML = '';
+            body.classList.toggle('diff-clean', !diff.changed);
+
+            // A duplicate with nothing changed yet gives no other clue about
+            // where the typing is supposed to go, so say it outright: this view
+            // is a mirror, the script pane is the editor.
+            const hint = document.createElement('div');
+            hint.className = 'compare-hint';
+            hint.innerHTML = diff.changed
+                ? 'Editing <b>' + escapeHtml(st.cards[rightId].name) + '</b> in the script pane — this follows as you type.'
+                : '<b>' + escapeHtml(st.cards[rightId].name) + '</b> is an exact copy of <b>' +
+                  escapeHtml(st.cards[leftId].name) + '</b>. Type in the script pane to change it; every edit shows up here.';
+            body.appendChild(hint);
+            body.appendChild(renderDiff(diff, leftId));
+        }
+
+        // Block-level alignment first (so a rewritten line pairs with the line
+        // it replaced rather than shifting everything after it), then word-level
+        // inside each changed pair.
+        function diffOps(a, b, eq) {
+            const n = a.length, m = b.length;
+            const dp = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+            for (let i = n - 1; i >= 0; i--) {
+                for (let j = m - 1; j >= 0; j--) {
+                    dp[i][j] = eq(a[i], b[j]) ? dp[i + 1][j + 1] + 1
+                                              : Math.max(dp[i + 1][j], dp[i][j + 1]);
+                }
+            }
+            const ops = [];
+            let i = 0, j = 0;
+            while (i < n && j < m) {
+                if (eq(a[i], b[j])) { ops.push({ op: '=', a: a[i], b: b[j], ai: i, bi: j }); i++; j++; }
+                else if (dp[i + 1][j] >= dp[i][j + 1]) { ops.push({ op: '-', a: a[i], ai: i }); i++; }
+                else { ops.push({ op: '+', b: b[j], bi: j }); j++; }
+            }
+            while (i < n) { ops.push({ op: '-', a: a[i], ai: i }); i++; }
+            while (j < m) { ops.push({ op: '+', b: b[j], bi: j }); j++; }
+            return ops;
+        }
+
+        // Adjacent -/+ runs are the same passage rewritten; pair them up so the
+        // reader sees a replacement rather than a delete followed by an insert.
+        function pairOps(ops) {
+            const rows = [];
+            for (let k = 0; k < ops.length; k++) {
+                if (ops[k].op === '-') {
+                    let dels = [], adds = [];
+                    while (k < ops.length && ops[k].op === '-') dels.push(ops[k++]);
+                    while (k < ops.length && ops[k].op === '+') adds.push(ops[k++]);
+                    k--;
+                    const len = Math.max(dels.length, adds.length);
+                    for (let x = 0; x < len; x++) rows.push({ l: dels[x] || null, r: adds[x] || null });
+                } else if (ops[k].op === '+') {
+                    rows.push({ l: null, r: ops[k] });
+                } else {
+                    rows.push({ l: ops[k], r: ops[k], same: true });
+                }
+            }
+            return rows;
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+        }
+
+        function wordDiff(oldText, newText) {
+            const split = s => s.split(/(\s+)/).filter(x => x !== '');
+            const A = split(oldText || ''), B = split(newText || '');
+            const ops = diffOps(A, B, (x, y) => x === y);
+            let l = '', r = '';
+            ops.forEach(o => {
+                if (o.op === '=') { l += escapeHtml(o.a); r += escapeHtml(o.b); }
+                else if (o.op === '-') { if (o.a.trim()) l += '<del>' + escapeHtml(o.a) + '</del>'; else l += escapeHtml(o.a); }
+                else { if (o.b.trim()) r += '<ins>' + escapeHtml(o.b) + '</ins>'; else r += escapeHtml(o.b); }
+            });
+            return [l, r];
+        }
+
+        function computeDiff(a, b) {
+            const rows = pairOps(diffOps(a, b, (x, y) => x.type === y.type && x.text === y.text));
+            return { rows: rows, changed: rows.filter(r => !r.same).length };
+        }
+
+        function renderDiff(diff, leftId) {
+            const rows = diff.rows;
+            const changed = diff.changed;
+            const frag = document.createDocumentFragment();
+
+            // Long stretches of untouched script are noise -- collapse them the
+            // way a unified diff does, keeping two blocks of context each side.
+            //
+            // With nothing changed at all there is no noise to cut, and
+            // collapsing would reduce the whole passage to a single "N
+            // unchanged" line: a version you have just duplicated would come up
+            // looking blank, which reads as broken rather than as identical.
+            // So a clean diff shows the passage in full.
+            const keep = new Array(rows.length).fill(!changed);
+            rows.forEach((row, i) => {
+                if (!row.same) for (let k = i - 2; k <= i + 2; k++) if (k >= 0 && k < rows.length) keep[k] = true;
+            });
+
+            let skipped = 0;
+            const flushGap = () => {
+                if (!skipped) return;
+                const g = document.createElement('div');
+                g.className = 'diff-gap';
+                g.innerText = '⋯ ' + skipped + ' unchanged ⋯';
+                frag.appendChild(g);
+                skipped = 0;
+            };
+
+            rows.forEach((row, i) => {
+                if (!keep[i]) { skipped++; return; }
+                flushGap();
+
+                const wrap = document.createElement('div');
+                wrap.className = 'diff-row';
+                const lText = row.l ? row.l.a.text : null;
+                const rText = row.r ? row.r.b.text : null;
+                let lHtml = lText === null ? '' : escapeHtml(lText);
+                let rHtml = rText === null ? '' : escapeHtml(rText);
+                if (!row.same && lText !== null && rText !== null) {
+                    const wd = wordDiff(lText, rText);
+                    lHtml = wd[0]; rHtml = wd[1];
+                }
+
+                const cell = (html, block, cls) => {
+                    const d = document.createElement('div');
+                    d.className = 'diff-cell ' + cls + (block ? '' : ' empty');
+                    if (!block) return d;
+                    const kind = document.createElement('span');
+                    kind.className = 'kind';
+                    kind.innerText = (block.type || '').replace('-', ' ');
+                    d.appendChild(kind);
+                    const t = document.createElement('span');
+                    t.innerHTML = html;
+                    d.appendChild(t);
+                    return d;
+                };
+
+                const lCell = cell(lHtml, row.l ? row.l.a : null, row.same ? 'same' : 'del');
+                const rCell = cell(rHtml, row.r ? row.r.b : null, row.same ? 'same' : 'add');
+
+                // Cherry-pick: pull this block out of the other version into the
+                // one you are editing. Merging prose automatically is meaningless
+                // -- a human picks -- so this is the merge story.
+                if (!row.same && row.l) {
+                    const take = document.createElement('button');
+                    take.className = 'diff-take';
+                    take.innerText = 'take →';
+                    take.title = 'Copy this block into the version open in the script';
+                    take.onclick = () => takeBlock(leftId, row.l.ai, row.r ? row.r.bi : null);
+                    lCell.insertBefore(take, lCell.firstChild);
+                }
+
+                wrap.appendChild(lCell);
+                wrap.appendChild(rCell);
+                frag.appendChild(wrap);
+            });
+            flushGap();
+            if (!frag.childNodes.length) {
+                const d = document.createElement('div');
+                d.id = 'compare-empty';
+                d.innerText = 'Nothing to compare — this passage is empty.';
+                frag.appendChild(d);
+            }
+            return frag;
+        }
+
+        function takeBlock(fromId, fromIdx, intoIdx) {
+            if (!openStackId) return;
+            const st = stacks[openStackId];
+            const src = st.cards[fromId].blocks[fromIdx];
+            if (!src) return;
+            const nodes = blocksOfStack(openStackId);
+            if (!nodes.length) return;
+
+            if (intoIdx !== null && nodes[intoIdx]) {
+                nodes[intoIdx].className = src.type;
+                nodes[intoIdx].innerText = src.text;
+            } else {
+                // Nothing on this side to replace -- it is a pure deletion, so
+                // reinstate it at the nearest position we can.
+                const at = Math.min(fromIdx, nodes.length - 1);
+                const el = buildBlockEl(src, openStackId, viewedCard(st));
+                nodes[at].parentNode.insertBefore(el, nodes[at]);
+            }
+            reflowPages();
+            refreshStacks();
+            buildToc();
+            updateStatistics();
+            renderCompare();
+            saveState();
+        }
+
+        // --- Persistence helpers -----------------------------------------
+
+        function cloneStacks() { return JSON.parse(JSON.stringify(stacks)); }
+
+        function stacksForSave() {
+            // Whatever is on screen is the freshest copy of the card it belongs
+            // to; fold it back in before writing anything out.
+            Object.keys(stacks).forEach(id => {
+                const nodes = blocksOfStack(id);
+                const st = stacks[id];
+                const cid = viewedCard(st);
+                if (nodes.length && st.cards[cid]) st.cards[cid].blocks = harvestBlocks(nodes);
+            });
+            return stacks;
+        }
+
+        // `settle` is for loading a file, where the markup on disk always shows
+        // the printing version. Undo must NOT settle: its markup is a snapshot of
+        // whatever card was open at the time, and forcing the store back to the
+        // top card would leave the two disagreeing.
+        function loadStacks(data, settle) {
+            stacks = (data && typeof data === 'object') ? data : {};
+            stackSeq = 0;
+            Object.keys(stacks).forEach(id => {
+                const n = parseInt(String(id).replace(/\D/g, ''), 10);
+                if (!isNaN(n) && n > stackSeq) stackSeq = n;
+                const st = stacks[id];
+                st.id = id;
+                if (!Array.isArray(st.order)) st.order = Object.keys(st.cards || {});
+                if (settle || !st.cards[st.viewing]) st.viewing = st.order[0];
+
+                // Files written before cards carried numbers get them here, in
+                // rank order -- the closest thing to creation order that such a
+                // file still records. From this point on they never move.
+                let seq = st.seq || 0;
+                st.order.forEach(cid => {
+                    const card = st.cards[cid];
+                    if (card && !card.num) card.num = ++seq;
+                    else if (card && card.num > seq) seq = card.num;
+                });
+                st.seq = seq;
+            });
+            if (openStackId && !stacks[openStackId]) {
+                openStackId = null;
+                compareWith = null;
+                document.getElementById('deck-bar').classList.remove('open');
+            }
+            if (settle) {
+                openStackId = null;
+                compareWith = null;
+                document.getElementById('deck-bar').classList.remove('open');
+                setSideMode('exact');
+                // Stack ids restart at st1 for every document, so expansion
+                // state left over from the last script would otherwise reopen
+                // arbitrary rows in this one.
+                tocExpanded.clear();
+            }
+        }
+
+        function resetStacks() { loadStacks({}, true); }
+
+        // --- Folding hand-marked alternates into stacks --------------------
+
+        // Scripts written before this feature existed mark their alternates by
+        // hand, with a line like:  * ALT DRAFT -- "THE SCULLERY EXCHANGE" (v1) *
+        // Each such marker introduces a rewrite of an earlier scene; matching it
+        // to that scene by heading turns the appendix into real stacks.
+        // "* ALT DRAFT -- ... *" is a rewrite of a scene that already exists.
+        const ALT_MARKER = /^\s*\*+\s*(ALT(?:ERNATE)?(?:\s+DRAFT)?|VARIATION)\b[^\n]*$/i;
+        // "* ADDITIONAL SCENE -- ... *" is a new scene, not a version of one, so
+        // it is deliberately left alone -- folding it would silently hide script.
+        const EXTRA_MARKER = /^\s*\*+\s*(ADDITIONAL|EXTRA|BONUS)\s+SCENE\b[^\n]*$/i;
+        const ANY_MARKER = t => ALT_MARKER.test(t) || EXTRA_MARKER.test(t);
+
+        // A scene heading's location -- everything between the INT./EXT. and the
+        // first dash. Alternates of the same scene almost always keep the
+        // location and vary the qualifiers ("SERVICE CORRIDOR - NIGHT" vs
+        // "SERVICE CORRIDOR - GATSBY GALA - NIGHT"), so this is what identifies
+        // the scene a rewrite belongs to; the rest only breaks ties.
+        function headingLocation(s) {
+            let t = (s || '').toUpperCase().replace(/^\s*(INT\.?\/EXT\.?|EXT\.?\/INT\.?|INT\.?|EXT\.?|I\/E)\s*/, '');
+            t = t.split(/\s+[-–—]\s+/)[0];
+            return t.replace(/[^A-Z0-9]/g, '');
+        }
+
+        function headingTokens(s) {
+            return (s || '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+        }
+
+        function headingOverlap(a, b) {
+            const A = headingTokens(a), B = new Set(headingTokens(b));
+            if (!A.length) return 0;
+            return A.filter(w => B.has(w)).length / Math.max(A.length, B.size);
+        }
+
+        function detectAltDrafts() {
+            const blocks = getBlocks();
+            // Everything from the first marker onwards is the appendix. Only
+            // scenes before it are candidate targets -- otherwise alternates
+            // chain onto each other instead of onto the real scene.
+            let firstMarker = blocks.findIndex(b => ANY_MARKER(b.innerText));
+            if (firstMarker < 0) return [];
+            const candidates = [];
+            for (let k = 0; k < firstMarker; k++) {
+                if (blocks[k].classList.contains('scene-heading')) candidates.push(k);
+            }
+
+            const found = [];
+            blocks.forEach((b, i) => {
+                if (i < firstMarker || b.dataset.stack) return;
+                const isAlt = ALT_MARKER.test(b.innerText);
+                if (!isAlt && !EXTRA_MARKER.test(b.innerText)) return;
+
+                // The alternate runs from its scene heading to the next marker.
+                let s = i + 1;
+                while (s < blocks.length && !blocks[s].classList.contains('scene-heading')) s++;
+                if (s >= blocks.length) return;
+                let e = s;
+                while (e < blocks.length - 1 && !ANY_MARKER(blocks[e + 1].innerText)) e++;
+
+                const heading = blocks[s].innerText.trim();
+                const loc = headingLocation(heading);
+                let targetStart = -1, best = -1;
+                if (isAlt && loc) {
+                    candidates.forEach(k => {
+                        if (headingLocation(blocks[k].innerText) !== loc) return;
+                        const score = headingOverlap(heading, blocks[k].innerText);
+                        if (score > best) { best = score; targetStart = k; }
+                    });
+                }
+                const label = (b.innerText.match(/"([^"]+)"/) ||
+                               [null, b.innerText.replace(/[*]/g, '').replace(/^\s*\w+\s+\w+\s*--\s*/, '').trim()])[1];
+                found.push({
+                    markerIdx: i, altStart: s, altEnd: e, targetStart: targetStart,
+                    label: label, heading: heading, kind: isAlt ? 'alt' : 'extra'
+                });
+            });
+            return found;
+        }
+
+        function foldAltDrafts() {
+            const blocks = getBlocks();
+            const all = detectAltDrafts();
+            const found = all.filter(f => f.kind === 'alt' && f.targetStart >= 0);
+            const skipped = all.filter(f => !found.includes(f));
+            if (!found.length) {
+                alert('No hand-marked alternates could be matched to a scene.\n\n' +
+                      'This looks for lines like:\n    * ALT DRAFT -- "THE SCULLERY EXCHANGE" *\n' +
+                      'followed by a scene heading whose location also appears earlier in the script.' +
+                      (all.length ? '\n\nFound ' + all.length + ' marker(s), but none matched an earlier scene.' : ''));
+                return;
+            }
+            const summary = found.map(f =>
+                '  • "' + f.label + '"\n        onto: ' + blocks[f.targetStart].innerText.trim()).join('\n');
+            const skipNote = skipped.length
+                ? '\n\nLeft alone (' + skipped.length + '):\n' + skipped.map(f =>
+                    '  • "' + f.label + '" — ' +
+                    (f.kind === 'extra' ? 'marked as an additional scene, not a version'
+                                        : 'no earlier scene in that location')).join('\n')
+                : '';
+            if (!confirm('Fold ' + found.length + ' hand-marked alternate' + (found.length === 1 ? '' : 's') +
+                ' into stacks?\n\n' + summary + skipNote +
+                '\n\nEach one is lifted out of the appendix and stapled onto the scene it rewrites. ' +
+                'The original stays on top; nothing is lost. Undo (Ctrl+Z) reverses this.')) return;
+
+            // Work back to front so earlier indices stay valid as blocks are removed.
+            found.sort((a, b) => b.markerIdx - a.markerIdx);
+            found.forEach(f => {
+                // The scene being rewritten: heading through to the next heading.
+                let te = f.targetStart;
+                while (te < blocks.length - 1 && !blocks[te + 1].classList.contains('scene-heading')) te++;
+                const targetRun = blocks.slice(f.targetStart, te + 1);
+                if (targetRun.some(b => b.dataset.stack)) {
+                    const id = targetRun.map(b => b.dataset.stack).find(Boolean);
+                    attachCard(id, f.label, blocks.slice(f.altStart, f.altEnd + 1));
+                } else {
+                    const id = newStackId();
+                    stacks[id] = { id: id, order: ['v1'], viewing: 'v1', seq: 0, cards: {} };
+                    stacks[id].cards.v1 = makeCard('Original', harvestBlocks(targetRun), nextCardNum(stacks[id]));
+                    targetRun.forEach(b => { b.dataset.stack = id; b.dataset.variant = 'v1'; });
+                    attachCard(id, f.label, blocks.slice(f.altStart, f.altEnd + 1));
+                }
+                // Remove the appendix copy and its marker line.
+                blocks.slice(f.altStart, f.altEnd + 1).forEach(b => b.remove());
+                blocks[f.markerIdx].remove();
+            });
+
+            reflowPages();
+            refreshStacks();
+            buildToc();
+            extractEntities();
+            updateStatistics();
+            saveState();
+        }
+
+        function attachCard(stackId, name, nodes) {
+            const st = stacks[stackId];
+            const cid = newCardId(st);
+            const num = nextCardNum(st);
+            st.cards[cid] = makeCard(name || ('Draft ' + num), harvestBlocks(nodes), num);
+            // Folded-in alternates go under the original: they are history, and
+            // promoting one is a decision the writer makes deliberately.
+            st.order.push(cid);
         }
 
         // --- Text/Markdown Import Parsing ---
@@ -2097,7 +3844,9 @@
         // --- Document Panes ---
         // `ratio` is the share of the width given to the exact pane, held separately
         // from position so that swapping sides carries each pane's size with it.
-        const paneState = { exact: false, editable: true, swapped: false, ratio: 0.5 };
+        // `sideMode` says which occupant the side slot is showing: the rendered
+        // source PDF ('exact') or the version comparison ('compare').
+        const paneState = { exact: false, editable: true, swapped: false, ratio: 0.5, sideMode: 'exact' };
 
         function applyPaneSizes() {
             document.getElementById('pane-exact').style.flexGrow = paneState.ratio;
@@ -2140,11 +3889,25 @@
             document.getElementById('pane-close-editable').disabled = btnEditable.disabled;
             document.getElementById('view-btn-swap').disabled = !both;
             document.getElementById('view-btn-sync').disabled = !both;
+            // Opening, closing or swapping a pane moves the script sideways, and
+            // the deck bar is anchored in viewport coordinates -- re-clamp it or
+            // it ends up floating over the neighbouring pane.
+            if (typeof positionDeck === 'function') positionDeck();
         }
 
         function setPaneVisible(which, visible) {
-            // The exact pane only exists while a PDF is loaded.
-            if (which === 'exact' && visible && !pdfLoaded) return;
+            // The side pane is a slot with two possible occupants: the rendered
+            // source PDF, or the version comparison. It can open for either.
+            if (which === 'exact' && visible && !pdfLoaded && paneState.sideMode !== 'compare') return;
+            // Closing the slot while it holds a comparison ends the comparison.
+            if (which === 'exact' && !visible && paneState.sideMode === 'compare') {
+                compareWith = null;
+                paneState.sideMode = 'exact';
+                document.getElementById('compare-viewer').classList.remove('active');
+                document.getElementById('pdf-viewer').style.display = '';
+                document.getElementById('pane-title-exact').innerText = 'Exact View';
+                if (typeof renderDeck === 'function') renderDeck();
+            }
             const other = which === 'exact' ? 'editable' : 'exact';
             if (!visible && !paneState[other]) return;
             if (paneState[which] === visible) return;
@@ -2737,6 +4500,9 @@
         }
 
         function exportTXT() {
+            // A plain-text script has nowhere to put alternates, so export what
+            // prints -- never whichever card happened to be fanned open.
+            springBackAll();
             const lines = [];
             for (let child of getBlocks()) {
                 if (child.classList.contains('center-title')) lines.push("          " + child.innerText + "\n");
@@ -2750,6 +4516,7 @@
         }
         
         function exportMD() {
+            springBackAll();
             const lines = [];
             for (let child of getBlocks()) {
                 if (child.classList.contains('scene-heading')) lines.push("**" + child.innerText + "**\n");
@@ -2786,13 +4553,30 @@
         }
 
         function scriptJSON() {
+            // Settle every fanned stack first, so `script` is always the version
+            // of the screenplay that prints and `stacks` holds the alternates.
+            // Without this, saving while reading an alternate would quietly write
+            // that alternate out as the script.
+            springBackAll();
+            const savedStacks = stacksForSave();
+
             const data = [];
             for (let child of getBlocks()) {
                 if (child.className) {
-                    data.push({ type: child.className, text: child.innerText });
+                    const entry = { type: blockType(child), text: child.innerText };
+                    if (child.dataset.stack) {
+                        entry.stack = child.dataset.stack;
+                        entry.variant = child.dataset.variant;
+                    }
+                    data.push(entry);
                 }
             }
-            return JSON.stringify({ script: data, lists: appState }, null, 2);
+            return JSON.stringify({
+                formatVersion: 2,
+                script: data,
+                stacks: savedStacks,
+                lists: appState
+            }, null, 2);
         }
 
         // The file the script is currently attached to, when the browser gave us a
@@ -2877,6 +4661,7 @@
             currentFileHandle = null;
             lastEditorRange = null;
             exampleBlock = null;
+            resetStacks();
 
             setEditableNotice(null);
             setPdfLoaded(false);
@@ -2917,6 +4702,7 @@
                     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
                     editor.innerHTML = '';
+                    resetStacks();
                     const stagingFrame = createPageFrame();
                     editor.appendChild(stagingFrame);
 
@@ -3009,19 +4795,29 @@
                             appState = { characters: [], locations: [] };
                         }
 
+                        // Files written before variations existed simply carry no
+                        // `stacks` key, and load as a script with no alternates.
+                        loadStacks(data.stacks, true);
+
                         scriptData.forEach(item => {
                             const div = document.createElement('div');
                             div.className = item.type;
                             div.innerText = item.text;
+                            if (item.stack && stacks[item.stack]) {
+                                div.dataset.stack = item.stack;
+                                div.dataset.variant = item.variant || stacks[item.stack].order[0];
+                            }
                             stagingFrame.appendChild(div);
                         });
                         reflowPages();
+                        refreshStacks();
                         buildToc();
                         extractEntities();
                         updateStatistics();
                         saveState();
                     } catch (err) { alert("Invalid JSON format."); }
                 } else {
+                    resetStacks();
                     const blocks = parseTextToBlocks(contents);
                     if (blocks.length === 0) {
                         const empty = document.createElement('div');
@@ -3054,7 +4850,57 @@
             else if (e.ctrlKey && (e.key === 'm' || e.key === 'M')) { e.preventDefault(); syncPanes(); }
             // Otherwise Ctrl+S saves the app's own HTML, which is never what was meant.
             else if (e.ctrlKey && (e.key === 's' || e.key === 'S')) { e.preventDefault(); saveJSON(); }
+            else if (e.ctrlKey && e.shiftKey && (e.key === 'v' || e.key === 'V')) { e.preventDefault(); addVariation(); }
+            else if (e.key === 'Escape' && openStackId) { e.preventDefault(); closeDeck(); }
+            // Plain arrows still have to move the caret inside the script, so
+            // flipping through the deck is on Alt+Arrow.
+            else if (e.altKey && openStackId && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                e.preventDefault();
+                flipBy(e.key === 'ArrowRight' ? 1 : -1);
+            }
         });
+
+        // --- Variation stack interaction ---------------------------------
+
+        // Hovering any block of a run lights the whole run, so it reads as one
+        // stapled insert rather than a series of tinted paragraphs.
+        (function wireStackHover() {
+            let hot = null;
+            const clear = () => {
+                if (!hot) return;
+                document.querySelectorAll('.stack-hot').forEach(el => el.classList.remove('stack-hot'));
+                hot = null;
+            };
+            document.addEventListener('mouseover', e => {
+                const block = e.target.closest ? e.target.closest('[data-stack]') : null;
+                const id = block ? block.dataset.stack : null;
+                if (id === hot) return;
+                clear();
+                if (!id) return;
+                hot = id;
+                blocksOfStack(id).forEach(el => el.classList.add('stack-hot'));
+            });
+        })();
+
+        // The gutter chip is a pseudo-element, so it cannot take a click of its
+        // own — but it is the only thing living to the left of the block's text
+        // box, so a click landing out there is unambiguously a click on it.
+        document.getElementById('editor-page').addEventListener('mousedown', e => {
+            const block = e.target.closest ? e.target.closest('[data-stack-first]') : null;
+            if (!block) return;
+            if (e.clientX >= block.getBoundingClientRect().left - 4) return;
+            e.preventDefault();
+            const id = block.dataset.stack;
+            if (openStackId === id) closeDeck(); else openDeck(id);
+        });
+
+        // The bar is anchored in viewport coordinates, so it has to follow the
+        // script as it scrolls or resizes.
+        // Printing must produce the script that prints, whatever is fanned open.
+        window.addEventListener('beforeprint', springBackAll);
+        window.addEventListener('resize', positionDeck);
+        document.querySelectorAll('.pane-body').forEach(p =>
+            p.addEventListener('scroll', positionDeck, { passive: true }));
 
         document.getElementById('editor-page').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
@@ -3142,6 +4988,13 @@
                     <p>With a PDF open, use the <b>Exact View</b> and <b>Editable Script</b> buttons to show either or both side by side, <b>⇄</b> to swap sides, and <b>Match ⇔</b> (or <b>Ctrl+M</b>) to scroll the other pane to the spot you're working in.</p>
                     <p>Click anywhere in the script to edit.</p>
                     <p>Formatting toolbar: <b>click</b> a button to insert a filled-in example of that element at the cursor (the example text is pre-selected, so just start typing over it). <b>Select</b> script text first and the button converts every line you selected instead. <b>Right-click</b> a button for a menu of that element's entries already used in the script, most frequent first.</p>
+                    <p><b>Variations.</b> A passage can exist in several versions at once, like alternate pages stapled over a printed script. Press <b>+ Variation</b> (or <b>Ctrl+Shift+V</b>): with nothing selected it varies the whole scene the cursor is in, and with text selected it varies exactly that passage. The passage picks up a tinted band, a rule down the margin and a card count in the gutter, with the edges of the pages behind it showing at the foot.</p>
+                    <p>Click that gutter card to fan the stack open. Flipping between versions (click a tab, or <b>Alt+←</b> / <b>Alt+→</b>) swaps them in place in the script, so you read each one at its real page position — but it only reads: the stack keeps its order until you say otherwise, and closing the deck (<b>Esc</b>) springs the passage back to the version that prints. <b>⇄ Compare</b> opens two versions side by side with the changed words marked, and <b>take →</b> on any line pulls it across into the version you're editing.</p>
+                    <p><b>Ranking.</b> A stack is an ordered pile and the top of it is the version that stands — the one on the page, in the export, in the PDF. Drag a draft to the top of the list, in the Navigator or on the deck tabs, and it becomes that version immediately; <b>↑ Move to top</b> does the same thing for whichever one you're reading. The star marks the top.</p>
+                    <p><b>Numbering.</b> Scenes are numbered down the script — <b>S001</b>, <b>S002</b> — and every draft carries its own number, so <b>S004.D002</b> names one specific piece of writing. Draft numbers are handed out once, when the draft is created, and never change: re-ranking a stack moves the star, not the numbers, so <b>S004.D002</b> still means the same pages next week. That makes the label safe to quote in a note or an email. (Scene numbers do follow the script, so they shift if you reorder scenes.)</p>
+                    <p>The Navigator numbers every scene and nests that scene's drafts beneath it, shut by default — the count on the right says how many are in there, and clicking it opens the list. <b>Has variations</b> narrows the list to just the scenes that carry any. Only the top-ranked draft is ever exported, printed or written out as the script; the rest ride along in the .json.</p>
+                    <p>Under <b>Layout Settings</b>, <b>Scene numbers in the script</b> prints those labels into the left margin, the way a shooting script carries its scene numbers — so an exported PDF says which draft of each scene it is holding. It is off by default, since a script you send out usually shouldn't carry them.</p>
+                    <p>Scripts that mark their alternates by hand, with lines like <b>* ALT DRAFT -- "THE SCULLERY EXCHANGE" *</b>, can be converted in one step: <b>File ▸ Fold Alternates into Stacks…</b> lifts each one out of the appendix and staples it onto the scene it rewrites.</p>
                     <p>Press <b>Enter</b> to create a new line. The editor will automatically maintain formatting blocks.</p>
                     <p>To export to PDF, choose "Export as PDF" and use your browser's Print to PDF feature.</p>
                 </div>
@@ -3159,6 +5012,22 @@
                     <label style="font-size: 0.85rem; margin-top: 15px; display:flex; align-items:center; gap: 8px; cursor:pointer;">
                         <input type="checkbox" id="page-breaks-toggle-modal" onchange="togglePageBreaksModal()"> Show Visual Page Breaks
                     </label>
+
+                    <label style="font-size: 0.85rem; margin-top: 15px; display:flex; align-items:center; gap: 8px;">
+                        Scene numbers in the script
+                        <select id="scene-number-mode" onchange="setSceneNumberMode(this.value)"
+                                style="margin-left:auto; background:#333; color:#eee; border:1px solid #444; border-radius:4px; padding:3px 6px;">
+                            <option value="off">Off</option>
+                            <option value="scene">Scene only — S004</option>
+                            <option value="draft">Scene + draft — S004.D002</option>
+                        </select>
+                    </label>
+                    <p style="font-size:0.78rem; color:#8f8f8f; line-height:1.45; margin:6px 0 0;">
+                        Prints into the left margin, the way a shooting script carries its scene
+                        numbers — so an exported PDF says which draft of each scene it is holding.
+                        Only the top-ranked draft is ever exported; the alternates stay in the .json.
+                        The Navigator always numbers scenes regardless of this setting.
+                    </p>
                 </div>
             </div>
         </div>

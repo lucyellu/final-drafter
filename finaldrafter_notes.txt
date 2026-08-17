@@ -1,0 +1,20 @@
+so for the top buttons where it inserts a new character, dialogue, etc. can you have it so it draws a box around the new insertion since sometimes it's very hard to see the curser or what was just done. it stays as user edits the item and goes away when user clicks out. or inserts a new object
+
+in the document statistics can we get number of scenes, transitions
+
+can we add the concept of headers and footers, like in the top and bottom margins of each page? where we can put things like page numbers and other info that is separate from the main body
+
+esp in editable mode, can we make sure each page has page number clearly in the footer bottom right corner. add options for this in settings, where it can be 1, or 1/27 and where to put it like in the header or footer left or right. make it bold so it's clear and easy to see/read
+
+can we introduce auto save, and the concept of iteration/versioning? maybe every 10 min. allow user to change this in settings. also do you think we should differentiate between load script (pdf, md, txt, etc.) and load project? 
+
+some of the load scripts pdfs aren't able to go into editable mode, it says there is no selectable text and I need to feed it into an ocr or something first? can we bake that ocr feature right into final drafter? 
+
+so the exact match vs the editable versions are very similar think the only thing I see different mostly is the cover page? is that true? if so can we somehow get something similar to overleaf (latex math editor) or markdown language where it indicates when something is a cover page or title, author, etc. ? is that too complicated? this is probably more releveant for writing show bibles where we need table of contents and other formatting things that we can easily differentiate
+
+can you move the dialogue button to right beside the character one
+
+for the top buttons inserting a generic example of each is great for the first or empty doc but if the user changes that and picks a different one can we have it remember that and do that same one so if it's a specific transition or character it does that same insertion next time they use it. allow user to toggle this remember last insertion in settings
+
+
+so I want to introduce concept of different versions of the same scene. in the left hand panel we have navigation. can we nest all the current ones into scenes or shot
