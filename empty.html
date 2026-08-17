@@ -113,6 +113,11 @@
             width: 250px;
             min-width: 150px;
             max-width: 500px;
+            /* Never let the flex algorithm claw width back off a panel. The editor's
+               max-content width is enormous once a document is loaded (a wrapping
+               grid of 8.5in pages), so with the default flex-shrink:1 the panels get
+               crushed to min-width and any width set by the resizer is undone. */
+            flex: 0 0 auto;
             background-color: var(--sidebar-bg);
             display: flex;
             flex-direction: column;
@@ -120,17 +125,56 @@
         }
         #sidebar { border-right: 1px solid var(--border-color); }
         #right-sidebar { border-left: 1px solid var(--border-color); }
-        
+        #sidebar.collapsed, #right-sidebar.collapsed {
+            width: 0 !important;
+            min-width: 0;
+            border: none;
+            overflow: hidden;
+        }
+        #sidebar.collapsed > *, #right-sidebar.collapsed > * {
+            visibility: hidden;
+        }
+
         .resizer {
             width: 5px;
             background-color: transparent;
             cursor: ew-resize;
             z-index: 10;
             transition: background 0.2s;
+            position: relative;
+            flex-shrink: 0;
         }
         .resizer:hover {
             background-color: var(--accent-color);
         }
+        .collapse-toggle {
+            position: absolute;
+            top: 50%;
+            left: -9px;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 40px;
+            background: var(--sidebar-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.7rem;
+            line-height: 1;
+            z-index: 20;
+            user-select: none;
+        }
+        .collapse-toggle:hover { background: var(--accent-color); }
+
+        /* While a panel is being dragged, nothing else on the page should be
+           selectable or claim the pointer. */
+        body.resizing, body.resizing * {
+            user-select: none !important;
+        }
+        body.resizing #editor-wrapper { pointer-events: none; }
 
         .sidebar-section {
             display: flex;
@@ -317,56 +361,145 @@
             border: none; color: white; border-radius: 3px; cursor: pointer; padding: 0 10px; font-weight: bold;
         }
 
-        /* Editor Wrapper */
+        /* Editor Wrapper: the row that holds the document panes */
         #editor-wrapper {
-            flex-grow: 1;
-            overflow-y: auto;
+            /* flex-basis 0, not auto: the base size must not depend on the content
+               width, or the page grid dictates how much room the sidebars get. */
+            flex: 1 1 0;
+            min-width: 0;
+            display: flex;
+            flex-direction: row;
+            overflow: hidden; /* each pane scrolls on its own */
             background-color: #2b2b2b;
+            position: relative;
+        }
+
+        /* Document Panes */
+        .doc-pane {
+            flex: 1 1 0;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .doc-pane.hidden { display: none; }
+
+        .pane-header {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 5px 10px;
+            background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.7rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #999;
+            user-select: none;
+        }
+        /* With a single pane open the header is pure chrome -- hide it so the
+           no-PDF case looks exactly as it did before panes existed. */
+        #editor-wrapper.single-pane .pane-header { display: none; }
+
+        .pane-close {
+            background: transparent;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 0.8rem;
+            line-height: 1;
+            padding: 3px 6px;
+            border-radius: 3px;
+        }
+        .pane-close:hover { background: rgba(255,255,255,0.15); color: #fff; }
+        .pane-close:disabled { opacity: 0.3; cursor: default; }
+        .pane-close:disabled:hover { background: transparent; color: #999; }
+
+        .pane-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: auto;
             padding: 40px 20px;
             scroll-behavior: smooth;
-            position: relative;
+        }
+
+        /* Explains an empty editable pane. Lives outside #editor-page so it is never
+           mistaken for a screenplay block by getBlocks(). */
+        .pane-notice {
+            display: none;
+            max-width: 40em;
+            margin: 0 auto 30px auto;
+            padding: 16px 20px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            border-left: 3px solid var(--accent-color);
+            border-radius: 4px;
+            color: #ccc;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+        .pane-notice strong { display: block; margin-bottom: 6px; color: #fff; font-size: 0.95rem; }
+        .pane-notice p { margin: 0; }
+
+        .pane-splitter {
+            flex: 0 0 5px;
+            cursor: ew-resize;
+            background-color: var(--border-color);
+            transition: background 0.2s;
+        }
+        .pane-splitter:hover { background-color: var(--accent-color); }
+        .pane-splitter.hidden { display: none; }
+
+        /* Editor root: a flex-wrap grid of page frames. Zooming out shrinks each
+           frame, so more of them fit per row -- the grid emerges from layout,
+           no separate "grid view" mode needed. */
+        #editor-page {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            /* "safe" centering: when a page is wider than the viewport, fall back to
+               start-alignment instead of overflowing equally in both directions --
+               plain `center` pushes content past the left edge, where the scrollbar
+               cannot reach it and it reads as permanently cut off. */
+            justify-content: center;
+            justify-content: safe center;
+            align-content: flex-start;
+            outline: none;
+            transition: zoom 0.1s;
         }
 
         /* Script Page */
         .page {
-            margin: 0 auto;
             background-color: var(--page-bg);
             color: var(--page-text);
             width: 8.5in;
-            min-height: 11in; 
-            height: fit-content;
+            height: 11in;
+            overflow: hidden;
             padding: 1in 1in 1in 1.5in;
             box-sizing: border-box;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             font-family: 'Courier Prime', 'Courier New', Courier, monospace;
             font-size: 12pt;
             line-height: 1.1;
-            outline: none; 
-            transition: zoom 0.1s;
             position: relative;
+            flex: 0 0 auto;
         }
-        
-        /* Simulated Page Breaks */
-        .page.show-breaks {
-            background-image: linear-gradient(to bottom, transparent 0, transparent 10.95in, #ccc 10.95in, #ccc 11in);
-            background-size: 100% 11in;
-        }
-        
-        /* Page Numbers Container for Screen */
-        #page-numbers-container {
+
+        /* Per-frame page number, hidden unless "Show Visual Page Breaks" is on */
+        .page-number-label {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 5;
-        }
-        .page-number-display {
-            position: absolute;
+            top: 0.4in;
             right: 0.5in;
             font-family: 'Courier Prime', 'Courier New', Courier, monospace;
             font-size: 12pt;
             color: #999;
+            pointer-events: none;
+            display: none;
         }
-        
+        #editor-page.show-page-numbers .page-number-label { display: block; }
+
         /* Script Elements */
         .page > div {
             white-space: pre-wrap;
@@ -392,20 +525,22 @@
             margin-bottom: 0;
         }
         .dialogue {
-            margin-left: 1.2in;
-            width: 3.3in;
+            margin-left: 1in;
+            width: 3.5in;
             margin-top: 0;
             margin-bottom: 12pt;
         }
         .parenthetical {
-            margin-left: 1.7in;
+            margin-left: 1.6in;
             width: 2in;
             margin-top: 0;
             margin-bottom: 0;
         }
         .transition {
             text-transform: uppercase;
-            margin-left: 4.5in;
+            text-align: right;
+            margin-left: 0;
+            width: 6in;
             margin-top: 12pt;
             margin-bottom: 12pt;
         }
@@ -419,11 +554,18 @@
 
         /* PDF Exact View */
         #pdf-viewer {
-            display: none;
-            flex-direction: column;
-            align-items: center;
+            /* Visibility is owned by the enclosing .doc-pane, not by this element. */
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            justify-content: center;
+            justify-content: safe center;
             gap: 20px;
         }
+        /* A PDF page is a fixed-size box; without this it is shrunk to fit a narrow
+           editor pane and the canvas/text layer no longer line up. */
+        .pdf-page { flex: 0 0 auto; }
         .pdf-page {
             position: relative;
             background: #fff;
@@ -468,18 +610,38 @@
         .view-toggle button.active {
             background: var(--accent-color);
         }
+        .view-toggle button:disabled { opacity: 0.45; cursor: default; }
+        #view-btn-swap { font-size: 1rem; line-height: 1; padding: 5px 10px; }
+
+        /* Brief ring on whatever a Match landed on, so the jump is legible. */
+        .sync-flash { animation: syncFlash 1s ease-out; }
+        @keyframes syncFlash {
+            0%   { box-shadow: 0 0 0 3px var(--accent-color); }
+            70%  { box-shadow: 0 0 0 3px var(--accent-color); }
+            100% { box-shadow: 0 0 0 3px rgba(0, 123, 255, 0); }
+        }
 
         /* Print Media */
         @media print {
-            body, #main-container, #editor-wrapper {
+            body, #main-container, #editor-wrapper, .doc-pane, .pane-body {
                 background: white; height: auto; overflow: visible; display: block; padding: 0; margin: 0;
             }
-            #top-bar, #sidebar, #right-sidebar, .resizer, #page-numbers-container, .view-toggle { display: none; }
+            #top-bar, #sidebar, #right-sidebar, .resizer, .page-number-label, .view-toggle,
+            .pane-header, .pane-splitter { display: none; }
+            /* Print exactly one document: the pane that is open, and the editable
+               script when both are, so a side-by-side session doesn't print twice. */
+            .doc-pane.hidden { display: none !important; }
+            #editor-wrapper:not(.single-pane) #pane-exact { display: none !important; }
+            #editor-page, #pdf-viewer { display: block !important; }
+            .pdf-page { break-after: page; }
+            .pdf-page:last-child { break-after: auto; }
             .page {
-                box-shadow: none; margin: 0; padding: 0; width: 8.5in; min-height: auto; zoom: 1 !important; background-image: none !important;
+                box-shadow: none; margin: 0; padding: 0; width: 6.5in; height: auto; overflow: visible; zoom: 1 !important; background-image: none !important;
+                break-after: page;
             }
+            .page:last-child { break-after: auto; }
             .pdf-page { box-shadow: none; margin: 0 auto; }
-            
+
             /* Add print page numbers using CSS counters */
             @page {
                 margin: 1in;
@@ -489,12 +651,14 @@
                     font-size: 12pt;
                 }
             }
-            
-            /* Re-adjust margins because padding is removed for print */
-            .scene-heading, .action, .transition, .center-title { margin-left: 0.5in; }
+
+            /* Re-adjust margins because padding is removed for print and @page margin
+               (1in) is 0.5in narrower than the screen page's left padding (1.5in) */
+            .scene-heading, .action, .center-title { margin-left: 0.5in; }
             .character { margin-left: 2.7in; }
-            .dialogue { margin-left: 1.7in; }
-            .parenthetical { margin-left: 2.2in; }
+            .dialogue { margin-left: 1.5in; }
+            .parenthetical { margin-left: 2.1in; }
+            .transition { margin-left: 0.5in; }
             
             .scene-heading, .character { page-break-after: avoid; break-after: avoid; }
             .dialogue { page-break-before: avoid; break-before: avoid; }
@@ -554,7 +718,8 @@
             File
             <div class="dropdown">
                 <div onclick="document.getElementById('file-input').click()">Load Script...</div>
-                <div onclick="saveJSON()">Save (.json)</div>
+                <div onclick="saveJSON(lastSavedName ? lastSavedName : 'script.json')">Save (.json)</div>
+                <div onclick="saveJSONAs()">Save As...</div>
                 <div onclick="window.print()">Export as PDF</div>
                 <div onclick="exportMD()">Export as Markdown</div>
                 <div onclick="exportTXT()">Export as Text</div>
@@ -575,8 +740,10 @@
             <button onclick="redo()" title="Redo (Ctrl+Y)">↷</button>
         </div>
         <div class="view-toggle" id="view-toggle">
-            <button id="view-btn-exact" onclick="switchPdfView('exact')" title="Pixel-perfect replica of the source PDF">Exact View</button>
-            <button id="view-btn-editable" onclick="switchPdfView('editable')" title="Reflowed, editable screenplay format">Editable Script</button>
+            <button id="view-btn-exact" onclick="togglePane('exact')" title="Show/hide the pixel-perfect replica of the source PDF">Exact View</button>
+            <button id="view-btn-editable" onclick="togglePane('editable')" title="Show/hide the reflowed, editable screenplay">Editable Script</button>
+            <button id="view-btn-sync" onclick="syncPanes()" title="Match the other pane to the one you're working in (Ctrl+M)">Match ⇔</button>
+            <button id="view-btn-swap" onclick="swapPanes()" title="Swap the left and right panes">⇄</button>
         </div>
         <button class="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
     </div>
@@ -621,18 +788,34 @@
             </div>
         </div>
         
-        <div class="resizer" id="left-resizer"></div>
+        <div class="resizer" id="left-resizer"><button class="collapse-toggle" id="left-collapse-toggle" onclick="toggleSidebar('left')" title="Collapse/expand panel">‹</button></div>
         
         <!-- Editor -->
-        <div id="editor-wrapper">
-            <div id="editor-page" class="page" contenteditable="true" oninput="handleInput()">
-                <div id="page-numbers-container" contenteditable="false"></div>
-
+        <!-- Two independently scrolling document panes. Either can be closed, and
+             `order` (not DOM position) decides which one sits on the left, so
+             swapping never disturbs the contenteditable or the rendered canvases. -->
+        <div id="editor-wrapper" class="single-pane">
+            <div class="doc-pane hidden" id="pane-exact">
+                <div class="pane-header">
+                    <span class="pane-title">Exact View</span>
+                    <button class="pane-close" id="pane-close-exact" onclick="closePane('exact')" title="Close this pane">✕</button>
+                </div>
+                <div class="pane-body"><div id="pdf-viewer"></div></div>
             </div>
-            <div id="pdf-viewer"></div>
+            <div class="pane-splitter hidden" id="pane-splitter"></div>
+            <div class="doc-pane" id="pane-editable">
+                <div class="pane-header">
+                    <span class="pane-title">Editable Script</span>
+                    <button class="pane-close" id="pane-close-editable" onclick="closePane('editable')" title="Close this pane">✕</button>
+                </div>
+                <div class="pane-body">
+                    <div id="editable-notice" class="pane-notice"></div>
+                    <div id="editor-page" contenteditable="true" oninput="handleInput()"></div>
+                </div>
+            </div>
         </div>
         
-        <div class="resizer" id="right-resizer"></div>
+        <div class="resizer" id="right-resizer"><button class="collapse-toggle" id="right-collapse-toggle" onclick="toggleSidebar('right')" title="Collapse/expand panel">›</button></div>
         
         <!-- Right Sidebar -->
         <div id="right-sidebar">
@@ -669,7 +852,8 @@
             characters: [],
             locations: []
         };
-        
+        let lastSavedName = '';
+
         let dynamicCounts = { characters: {}, locations: {} };
         
         // Highlight tracking
@@ -733,7 +917,6 @@
             appState.locations.sort((a, b) => (dynamicCounts.locations[b.name] || 0) - (dynamicCounts.locations[a.name] || 0));
             
             renderLists(entityNodes);
-            drawPageNumbers();
         }
 
         function renderLists(entityNodes) {
@@ -802,8 +985,8 @@
                     
                     let snippet = n.innerText.trim();
                     if (type === 'characters') {
-                        let next = n.nextElementSibling;
-                        while(next && next.classList.contains('parenthetical')) next = next.nextElementSibling;
+                        let next = nextBlock(n);
+                        while(next && next.classList.contains('parenthetical')) next = nextBlock(next);
                         if (next && next.classList.contains('dialogue')) {
                             snippet = next.innerText.trim();
                         }
@@ -816,10 +999,10 @@
                         if (e.target.tagName === 'BUTTON') {
                             e.stopPropagation();
                             if (type === 'characters') {
-                                let next = n.nextElementSibling;
+                                let next = nextBlock(n);
                                 while(next && next.classList.contains('parenthetical')) {
                                     let p = next;
-                                    next = next.nextElementSibling;
+                                    next = nextBlock(next);
                                     p.remove();
                                 }
                                 if (next && next.classList.contains('dialogue')) next.remove();
@@ -829,7 +1012,7 @@
                             saveState();
                         } else {
                             e.stopPropagation();
-                            n.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            scrollToBlock(n, 'center');
                             const oldBg = n.style.backgroundColor;
                             n.style.backgroundColor = "rgba(255,255,0,0.5)";
                             setTimeout(() => { n.style.backgroundColor = oldBg; }, 800);
@@ -844,10 +1027,10 @@
                 if (confirm(`Are you sure you want to delete ALL instances of ${item.name} from the script?`)) {
                     nodesList.forEach(n => {
                         if (type === 'characters') {
-                            let next = n.nextElementSibling;
+                            let next = nextBlock(n);
                             while(next && next.classList.contains('parenthetical')) {
                                 let p = next;
-                                next = next.nextElementSibling;
+                                next = nextBlock(next);
                                 p.remove();
                             }
                             if (next && next.classList.contains('dialogue')) next.remove();
@@ -900,25 +1083,17 @@
             }
             
             const selection = window.getSelection();
-            const editor = document.getElementById('editor-page');
-            
-            let node = selection.anchorNode;
-            let isInside = false;
-            while (node && node.id !== 'editor-page') {
-                if (node.parentNode && node.parentNode.id === 'editor-page') {
-                    isInside = true;
-                    if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
-                    break;
-                }
-                node = node.parentNode;
-            }
-            
-            if (isInside && node) {
-                editor.insertBefore(block1, node.nextSibling);
-                editor.insertBefore(block2, block1.nextSibling);
+            const node = findBlockNode(selection.anchorNode);
+
+            if (node) {
+                node.parentNode.insertBefore(block1, node.nextSibling);
+                node.parentNode.insertBefore(block2, block1.nextSibling);
             } else {
-                editor.appendChild(block1);
-                editor.appendChild(block2);
+                ensureAtLeastOneFrame();
+                const editor = document.getElementById('editor-page');
+                const lastFrame = editor.querySelector('.page-frame:last-child');
+                lastFrame.appendChild(block1);
+                lastFrame.appendChild(block2);
             }
             
             const range = document.createRange();
@@ -927,8 +1102,8 @@
             selection.removeAllRanges();
             selection.addRange(range);
             
-            block2.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            
+            scrollToBlock(block2, 'center');
+
             extractEntities();
             saveState();
         }
@@ -1012,18 +1187,10 @@
         function saveState() {
             if (isUndoRedo) return;
             const editor = document.getElementById('editor-page');
-            
-            // Temporarily remove page numbers before saving DOM state
-            const pn = document.getElementById('page-numbers-container');
-            const pnHtml = pn ? pn.outerHTML : '';
-            if (pn) pn.innerHTML = '';
-            
+
+            reflowPages();
             const content = editor.innerHTML;
-            
-            if (pnHtml) {
-                if(pn) pn.outerHTML = pnHtml;
-            }
-            
+
             if (historyIndex >= 0 && historyStack[historyIndex] === content) return;
             
             if (historyIndex < historyStack.length - 1) {
@@ -1096,30 +1263,26 @@
         // --- Document Statistics ---
         function updateStatistics() {
             const editor = document.getElementById('editor-page');
-            
+
             // 1. Calculate Pages
-            const pageHeight = editor.scrollHeight;
-            const pixelsPerPage = 1056; // 11in
-            const numPages = Math.max(1, Math.ceil(pageHeight / pixelsPerPage));
+            const numPages = Math.max(1, editor.querySelectorAll('.page-frame').length);
             document.getElementById('stat-pages').innerText = numPages;
-            
+
             // Estimated runtime: 1 page = 1 min
             const hrs = Math.floor(numPages / 60);
             const mins = numPages % 60;
             document.getElementById('stat-runtime').innerText = hrs > 0 ? `${hrs} hr ${mins} min` : `${mins} min`;
-            
+
             // 2. Element Counts
             let locations = 0;
             let characters = 0;
             let totalWords = 0;
             let totalLetters = 0;
-            
-            Array.from(editor.children).forEach(child => {
-                if (child.id === 'page-numbers-container' || child.classList.contains('page-break-spacer')) return;
-                
+
+            getBlocks().forEach(child => {
                 if (child.classList.contains('scene-heading')) locations++;
                 if (child.classList.contains('character')) characters++;
-                
+
                 const text = child.innerText || '';
                 const words = text.trim().split(/\s+/).filter(w => w.length > 0);
                 totalWords += words.length;
@@ -1142,135 +1305,248 @@
 
         function togglePageBreaks() {
             const show = document.getElementById('page-breaks-toggle').checked;
-            const page = document.getElementById('editor-page');
-            if (show) {
-                page.classList.add('show-breaks');
-                document.getElementById('page-numbers-container').style.display = 'block';
-            } else {
-                page.classList.remove('show-breaks');
-                document.getElementById('page-numbers-container').style.display = 'none';
-            }
-        }
-
-        function drawPageNumbers() {
-            let container = document.getElementById('page-numbers-container');
-            if (!container) return;
-            container.innerHTML = '';
-            
-            const pageHeight = document.getElementById('editor-page').scrollHeight;
-            const pixelsPerInch = 96; 
-            const pageInches = 11;
-            const pixelsPerPage = pixelsPerInch * pageInches;
-            
-            const numPages = Math.max(1, Math.ceil(pageHeight / pixelsPerPage));
-            
-            for (let i = 1; i <= numPages; i++) {
-                const num = document.createElement('div');
-                num.className = 'page-number-display';
-                num.innerText = i + '.';
-                // Position at the top right of each 11-inch block, with 0.5in top margin offset
-                num.style.top = ((i - 1) * pixelsPerPage + 48) + 'px'; 
-                container.appendChild(num);
-            }
+            document.getElementById('editor-page').classList.toggle('show-page-numbers', show);
         }
 
         // Resizers
         function setupResizer(resizerId, targetId, isRight) {
             const resizer = document.getElementById(resizerId);
             const target = document.getElementById(targetId);
+            const container = document.getElementById('main-container');
             let resizing = false;
             resizer.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.collapse-toggle')) return;
                 resizing = true;
                 document.body.style.cursor = 'ew-resize';
+                // The editor and the PDF text layer are both selectable; without this
+                // a drag turns into a text selection and the panel stops following
+                // the pointer.
+                document.body.classList.add('resizing');
                 e.preventDefault();
             });
             document.addEventListener('mousemove', (e) => {
                 if (!resizing) return;
-                let newWidth;
-                if (isRight) {
-                    newWidth = document.body.clientWidth - e.clientX;
-                } else {
-                    newWidth = e.clientX;
-                }
+                // Measure against the panels' own container rather than the viewport,
+                // so the panel edge tracks the pointer exactly.
+                const rect = container.getBoundingClientRect();
+                let newWidth = isRight ? rect.right - e.clientX : e.clientX - rect.left;
                 newWidth = Math.max(150, Math.min(500, newWidth));
+                // Dragging the handle of a collapsed panel is a request to bring it
+                // back; keep the toggle's arrow in sync with that.
+                if (target.classList.contains('collapsed')) {
+                    toggleSidebar(isRight ? 'right' : 'left');
+                }
                 target.style.width = newWidth + 'px';
+                e.preventDefault();
             });
             document.addEventListener('mouseup', () => {
+                if (!resizing) return;
                 resizing = false;
                 document.body.style.cursor = '';
+                document.body.classList.remove('resizing');
             });
         }
         setupResizer('left-resizer', 'sidebar', false);
         setupResizer('right-resizer', 'right-sidebar', true);
-        
+
+        function toggleSidebar(side) {
+            const targetId = side === 'left' ? 'sidebar' : 'right-sidebar';
+            const btnId = side === 'left' ? 'left-collapse-toggle' : 'right-collapse-toggle';
+            const target = document.getElementById(targetId);
+            const btn = document.getElementById(btnId);
+            const collapsing = !target.classList.contains('collapsed');
+            if (collapsing) {
+                target.dataset.prevWidth = target.style.width || '250px';
+                target.classList.add('collapsed');
+                btn.innerText = side === 'left' ? '›' : '‹';
+            } else {
+                target.style.width = target.dataset.prevWidth || '250px';
+                target.classList.remove('collapsed');
+                btn.innerText = side === 'left' ? '‹' : '›';
+            }
+        }
+
         function toggleSection(headerEl) { headerEl.classList.toggle('collapsed'); }
 
         // --- Formatting & TOC ---
         function formatBlock(className) {
             const selection = window.getSelection();
             if (!selection.rangeCount) return;
-            
-            let node = selection.anchorNode;
-            while (node && node.parentNode && node.parentNode.id !== 'editor-page' && node.id !== 'editor-page') {
-                node = node.parentNode;
-            }
-            
-            if (node && node.parentNode && node.parentNode.id === 'editor-page') {
+
+            const node = findBlockNode(selection.anchorNode);
+
+            if (node) {
                 node.className = className;
-                buildToc();
-                extractEntities();
-                updateStatistics();
-                saveState();
-            } else if (node && node.id === 'editor-page') {
-                document.execCommand('formatBlock', false, 'DIV');
-                const divs = node.querySelectorAll('div:not([class]):not(#page-numbers-container)');
-                divs.forEach(d => d.className = className);
-                saveState();
+            } else {
+                ensureAtLeastOneFrame();
             }
+            buildToc();
+            extractEntities();
+            updateStatistics();
+            saveState();
         }
         
         
-        function paginateSimulated() {
+        // --- Real page frames ---
+        // #editor-page holds real .page-frame boxes (a flex-wrap grid), each a
+        // fixed-height page. getBlocks()/nextBlock()/prevBlock()/findBlockNode()
+        // give the rest of the app the same flat, document-order view of the
+        // screenplay's blocks that a single flat container used to provide for free.
+
+        function getBlocks() {
+            return Array.from(document.querySelectorAll('#editor-page > .page-frame > *:not(.page-number-label)'));
+        }
+
+        function nextBlock(node) {
+            if (!node) return null;
+            if (node.nextElementSibling && !node.nextElementSibling.classList.contains('page-number-label')) {
+                return node.nextElementSibling;
+            }
+            const nextFrame = node.parentNode && node.parentNode.nextElementSibling;
+            return nextFrame ? nextFrame.querySelector(':scope > *:not(.page-number-label)') : null;
+        }
+
+        function prevBlock(node) {
+            if (!node) return null;
+            const prevSibling = node.previousElementSibling;
+            if (prevSibling && !prevSibling.classList.contains('page-number-label')) return prevSibling;
+            const prevFrame = node.parentNode && node.parentNode.previousElementSibling;
+            if (!prevFrame) return null;
+            const blocks = prevFrame.querySelectorAll(':scope > *:not(.page-number-label)');
+            return blocks.length ? blocks[blocks.length - 1] : null;
+        }
+
+        // Walks a selection node up to the screenplay block that directly owns it
+        // (i.e. the node whose parent is a .page-frame). Returns null if the
+        // selection isn't inside any block (e.g. an empty document).
+        function findBlockNode(node) {
+            while (node) {
+                if (node.parentNode && node.parentNode.classList && node.parentNode.classList.contains('page-frame')) {
+                    return node;
+                }
+                if (!node.parentNode || node.id === 'editor-page') return null;
+                node = node.parentNode;
+            }
+            return null;
+        }
+
+        function createPageFrame() {
+            const frame = document.createElement('div');
+            frame.className = 'page page-frame';
+            const label = document.createElement('div');
+            label.className = 'page-number-label';
+            label.contentEditable = 'false';
+            frame.appendChild(label);
+            return frame;
+        }
+
+        function relabelFrames() {
+            document.querySelectorAll('#editor-page > .page-frame').forEach((frame, idx) => {
+                const label = frame.querySelector(':scope > .page-number-label');
+                if (label) label.innerText = (idx + 1) + '.';
+            });
+        }
+
+        function ensureAtLeastOneFrame() {
             const editor = document.getElementById('editor-page');
-            const PAGE_HEIGHT = 1056; // 11in
-            const BOTTOM_MARGIN = 96; // 1in
-            const TOP_MARGIN = 96; // 1in
-            
-            let children = Array.from(editor.children);
-            for (let i = 0; i < children.length; i++) {
-                let child = children[i];
-                if (child.id === 'page-numbers-container') continue;
-                
-                // Reset any previously applied pagination margin
-                if (child.dataset.pageMargin) {
-                    child.style.marginTop = child.dataset.originalMargin || '';
-                    delete child.dataset.pageMargin;
-                    delete child.dataset.originalMargin;
-                }
+            if (!editor.querySelector(':scope > .page-frame')) {
+                const frame = createPageFrame();
+                const block = document.createElement('div');
+                block.className = 'action';
+                block.innerText = ' ';
+                frame.appendChild(block);
+                editor.appendChild(frame);
             }
-            
-            for (let i = 0; i < children.length; i++) {
-                let child = children[i];
-                if (child.id === 'page-numbers-container') continue;
-                
-                let topOffset = child.offsetTop; // Relative to offsetParent (editor)
-                let pageNum = Math.floor(topOffset / PAGE_HEIGHT);
-                let pageBottom = (pageNum + 1) * PAGE_HEIGHT - BOTTOM_MARGIN;
-                
-                if (topOffset + child.offsetHeight > pageBottom) {
-                    let originalMargin = window.getComputedStyle(child).marginTop;
-                    child.dataset.originalMargin = originalMargin;
-                    
-                    let pushAmount = (pageNum + 1) * PAGE_HEIGHT + TOP_MARGIN - topOffset + parseFloat(originalMargin);
-                    child.style.marginTop = pushAmount + 'px';
-                    child.dataset.pageMargin = "true";
-                }
+            relabelFrames();
+        }
+
+        // Keeps every .page-frame within its fixed 11in height by physically
+        // moving overflowing blocks to the next frame (and pulling blocks back
+        // if a frame has spare room), instead of the old margin-push hack.
+        function reflowPages() {
+            const editor = document.getElementById('editor-page');
+            ensureAtLeastOneFrame();
+
+            // Moving nodes between frames preserves their identity, but Chrome's
+            // contenteditable selection tracking doesn't reliably follow a node
+            // that gets reparented mid-edit -- left alone, that corrupts whatever
+            // the user types next. Save the live caret/selection and restore it
+            // by node reference once all the moving is done.
+            const sel = window.getSelection();
+            let savedSel = null;
+            if (sel.rangeCount && editor.contains(sel.anchorNode)) {
+                savedSel = {
+                    anchorNode: sel.anchorNode, anchorOffset: sel.anchorOffset,
+                    focusNode: sel.focusNode, focusOffset: sel.focusOffset
+                };
             }
+
+            // Every frame is an identically-sized page, so a block's rendered
+            // height doesn't depend on which frame currently holds it. That
+            // means every block's height can be measured in one clean read
+            // pass (before any DOM writes, so only the first read can force
+            // a layout recalc -- the rest hit the now-clean cached layout),
+            // then bin-packed into pages with plain arithmetic, then moved
+            // into place in a single batch. The previous approach moved one
+            // block at a time and re-measured after each move to decide the
+            // next one -- fine for a handful of pages, but each move-then-
+            // measure forces a fresh synchronous layout, and that thrash
+            // multiplied by a real 100+ page script was enough to hang the
+            // tab.
+            const frames = Array.from(editor.querySelectorAll(':scope > .page-frame'));
+            const capacity = frames[0].clientHeight;
+            const blocks = getBlocks();
+            const heights = blocks.map(b => b.offsetHeight);
+            if (window.__debugReflow) { window.__debugHeights = heights.slice(); window.__debugCapacity = capacity; }
+
+            const pages = [[]];
+            let used = 0;
+            blocks.forEach((block, i) => {
+                const h = heights[i];
+                if (used > 0 && used + h > capacity) {
+                    pages.push([]);
+                    used = 0;
+                }
+                pages[pages.length - 1].push(block);
+                used += h;
+            });
+
+            while (frames.length < pages.length) {
+                const f = createPageFrame();
+                editor.appendChild(f);
+                frames.push(f);
+            }
+            while (frames.length > pages.length) {
+                frames.pop().remove();
+            }
+
+            // Only touch the DOM where the assignment actually changed --
+            // most blocks on most keystrokes are already in the right
+            // frame at the right position, and skipping those avoids
+            // needlessly dirtying/moving thousands of untouched nodes.
+            pages.forEach((pageBlocks, i) => {
+                const frame = frames[i];
+                let expectedPrev = frame.querySelector(':scope > .page-number-label');
+                pageBlocks.forEach(block => {
+                    if (block.previousElementSibling !== expectedPrev || block.parentNode !== frame) {
+                        frame.insertBefore(block, expectedPrev.nextSibling);
+                    }
+                    expectedPrev = block;
+                });
+            });
+
+            if (savedSel) {
+                try {
+                    sel.setBaseAndExtent(savedSel.anchorNode, savedSel.anchorOffset, savedSel.focusNode, savedSel.focusOffset);
+                } catch (e) { /* node removed by a merge (e.g. Backspace) -- nothing sensible to restore */ }
+            }
+
+            relabelFrames();
         }
 
         let debounceTimer;
         function handleInput() {
-            paginateSimulated();
+            reflowPages();
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
                 buildToc(); 
@@ -1323,7 +1599,7 @@
 
                 const a = document.createElement('a');
                 a.innerText = heading.innerText || "EMPTY SCENE";
-                a.onclick = () => heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                a.onclick = () => scrollToBlock(heading, 'start');
                 
                 li.appendChild(a);
                 tocList.appendChild(li);
@@ -1331,28 +1607,27 @@
         }
         
         function moveScene(sourceId, targetId) {
-            const editor = document.getElementById('editor-page');
             const sourceHeading = document.getElementById(sourceId);
             const targetHeading = document.getElementById(targetId);
-            
+
             if (!sourceHeading || !targetHeading) return;
-            
+
             const nodesToMove = [sourceHeading];
-            let curr = sourceHeading.nextElementSibling;
-            while (curr && !curr.classList.contains('scene-heading') && curr.id !== 'page-numbers-container') {
+            let curr = nextBlock(sourceHeading);
+            while (curr && !curr.classList.contains('scene-heading')) {
                 nodesToMove.push(curr);
-                curr = curr.nextElementSibling;
+                curr = nextBlock(curr);
             }
-            
+
             nodesToMove.forEach(node => {
-                editor.insertBefore(node, targetHeading);
+                targetHeading.parentNode.insertBefore(node, targetHeading);
             });
-            
+
             saveState();
             buildToc();
             refreshAllHighlights();
             
-            document.getElementById(sourceId).scrollIntoView({ behavior: 'smooth', block: 'center' });
+            scrollToBlock(document.getElementById(sourceId), 'center');
         }
 
         // --- Text/Markdown Import Parsing ---
@@ -1434,32 +1709,276 @@
             document.getElementById('view-toggle').style.display = loaded ? 'flex' : 'none';
             if (!loaded) {
                 document.getElementById('pdf-viewer').innerHTML = '';
-                document.getElementById('pdf-viewer').style.display = 'none';
-                document.getElementById('editor-page').style.display = '';
+                // Without a source PDF there is no exact render to show.
+                paneState.exact = false;
+                paneState.editable = true;
             } else {
-                switchPdfView('exact');
+                paneState.exact = true;
+                paneState.editable = false;
             }
+            paneState.swapped = false;
+            paneState.ratio = 0.5;
+            applyPaneLayout();
         }
 
-        function switchPdfView(mode) {
-            const editorPage = document.getElementById('editor-page');
-            const pdfViewer = document.getElementById('pdf-viewer');
-            document.getElementById('view-btn-exact').classList.toggle('active', mode === 'exact');
-            document.getElementById('view-btn-editable').classList.toggle('active', mode === 'editable');
+        // --- Document Panes ---
+        // `ratio` is the share of the width given to the exact pane, held separately
+        // from position so that swapping sides carries each pane's size with it.
+        const paneState = { exact: false, editable: true, swapped: false, ratio: 0.5 };
 
-            if (mode === 'exact') {
-                pdfViewer.style.display = 'flex';
-                editorPage.style.display = 'none';
+        function applyPaneSizes() {
+            document.getElementById('pane-exact').style.flexGrow = paneState.ratio;
+            document.getElementById('pane-editable').style.flexGrow = 1 - paneState.ratio;
+        }
+
+        function applyPaneLayout() {
+            const wrapper = document.getElementById('editor-wrapper');
+            const paneExact = document.getElementById('pane-exact');
+            const paneEditable = document.getElementById('pane-editable');
+            const both = paneState.exact && paneState.editable;
+
+            paneExact.classList.toggle('hidden', !paneState.exact);
+            paneEditable.classList.toggle('hidden', !paneState.editable);
+            document.getElementById('pane-splitter').classList.toggle('hidden', !both);
+            wrapper.classList.toggle('single-pane', !both);
+
+            // Reorder by `order` rather than by moving nodes: moving the
+            // contenteditable would drop the caret, and moving the canvases would
+            // force every PDF page to re-composite.
+            paneExact.style.order = paneState.swapped ? '2' : '0';
+            paneEditable.style.order = paneState.swapped ? '0' : '2';
+            document.getElementById('pane-splitter').style.order = '1';
+
+            if (both) {
+                applyPaneSizes();
             } else {
-                pdfViewer.style.display = 'none';
-                editorPage.style.display = '';
-                // Pagination/stats depend on layout (scrollHeight, offsetTop), which reads
-                // as 0 while editor-page was display:none — recompute now that it's visible.
-                if (typeof paginateSimulated === 'function') paginateSimulated();
-                drawPageNumbers();
+                paneExact.style.flexGrow = '1';
+                paneEditable.style.flexGrow = '1';
+            }
+
+            const btnExact = document.getElementById('view-btn-exact');
+            const btnEditable = document.getElementById('view-btn-editable');
+            btnExact.classList.toggle('active', paneState.exact);
+            btnEditable.classList.toggle('active', paneState.editable);
+            // The last open pane can't be closed — there would be nothing to show.
+            btnExact.disabled = paneState.exact && !paneState.editable;
+            btnEditable.disabled = paneState.editable && !paneState.exact;
+            document.getElementById('pane-close-exact').disabled = btnExact.disabled;
+            document.getElementById('pane-close-editable').disabled = btnEditable.disabled;
+            document.getElementById('view-btn-swap').disabled = !both;
+            document.getElementById('view-btn-sync').disabled = !both;
+        }
+
+        function setPaneVisible(which, visible) {
+            // The exact pane only exists while a PDF is loaded.
+            if (which === 'exact' && visible && !pdfLoaded) return;
+            const other = which === 'exact' ? 'editable' : 'exact';
+            if (!visible && !paneState[other]) return;
+            if (paneState[which] === visible) return;
+
+            const wasHidden = !paneState[which];
+            paneState[which] = visible;
+            applyPaneLayout();
+
+            if (which === 'editable' && visible && wasHidden) {
+                // Pagination and stats are measured from layout, which reads as 0
+                // while the pane is display:none — recompute now that it has a box.
+                reflowPages();
                 updateStatistics();
             }
         }
+
+        // A PDF whose pages render but yield no script blocks used to leave the
+        // editable pane, the Navigator and the character/location lists all silently
+        // empty, with nothing saying why. Say why.
+        function setEditableNotice(title, detail) {
+            const el = document.getElementById('editable-notice');
+            if (!title) {
+                el.style.display = 'none';
+                el.textContent = '';
+                return;
+            }
+            el.innerHTML = '';
+            const h = document.createElement('strong');
+            h.textContent = title;
+            const p = document.createElement('p');
+            p.textContent = detail;
+            el.appendChild(h);
+            el.appendChild(p);
+            el.style.display = 'block';
+        }
+
+        function togglePane(which) { setPaneVisible(which, !paneState[which]); }
+        function closePane(which) { setPaneVisible(which, false); }
+
+        function swapPanes() {
+            paneState.swapped = !paneState.swapped;
+            applyPaneLayout();
+        }
+
+        // --- Matching the two panes to each other ---
+        // Every block imported from a PDF remembers the page it came from, and every
+        // rendered page knows its own number, so the two views can be lined up on the
+        // shared page grid rather than on scroll percentages (which drift badly, since
+        // the reflowed script and the original PDF don't have the same page count).
+
+        let lastActivePane = 'editable';
+
+        function trackActivePane() {
+            [['exact', 'pane-exact'], ['editable', 'pane-editable']].forEach(([key, id]) => {
+                const el = document.getElementById(id);
+                // Capture phase, so a click that lands deep inside still registers.
+                ['mousedown', 'focusin', 'wheel'].forEach(ev =>
+                    el.addEventListener(ev, () => { lastActivePane = key; }, true));
+            });
+        }
+        trackActivePane();
+
+        // Blocks typed after import carry no page stamp of their own, so forward-fill
+        // from the last block that has one. One pass, because a feature-length script
+        // is several thousand blocks.
+        function resolveBlockPages() {
+            const blocks = getBlocks();
+            const pages = [];
+            let last = null;
+            for (const b of blocks) {
+                const v = b.dataset && b.dataset.pdfPage ? parseInt(b.dataset.pdfPage, 10) : null;
+                if (v) last = v;
+                pages.push(last);
+            }
+            return { blocks, pages };
+        }
+
+        function paneBody(which) {
+            return document.querySelector('#pane-' + which + ' .pane-body');
+        }
+
+        // Scroll `body` so that `el` sits just below its top edge. Measured from live
+        // rects rather than offsetTop so the zoom slider is accounted for.
+        function scrollPaneTo(body, el, extra) {
+            const delta = el.getBoundingClientRect().top - body.getBoundingClientRect().top;
+            body.scrollTop += delta + (extra || 0) - 20;
+        }
+
+        function flashTarget(el) {
+            if (!el) return;
+            el.classList.remove('sync-flash');
+            void el.offsetWidth; // restart the animation if it is already running
+            el.classList.add('sync-flash');
+            setTimeout(() => el.classList.remove('sync-flash'), 1000);
+        }
+
+        // The block the user means: whatever the caret is in, else whatever is at the
+        // top of the pane.
+        function editableAnchorBlock(blocks) {
+            const sel = window.getSelection();
+            const editor = document.getElementById('editor-page');
+            if (sel.rangeCount && editor.contains(sel.anchorNode)) {
+                const n = findBlockNode(sel.anchorNode);
+                if (n) return n;
+            }
+            const top = paneBody('editable').getBoundingClientRect().top;
+            for (const b of blocks) {
+                if (b.getBoundingClientRect().bottom > top + 4) return b;
+            }
+            return blocks[blocks.length - 1] || null;
+        }
+
+        function syncExactToEditable() {
+            const { blocks, pages } = resolveBlockPages();
+            const anchor = editableAnchorBlock(blocks);
+            const i = blocks.indexOf(anchor);
+            if (i === -1 || !pages[i]) return false;
+
+            const pageNum = pages[i];
+            // Where in that PDF page the anchor sits, judged by its position among the
+            // blocks that share the page.
+            let first = i, count = 0;
+            while (first > 0 && pages[first - 1] === pageNum) first--;
+            for (let j = first; j < pages.length && pages[j] === pageNum; j++) count++;
+            const fraction = count > 1 ? (i - first) / count : 0;
+
+            const rendered = document.getElementById('pdf-viewer').children;
+            if (!rendered.length) return false;
+            const target = rendered[Math.min(pageNum, rendered.length) - 1];
+            scrollPaneTo(paneBody('exact'), target, fraction * target.getBoundingClientRect().height);
+            flashTarget(target);
+            return true;
+        }
+
+        function syncEditableToExact() {
+            const body = paneBody('exact');
+            const top = body.getBoundingClientRect().top;
+            let target = null, fraction = 0;
+            for (const el of document.getElementById('pdf-viewer').children) {
+                const r = el.getBoundingClientRect();
+                if (r.bottom > top + 4) {
+                    target = el;
+                    fraction = Math.min(0.95, Math.max(0, (top - r.top) / r.height));
+                    break;
+                }
+            }
+            if (!target) return false;
+
+            const pageNum = parseInt(target.dataset.pdfPage, 10);
+            const { blocks, pages } = resolveBlockPages();
+            const onPage = blocks.filter((b, i) => pages[i] === pageNum);
+            if (!onPage.length) return false;
+
+            const block = onPage[Math.min(onPage.length - 1, Math.floor(fraction * onPage.length))];
+            scrollPaneTo(paneBody('editable'), block);
+            flashTarget(block);
+            return true;
+        }
+
+        function syncPanes() {
+            if (!(paneState.exact && paneState.editable)) return false;
+            return lastActivePane === 'exact' ? syncEditableToExact() : syncExactToEditable();
+        }
+
+        // The Navigator and the character/location lists point at blocks that live in
+        // the editable script, so bring that pane on screen before scrolling to one.
+        function scrollToBlock(node, block) {
+            if (!node) return;
+            const wasHidden = !paneState.editable;
+            setPaneVisible('editable', true);
+            const go = () => node.scrollIntoView({ behavior: 'smooth', block: block || 'center' });
+            // Revealing the pane runs a reflow; let it settle before measuring.
+            if (wasHidden) requestAnimationFrame(() => requestAnimationFrame(go));
+            else go();
+        }
+
+        function setupPaneSplitter() {
+            const splitter = document.getElementById('pane-splitter');
+            const wrapper = document.getElementById('editor-wrapper');
+            let dragging = false;
+            splitter.addEventListener('mousedown', (e) => {
+                dragging = true;
+                document.body.style.cursor = 'ew-resize';
+                document.body.classList.add('resizing');
+                e.preventDefault();
+            });
+            document.addEventListener('mousemove', (e) => {
+                if (!dragging) return;
+                const rect = wrapper.getBoundingClientRect();
+                if (rect.width <= 0) return;
+                // Fraction of the row taken by whichever pane is currently on the
+                // left, converted back into the exact pane's share.
+                let leftShare = (e.clientX - rect.left) / rect.width;
+                const exactShare = paneState.swapped ? 1 - leftShare : leftShare;
+                paneState.ratio = Math.max(0.15, Math.min(0.85, exactShare));
+                applyPaneSizes();
+                e.preventDefault();
+            });
+            document.addEventListener('mouseup', () => {
+                if (!dragging) return;
+                dragging = false;
+                document.body.style.cursor = '';
+                document.body.classList.remove('resizing');
+            });
+        }
+        applyPaneLayout();
+        setupPaneSplitter();
 
         // Renders one PDF page as a pixel-perfect canvas with an invisible, selectable
         // text layer on top (pdf.js's own approach) — same look as the source PDF,
@@ -1479,6 +1998,7 @@
 
             const pageDiv = document.createElement('div');
             pageDiv.className = 'pdf-page';
+            pageDiv.dataset.pdfPage = page.pageNumber;
             pageDiv.style.width = cssWidth + 'px';
             pageDiv.style.height = cssHeight + 'px';
 
@@ -1631,7 +2151,9 @@
                 if (canMerge && blocks.length) {
                     blocks[blocks.length - 1].text += ' ' + text;
                 } else {
-                    blocks.push({ type, text, indent });
+                    // Keep the source page: it is what lets the two panes find the
+                    // same spot in each other later.
+                    blocks.push({ type, text, indent, page: l.page });
                 }
 
                 prevY = l.y;
@@ -1671,7 +2193,7 @@
                 if (last && last.type === b.type && (b.type === 'dialogue' || b.type === 'action')) {
                     last.text += ' ' + b.text;
                 } else {
-                    merged.push({ type: b.type, text: b.text });
+                    merged.push({ type: b.type, text: b.text, page: b.page });
                 }
             });
 
@@ -1690,10 +2212,8 @@
         }
 
         function exportTXT() {
-            const editor = document.getElementById('editor-page');
             const lines = [];
-            for (let child of editor.children) {
-                if (child.id === 'page-numbers-container') continue;
+            for (let child of getBlocks()) {
                 if (child.classList.contains('center-title')) lines.push("          " + child.innerText + "\n");
                 else if (child.classList.contains('scene-heading') || child.classList.contains('transition')) lines.push("\n" + child.innerText + "\n");
                 else if (child.classList.contains('action')) lines.push(child.innerText + "\n");
@@ -1705,10 +2225,8 @@
         }
         
         function exportMD() {
-            const editor = document.getElementById('editor-page');
             const lines = [];
-            for (let child of editor.children) {
-                if (child.id === 'page-numbers-container') continue;
+            for (let child of getBlocks()) {
                 if (child.classList.contains('scene-heading')) lines.push("**" + child.innerText + "**\n");
                 else if (child.classList.contains('character')) lines.push("\n**" + child.innerText + "**");
                 else if (child.classList.contains('parenthetical')) lines.push("*" + child.innerText + "*");
@@ -1717,12 +2235,10 @@
             downloadFile('script.md', lines.join("\n"), 'text/markdown');
         }
 
-        function saveJSON() {
-            const editor = document.getElementById('editor-page');
+        function saveJSON(filename) {
             const data = [];
-            for (let child of editor.children) {
-                if (child.id === 'page-numbers-container') continue;
-                if(child.className) {
+            for (let child of getBlocks()) {
+                if (child.className) {
                     data.push({ type: child.className, text: child.innerText });
                 }
             }
@@ -1730,27 +2246,31 @@
                 script: data,
                 lists: appState
             };
-            downloadFile('script.json', JSON.stringify(exportData, null, 2), 'application/json');
+            downloadFile(filename || 'script.json', JSON.stringify(exportData, null, 2), 'application/json');
+        }
+
+        function saveJSONAs() {
+            const name = prompt("Save as:", lastSavedName || "script");
+            if (name === null) return;
+            const trimmed = name.trim() || 'script';
+            lastSavedName = trimmed;
+            saveJSON(trimmed.toLowerCase().endsWith('.json') ? trimmed : trimmed + '.json');
         }
 
                 async function loadFile(event) {
             const file = event.target.files[0];
             if (!file) return;
             const editor = document.getElementById('editor-page');
-            
+            setEditableNotice(null);
+
             if (file.name.toLowerCase().endsWith('.pdf')) {
                 try {
                     const arrayBuffer = await file.arrayBuffer();
                     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-                    let pn = document.getElementById('page-numbers-container');
-                    if (!pn) {
-                        pn = document.createElement('div');
-                        pn.id = 'page-numbers-container';
-                        pn.contentEditable = "false";
-                    }
                     editor.innerHTML = '';
-                    editor.appendChild(pn);
+                    const stagingFrame = createPageFrame();
+                    editor.appendChild(stagingFrame);
 
                     // Text extraction (for the sidebar/editable view) is fast — pull it
                     // for every page up front so the app becomes usable immediately,
@@ -1768,11 +2288,33 @@
                         const div = document.createElement('div');
                         div.className = b.type;
                         div.innerText = b.text;
-                        editor.appendChild(div);
+                        if (b.page) div.dataset.pdfPage = b.page;
+                        stagingFrame.appendChild(div);
                     });
 
                     setPdfLoaded(true);
-                    if (typeof paginateSimulated === 'function') paginateSimulated();
+
+                    if (blocks.length === 0) {
+                        if (allLines.length === 0) {
+                            setEditableNotice(
+                                'This PDF has no selectable text',
+                                'Every page rendered in Exact View, but the file carries no text layer — it is almost ' +
+                                'certainly a scan or an image-only export. There is nothing to reflow into an editable ' +
+                                'script, which is why this pane, the Navigator and the character and location lists are ' +
+                                'all empty. Run the file through OCR, or export a text-based PDF from whatever produced ' +
+                                'it, then load it again.');
+                        } else {
+                            setEditableNotice(
+                                'Could not read this PDF as a screenplay',
+                                'Text was extracted from the file (' + allLines.length + ' lines), but none of it matched ' +
+                                'a recognisable screenplay layout, so no blocks were created. Exact View still shows the ' +
+                                'document exactly as it is.');
+                        }
+                        // Don't leave the explanation hidden behind a pane the user
+                        // has no reason to open.
+                        setPaneVisible('editable', true);
+                    }
+                    reflowPages();
                     buildToc();
                     extractEntities();
                     updateStatistics();
@@ -1805,15 +2347,9 @@
                 const contents = e.target.result;
                 const editor = document.getElementById('editor-page');
 
-                // Keep the page numbers container
-                let pn = document.getElementById('page-numbers-container');
-                if (!pn) {
-                    pn = document.createElement('div');
-                    pn.id = 'page-numbers-container';
-                    pn.contentEditable = "false";
-                }
                 editor.innerHTML = '';
-                editor.appendChild(pn);
+                const stagingFrame = createPageFrame();
+                editor.appendChild(stagingFrame);
 
                 if (file.name.endsWith('.json')) {
                     try {
@@ -1824,14 +2360,14 @@
                         } else {
                             appState = { characters: [], locations: [] };
                         }
-                        
+
                         scriptData.forEach(item => {
                             const div = document.createElement('div');
                             div.className = item.type;
                             div.innerText = item.text;
-                            editor.appendChild(div);
+                            stagingFrame.appendChild(div);
                         });
-                        if (typeof paginateSimulated === 'function') paginateSimulated();
+                        reflowPages();
                         buildToc();
                         extractEntities();
                         updateStatistics();
@@ -1843,16 +2379,16 @@
                         const empty = document.createElement('div');
                         empty.className = 'action';
                         empty.innerText = ' ';
-                        editor.appendChild(empty);
+                        stagingFrame.appendChild(empty);
                     } else {
                         blocks.forEach(b => {
                             const div = document.createElement('div');
                             div.className = b.type;
                             div.innerText = b.text;
-                            editor.appendChild(div);
+                            stagingFrame.appendChild(div);
                         });
                     }
-                    if (typeof paginateSimulated === 'function') paginateSimulated();
+                    reflowPages();
                     buildToc();
                     extractEntities();
                     updateStatistics();
@@ -1865,8 +2401,9 @@
 
         // --- Keyboard Shortcuts ---
         document.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); } 
+            if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
             else if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
+            else if (e.ctrlKey && (e.key === 'm' || e.key === 'M')) { e.preventDefault(); syncPanes(); }
         });
 
         document.getElementById('editor-page').addEventListener('keydown', function(e) {
@@ -1877,20 +2414,52 @@
                 e.preventDefault();
                 const selection = window.getSelection();
                 if (!selection.rangeCount) return;
-                let node = selection.anchorNode;
-                while (node && node.parentNode && node.parentNode.id !== 'editor-page' && node.id !== 'editor-page') node = node.parentNode;
-                
-                if (node && node.parentNode && node.parentNode.id === 'editor-page') {
+                const node = findBlockNode(selection.anchorNode);
+
+                if (node) {
                     const currentClass = node.className;
                     if (currentClass === 'action') node.className = 'character';
                     else if (currentClass === 'character') node.className = 'parenthetical';
                     else if (currentClass === 'parenthetical') node.className = 'dialogue';
                     else if (currentClass === 'dialogue') node.className = 'action';
                     else node.className = 'action';
-                    
+
                     saveState();
                     extractEntities();
                 }
+            }
+            if (e.key === 'Backspace') {
+                // Best-effort merge across a page-frame boundary: native contenteditable
+                // Backspace-merge isn't reliable when the two blocks sit in different
+                // parent elements, so handle "caret at the very start of a frame's first
+                // block" manually and let reflowPages() settle the result.
+                const selection = window.getSelection();
+                if (!selection.rangeCount || !selection.isCollapsed) return;
+                const range = selection.getRangeAt(0);
+                if (range.startOffset !== 0) return;
+
+                const blockNode = findBlockNode(range.startContainer);
+                if (!blockNode) return;
+                if (range.startContainer !== blockNode && range.startContainer.previousSibling) return;
+
+                const frame = blockNode.parentNode;
+                if (blockNode !== frame.querySelector(':scope > *:not(.page-number-label)')) return;
+
+                const prev = prevBlock(blockNode);
+                if (!prev) return;
+
+                e.preventDefault();
+                const wasEmpty = blockNode.textContent.trim() === '';
+                if (!wasEmpty) prev.innerHTML += blockNode.innerHTML;
+                blockNode.remove();
+
+                const caretRange = document.createRange();
+                caretRange.selectNodeContents(prev);
+                caretRange.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(caretRange);
+
+                handleInput();
             }
         });
 
@@ -1915,6 +2484,7 @@
                 <h3 style="margin-top:0; font-size:1rem; border-bottom:1px solid #444; padding-bottom:5px;">Instructions</h3>
                 <div style="font-size: 0.85rem; color: #bbb; line-height: 1.4;">
                     <p>Use <b>Ctrl+Z</b> and <b>Ctrl+Y</b> to undo and redo changes.</p>
+                    <p>With a PDF open, use the <b>Exact View</b> and <b>Editable Script</b> buttons to show either or both side by side, <b>⇄</b> to swap sides, and <b>Match ⇔</b> (or <b>Ctrl+M</b>) to scroll the other pane to the spot you're working in.</p>
                     <p>Click anywhere in the script to edit.</p>
                     <p>Use the formatting toolbar to change the style of the current line.</p>
                     <p>Press <b>Enter</b> to create a new line. The editor will automatically maintain formatting blocks.</p>
