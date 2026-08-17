@@ -777,8 +777,9 @@
         <div class="menu-item" tabindex="0">
             File
             <div class="dropdown">
+                <div onclick="newScript()">New</div>
                 <div onclick="document.getElementById('file-input').click()">Load Script...</div>
-                <div onclick="saveJSON(lastSavedName ? lastSavedName : 'script.json')">Save (.json)</div>
+                <div onclick="saveJSON()">Save (.json)</div>
                 <div onclick="saveJSONAs()">Save As...</div>
                 <div onclick="window.print()">Export as PDF</div>
                 <div onclick="exportMD()">Export as Markdown</div>
@@ -2745,7 +2746,7 @@
                 else if (child.classList.contains('parenthetical')) lines.push("        " + child.innerText);
                 else if (child.classList.contains('dialogue')) lines.push("      " + child.innerText);
             }
-            downloadFile('script.txt', lines.join("\n"), 'text/plain');
+            downloadFile(withExtension(scriptName(), '.txt'), lines.join("\n"), 'text/plain');
         }
         
         function exportMD() {
@@ -2756,29 +2757,146 @@
                 else if (child.classList.contains('parenthetical')) lines.push("*" + child.innerText + "*");
                 else lines.push(child.innerText + "\n");
             }
-            downloadFile('script.md', lines.join("\n"), 'text/markdown');
+            downloadFile(withExtension(scriptName(), '.md'), lines.join("\n"), 'text/markdown');
         }
 
-        function saveJSON(filename) {
+        // --- Saving ---
+        // The script's own name, used as the default filename everywhere: whatever
+        // it was last saved or loaded as, else the title block on the title page,
+        // else a placeholder. Never a bare "untitled" while the script says who it
+        // is. Returned bare (no extension) so each exporter can add its own.
+        function scriptName() {
+            if (lastSavedName) return lastSavedName;
+            const title = getBlocks().find(b =>
+                b.classList.contains('center-title') && b.innerText.trim());
+            if (title) return sanitizeFilename(title.innerText);
+            return 'Untitled Script';
+        }
+
+        function sanitizeFilename(name) {
+            // Windows forbids \ / : * ? " < > | in a filename, and a trailing dot or
+            // space makes a name that can be created but not reopened.
+            const clean = (name || '').replace(/[\\/:*?"<>|]+/g, ' ')
+                .replace(/\s+/g, ' ').trim().replace(/[. ]+$/, '');
+            return clean || 'Untitled Script';
+        }
+
+        function withExtension(name, ext) {
+            return name.toLowerCase().endsWith(ext) ? name : name + ext;
+        }
+
+        function scriptJSON() {
             const data = [];
             for (let child of getBlocks()) {
                 if (child.className) {
                     data.push({ type: child.className, text: child.innerText });
                 }
             }
-            const exportData = {
-                script: data,
-                lists: appState
-            };
-            downloadFile(filename || 'script.json', JSON.stringify(exportData, null, 2), 'application/json');
+            return JSON.stringify({ script: data, lists: appState }, null, 2);
         }
 
-        function saveJSONAs() {
-            const name = prompt("Save as:", lastSavedName || "script");
+        // The file the script is currently attached to, when the browser gave us a
+        // real handle to write through. Chrome remembers the folder behind the `id`
+        // below by itself, across sessions; passing the handle as `startIn` also
+        // puts the dialog back on the exact file within this one.
+        let currentFileHandle = null;
+        const SAVE_PICKER_ID = 'final-drafter-script';
+        const canPickFiles = () => typeof window.showSaveFilePicker === 'function';
+
+        // Save writes straight back to the file it came from; with nothing to write
+        // back to it has to ask where first.
+        async function saveJSON() {
+            if (currentFileHandle) {
+                try {
+                    await writeToHandle(currentFileHandle, scriptJSON());
+                    lastSavedName = sanitizeFilename(currentFileHandle.name.replace(/\.[^.]+$/, ''));
+                    return;
+                } catch (err) {
+                    // The file may have been moved, deleted, or had its permission
+                    // revoked since it was picked -- fall through and ask again.
+                    if (err.name !== 'AbortError') console.error(err);
+                    currentFileHandle = null;
+                }
+            }
+            saveJSONAs();
+        }
+
+        async function saveJSONAs() {
+            if (canPickFiles()) {
+                try {
+                    const handle = await window.showSaveFilePicker({
+                        id: SAVE_PICKER_ID,
+                        suggestedName: withExtension(scriptName(), '.json'),
+                        startIn: currentFileHandle || undefined,
+                        types: [{ description: 'Final Drafter script', accept: { 'application/json': ['.json'] } }]
+                    });
+                    await writeToHandle(handle, scriptJSON());
+                    currentFileHandle = handle;
+                    lastSavedName = sanitizeFilename(handle.name.replace(/\.[^.]+$/, ''));
+                    return;
+                } catch (err) {
+                    if (err.name === 'AbortError') return; // dialog dismissed
+                    // The picker exists but this context won't run it (some builds
+                    // refuse on file:// pages) -- downloading still gets the script
+                    // out, so don't strand the writer on an error box.
+                    console.error(err);
+                }
+            }
+
+            // No usable picker: the browser decides where it lands, so all we can
+            // offer is the name.
+            const name = prompt("Save as:", scriptName());
             if (name === null) return;
-            const trimmed = name.trim() || 'script';
-            lastSavedName = trimmed;
-            saveJSON(trimmed.toLowerCase().endsWith('.json') ? trimmed : trimmed + '.json');
+            lastSavedName = sanitizeFilename(name);
+            downloadFile(withExtension(lastSavedName, '.json'), scriptJSON(), 'application/json');
+        }
+
+        async function writeToHandle(handle, contents) {
+            const writable = await handle.createWritable();
+            await writable.write(contents);
+            await writable.close();
+        }
+
+        // --- New ---
+        // Wipes the document back to what the app opens with: one empty page, no
+        // entities, no history, no source PDF and no file to save back to.
+        function newScript() {
+            const hasContent = getBlocks().some(b => b.innerText.trim());
+            if (hasContent && !confirm("Start a new script? Anything unsaved will be lost.")) return;
+
+            const editor = document.getElementById('editor-page');
+            editor.innerHTML = '';
+            ensureAtLeastOneFrame(); // one page, holding one blank line
+
+            appState = { characters: [], locations: [] };
+            dynamicCounts = { characters: {}, locations: {} };
+            activeHighlights.clear();
+            historyStack = [];
+            historyIndex = -1;
+            lastSavedName = '';
+            currentFileHandle = null;
+            lastEditorRange = null;
+            exampleBlock = null;
+
+            setEditableNotice(null);
+            setPdfLoaded(false);
+            reflowPages();
+            buildToc();
+            extractEntities();
+            updateStatistics();
+            saveState();
+
+            // Put the caret on the blank first line so typing starts the script.
+            const first = getBlocks()[0];
+            if (first) {
+                editor.focus();
+                const range = document.createRange();
+                range.selectNodeContents(first);
+                range.collapse(true);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
         }
 
                 async function loadFile(event) {
@@ -2786,6 +2904,12 @@
             if (!file) return;
             const editor = document.getElementById('editor-page');
             setEditableNotice(null);
+
+            // The loaded file names the script from here on. A file chosen through
+            // <input type="file"> carries no writable handle, so the first Save still
+            // has to ask where -- but it asks with this name already filled in.
+            lastSavedName = sanitizeFilename(file.name.replace(/\.(json|md|txt|pdf)$/i, ''));
+            currentFileHandle = null;
 
             if (file.name.toLowerCase().endsWith('.pdf')) {
                 try {
@@ -2928,6 +3052,8 @@
             if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
             else if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
             else if (e.ctrlKey && (e.key === 'm' || e.key === 'M')) { e.preventDefault(); syncPanes(); }
+            // Otherwise Ctrl+S saves the app's own HTML, which is never what was meant.
+            else if (e.ctrlKey && (e.key === 's' || e.key === 'S')) { e.preventDefault(); saveJSON(); }
         });
 
         document.getElementById('editor-page').addEventListener('keydown', function(e) {
@@ -3011,6 +3137,7 @@
             <div style="margin-bottom: 20px;">
                 <h3 style="margin-top:0; font-size:1rem; border-bottom:1px solid #444; padding-bottom:5px;">Instructions</h3>
                 <div style="font-size: 0.85rem; color: #bbb; line-height: 1.4;">
+                    <p>File menu: <b>New</b> starts an empty script. <b>Save As...</b> opens your system's save dialog so you can choose the folder, and reopens in that same folder next time. <b>Save</b> writes straight back to the file you last saved to, and only asks where if there isn't one yet. The filename is suggested from the script's title page, or from the file it was loaded from. <b>Ctrl+S</b> saves.</p>
                     <p>Use <b>Ctrl+Z</b> and <b>Ctrl+Y</b> to undo and redo changes.</p>
                     <p>With a PDF open, use the <b>Exact View</b> and <b>Editable Script</b> buttons to show either or both side by side, <b>⇄</b> to swap sides, and <b>Match ⇔</b> (or <b>Ctrl+M</b>) to scroll the other pane to the spot you're working in.</p>
                     <p>Click anywhere in the script to edit.</p>
