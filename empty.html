@@ -101,6 +101,54 @@
             border-color: var(--border-color);
         }
 
+        /* Right-click suggestion menu for the formatting buttons. Lists the
+           entries of that type already used in the script (most frequent first)
+           plus a few generic examples. */
+        .suggest-menu {
+            position: fixed;
+            display: none;
+            z-index: 500;
+            background: var(--sidebar-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            min-width: 240px;
+            max-width: 420px;
+            max-height: 60vh;
+            overflow-y: auto;
+            padding: 4px 0;
+            font-size: 0.85rem;
+            user-select: none;
+        }
+        .suggest-section {
+            padding: 6px 12px 4px;
+            font-size: 0.7rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #888;
+        }
+        .suggest-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 6px 12px;
+            cursor: pointer;
+        }
+        .suggest-row:hover {
+            background: var(--accent-color);
+        }
+        .suggest-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .suggest-count {
+            flex-shrink: 0;
+            opacity: 0.45;
+            font-size: 0.75rem;
+        }
+
         /* Main Area */
         #main-container {
             display: flex;
@@ -621,6 +669,18 @@
             100% { box-shadow: 0 0 0 3px rgba(0, 123, 255, 0); }
         }
 
+        /* The exact view can't take a caret, so a Match into it paints the matched
+           line the way a selection would instead. */
+        .pdf-text-layer span.sync-line-flash {
+            border-radius: 2px;
+            animation: syncLineFlash 1.6s ease-out;
+        }
+        @keyframes syncLineFlash {
+            0%   { background: rgba(0, 123, 255, 0.55); }
+            70%  { background: rgba(0, 123, 255, 0.30); }
+            100% { background: rgba(0, 123, 255, 0); }
+        }
+
         /* Print Media */
         @media print {
             body, #main-container, #editor-wrapper, .doc-pane, .pane-body {
@@ -727,14 +787,18 @@
         </div>
         <input type="file" id="file-input" style="display: none;" accept=".json,.md,.txt,.pdf" onchange="loadFile(event)">
         
-        <div class="toolbar">
-            <button onclick="formatBlock('scene-heading')">Scene Heading</button>
-            <button onclick="formatBlock('action')">Action</button>
-            <button onclick="formatBlock('character')">Character</button>
-            <button onclick="formatBlock('parenthetical')">Parenthetical</button>
-            <button onclick="formatBlock('dialogue')">Dialogue</button>
-            <button onclick="formatBlock('transition')">Transition</button>
-            
+        <!-- Format buttons: click inserts an example block of that type, click
+             with script text selected converts the selected blocks instead, and
+             right-click offers the entries of that type already in the script.
+             Wired up in setupFormatButtons(). -->
+        <div class="toolbar" id="format-toolbar">
+            <button data-type="scene-heading">Scene Heading</button>
+            <button data-type="action">Action</button>
+            <button data-type="character">Character</button>
+            <button data-type="parenthetical">Parenthetical</button>
+            <button data-type="dialogue">Dialogue</button>
+            <button data-type="transition">Transition</button>
+
 
             <button onclick="undo()" style="margin-left: 20px;" title="Undo (Ctrl+Z)">↶</button>
             <button onclick="redo()" title="Redo (Ctrl+Y)">↷</button>
@@ -1201,26 +1265,35 @@
             if (historyStack.length > 50) { historyStack.shift(); historyIndex--; }
         }
         
+        // A snapshot is just saved markup: the page breaks frozen into it belong to
+        // whatever layout was in force when it was taken, and a snapshot recorded
+        // while the editable pane was hidden has no usable pagination at all (the
+        // whole script sits in one frame). Restoring one therefore has to re-run
+        // the reflow, or everything past the first page stays hidden behind
+        // overflow:hidden.
+        function restoreSnapshot(html) {
+            document.getElementById('editor-page').innerHTML = html;
+            reflowPages();
+            buildToc();
+            extractEntities();
+            updateStatistics();
+            refreshAllHighlights();
+        }
+
         function undo() {
             if (historyIndex > 0) {
                 isUndoRedo = true;
                 historyIndex--;
-                document.getElementById('editor-page').innerHTML = historyStack[historyIndex];
-                buildToc();
-                extractEntities();
-                refreshAllHighlights();
+                restoreSnapshot(historyStack[historyIndex]);
                 isUndoRedo = false;
             }
         }
-        
+
         function redo() {
             if (historyIndex < historyStack.length - 1) {
                 isUndoRedo = true;
                 historyIndex++;
-                document.getElementById('editor-page').innerHTML = historyStack[historyIndex];
-                buildToc();
-                extractEntities();
-                refreshAllHighlights();
+                restoreSnapshot(historyStack[historyIndex]);
                 isUndoRedo = false;
             }
         }
@@ -1369,23 +1442,274 @@
         function toggleSection(headerEl) { headerEl.classList.toggle('collapsed'); }
 
         // --- Formatting & TOC ---
-        function formatBlock(className) {
-            const selection = window.getSelection();
-            if (!selection.rangeCount) return;
+        // --- Formatting toolbar ---
+        // A format button means "give me one of these" when nothing is selected:
+        // it drops in a filled-in example of that element so the shape of the
+        // line is visible, with the text pre-selected so typing replaces it.
+        // Only an actual text selection means "retype what I already wrote as
+        // this element", which converts every block the selection touches.
 
-            const node = findBlockNode(selection.anchorNode);
+        const BLOCK_LABELS = {
+            'scene-heading': 'Scene Heading',
+            'action': 'Action',
+            'character': 'Character',
+            'parenthetical': 'Parenthetical',
+            'dialogue': 'Dialogue',
+            'transition': 'Transition'
+        };
 
-            if (node) {
-                node.className = className;
-            } else {
-                ensureAtLeastOneFrame();
+        const BLOCK_EXAMPLES = {
+            'scene-heading': 'INT. COFFEE SHOP - DAY',
+            'action': 'She sets the cup down and stares at the door.',
+            'character': 'JANE',
+            'parenthetical': '(beat)',
+            'dialogue': "I wasn't expecting you tonight.",
+            'transition': 'CUT TO:'
+        };
+
+        // Offered under "Examples" in the right-click menu, after whatever the
+        // script itself already uses.
+        const BLOCK_TEMPLATES = {
+            'scene-heading': ['INT. LOCATION - DAY', 'EXT. LOCATION - DAY', 'INT. LOCATION - NIGHT',
+                              'EXT. LOCATION - NIGHT', 'INT./EXT. LOCATION - CONTINUOUS'],
+            'action': ['A beat.', 'Silence.', 'She turns to look at him.', 'The door slams shut.'],
+            'character': ['NAME', 'NAME (O.S.)', 'NAME (V.O.)', "NAME (CONT'D)"],
+            'parenthetical': ['(beat)', '(quietly)', '(to herself)', '(laughing)', "(cont'd)"],
+            'dialogue': ['Yes.', 'No.', "I don't know.", 'What are you talking about?'],
+            'transition': ['CUT TO:', 'DISSOLVE TO:', 'SMASH CUT TO:', 'MATCH CUT TO:', 'FADE OUT.', 'FADE IN:']
+        };
+
+        // Clicking a toolbar button pulls focus out of the contenteditable, so
+        // remember the last range that was actually inside the editor and fall
+        // back to it once the live selection has moved elsewhere.
+        let lastEditorRange = null;
+
+        document.addEventListener('selectionchange', () => {
+            const sel = window.getSelection();
+            if (!sel.rangeCount) return;
+            const editor = document.getElementById('editor-page');
+            const range = sel.getRangeAt(0);
+            if (editor && editor.contains(range.commonAncestorContainer)) {
+                lastEditorRange = range.cloneRange();
             }
+        });
+
+        function activeEditorRange() {
+            const editor = document.getElementById('editor-page');
+            const sel = window.getSelection();
+            if (sel.rangeCount) {
+                const range = sel.getRangeAt(0);
+                if (editor && editor.contains(range.commonAncestorContainer)) return range;
+            }
+            if (lastEditorRange && editor && editor.contains(lastEditorRange.commonAncestorContainer)) {
+                return lastEditorRange;
+            }
+            return null;
+        }
+
+        function formatBlock(className) {
+            const range = activeEditorRange();
+            if (range && !range.collapsed && !isExampleSelection(range)) convertRangeTo(className, range);
+            else insertExampleBlock(className);
+        }
+
+        // The block whose example text we selected on the writer's behalf. That
+        // selection is ours, not the writer's, so a second button click still
+        // means "insert another one" rather than "convert what's selected".
+        let exampleBlock = null;
+
+        function isExampleSelection(range) {
+            if (!exampleBlock || !exampleBlock.isConnected) return false;
+            if (!exampleBlock.contains(range.commonAncestorContainer)) return false;
+            return range.toString() === exampleBlock.textContent;
+        }
+
+        // Every block the selection touches becomes `className` -- a selection
+        // inside a single line converts just that line, which is what the button
+        // always used to do.
+        function convertRangeTo(className, range) {
+            const targets = blocksInRange(range);
+            if (!targets.length) { insertExampleBlock(className); return; }
+            targets.forEach(b => { b.className = className; });
+            afterBlockChange();
+        }
+
+        function blocksInRange(range) {
+            const touched = getBlocks().filter(b => range.intersectsNode(b));
+            if (touched.length < 2) return touched;
+
+            // Dragging to the next line usually lands the selection at offset 0
+            // of that block, which covers none of its text -- reformatting it
+            // there would be a surprise.
+            const last = touched[touched.length - 1];
+            const tail = document.createRange();
+            tail.selectNodeContents(last);
+            try {
+                tail.setEnd(range.endContainer, range.endOffset);
+            } catch (e) {
+                return touched;
+            }
+            if (tail.toString().trim() === '') touched.pop();
+            return touched;
+        }
+
+        function insertExampleBlock(className, text) {
+            const editor = document.getElementById('editor-page');
+            ensureAtLeastOneFrame();
+
+            const content = text !== undefined ? text : (BLOCK_EXAMPLES[className] || '');
+            const range = activeEditorRange();
+
+            // Insert after the caret's block; with no caret (e.g. the toolbar
+            // was the first thing touched after a load) fall back to the end.
+            let anchor = range ? findBlockNode(range.startContainer) : null;
+            if (!anchor) {
+                const blocks = getBlocks();
+                anchor = blocks.length ? blocks[blocks.length - 1] : null;
+            }
+
+            let block;
+            if (anchor && anchor.textContent.trim() === '') {
+                // Sitting on a blank line: fill it in rather than leaving it
+                // stranded above the new block.
+                block = anchor;
+                block.className = className;
+                block.innerText = content;
+            } else {
+                block = document.createElement('div');
+                block.className = className;
+                block.innerText = content;
+                if (anchor) {
+                    anchor.parentNode.insertBefore(block, anchor.nextSibling);
+                } else {
+                    editor.querySelector('.page-frame:last-child').appendChild(block);
+                }
+            }
+
+            afterBlockChange();
+            selectBlockText(block);
+            scrollToBlock(block, 'nearest');
+        }
+
+        // Leaves the example text selected so the first keystroke overwrites it.
+        function selectBlockText(block) {
+            const editor = document.getElementById('editor-page');
+            editor.focus();
+            const sel = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(block);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            lastEditorRange = range.cloneRange();
+            exampleBlock = block;
+        }
+
+        function afterBlockChange() {
+            reflowPages();
             buildToc();
             extractEntities();
             updateStatistics();
             saveState();
         }
-        
+
+        // --- Right-click suggestions ---
+
+        // Distinct texts already used for this element, most frequent first.
+        // Action and dialogue lines are near-unique by nature, so only repeats
+        // (the "Beat." / "Silence." kind) are worth suggesting there.
+        function existingBlockTexts(className) {
+            const counts = new Map();
+            document.querySelectorAll('#editor-page .' + className).forEach(node => {
+                const text = node.innerText.replace(/\s+/g, ' ').trim();
+                if (!text) return;
+                counts.set(text, (counts.get(text) || 0) + 1);
+            });
+            const prose = className === 'action' || className === 'dialogue';
+            return Array.from(counts.entries())
+                .filter(([text, count]) => !prose || (count > 1 && text.length <= 60))
+                .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+                .slice(0, prose ? 6 : 12);
+        }
+
+        function closeSuggestMenu() {
+            const menu = document.getElementById('suggest-menu');
+            if (menu) menu.style.display = 'none';
+        }
+
+        function openSuggestMenu(btn, className) {
+            const menu = document.getElementById('suggest-menu');
+            menu.innerHTML = '';
+
+            const addSection = (title) => {
+                const el = document.createElement('div');
+                el.className = 'suggest-section';
+                el.innerText = title;
+                menu.appendChild(el);
+            };
+            const addRow = (text, count) => {
+                const row = document.createElement('div');
+                row.className = 'suggest-row';
+                const label = document.createElement('span');
+                label.className = 'suggest-text';
+                label.innerText = text;
+                row.appendChild(label);
+                if (count > 1) {
+                    const badge = document.createElement('span');
+                    badge.className = 'suggest-count';
+                    badge.innerText = '×' + count;
+                    row.appendChild(badge);
+                }
+                row.onmousedown = (e) => e.preventDefault(); // keep the caret in the editor
+                row.onclick = () => { closeSuggestMenu(); insertExampleBlock(className, text); };
+                menu.appendChild(row);
+            };
+
+            const existing = existingBlockTexts(className);
+            if (existing.length) {
+                addSection('In this script');
+                existing.forEach(([text, count]) => addRow(text, count));
+            }
+
+            const used = new Set(existing.map(([text]) => text.toUpperCase()));
+            const templates = (BLOCK_TEMPLATES[className] || []).filter(t => !used.has(t.toUpperCase()));
+            if (templates.length) {
+                addSection(existing.length ? 'Examples' : 'Insert ' + BLOCK_LABELS[className]);
+                templates.forEach(text => addRow(text, 0));
+            }
+
+            menu.style.display = 'block';
+            const rect = btn.getBoundingClientRect();
+            const left = Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8));
+            menu.style.left = left + 'px';
+            menu.style.top = (rect.bottom + 4) + 'px';
+        }
+
+        function setupFormatButtons() {
+            document.querySelectorAll('#format-toolbar button[data-type]').forEach(btn => {
+                const type = btn.dataset.type;
+                btn.title = 'Click: insert an example ' + BLOCK_LABELS[type].toLowerCase()
+                          + ' · With script text selected: convert it'
+                          + ' · Right-click: pick one already in the script';
+                // Don't let the button steal focus -- the caret has to stay put
+                // so the new block lands where the writer was working.
+                btn.addEventListener('mousedown', (e) => e.preventDefault());
+                btn.addEventListener('click', () => { closeSuggestMenu(); formatBlock(type); });
+                btn.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    openSuggestMenu(btn, type);
+                });
+            });
+
+            document.addEventListener('mousedown', (e) => {
+                const menu = document.getElementById('suggest-menu');
+                if (menu.style.display === 'block' && !menu.contains(e.target)) closeSuggestMenu();
+            });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSuggestMenu(); });
+            window.addEventListener('resize', closeSuggestMenu);
+            window.addEventListener('scroll', closeSuggestMenu, true);
+        }
+
+
         
         // --- Real page frames ---
         // #editor-page holds real .page-frame boxes (a flex-wrap grid), each a
@@ -1460,6 +1784,10 @@
             relabelFrames();
         }
 
+        // Set when a reflow was asked for while the editable pane had no layout
+        // box to measure, so the next reveal knows it owes a real reflow.
+        let pendingReflow = false;
+
         // Keeps every .page-frame within its fixed 11in height by physically
         // moving overflowing blocks to the next frame (and pulling blocks back
         // if a frame has spare room), instead of the old margin-push hack.
@@ -1494,21 +1822,64 @@
             // multiplied by a real 100+ page script was enough to hang the
             // tab.
             const frames = Array.from(editor.querySelectorAll(':scope > .page-frame'));
-            const capacity = frames[0].clientHeight;
+            // Capacity is the *content* box: clientHeight still includes the
+            // 1in top/bottom page margins, and packing to that number pushes
+            // roughly two inches of blocks per page below the bottom margin,
+            // where overflow:hidden silently eats them.
+            const frameStyle = getComputedStyle(frames[0]);
+            const capacity = frames[0].clientHeight
+                - parseFloat(frameStyle.paddingTop)
+                - parseFloat(frameStyle.paddingBottom);
+
+            // While the editable pane is display:none every measurement reads as
+            // 0, which packs the whole script into one frame. Defer instead, and
+            // let the pane becoming visible trigger the real reflow.
+            if (capacity <= 0) {
+                pendingReflow = true;
+                relabelFrames();
+                return;
+            }
+
             const blocks = getBlocks();
             const heights = blocks.map(b => b.offsetHeight);
+            // offsetHeight is the border box — it excludes the vertical margins
+            // that every screenplay element carries (12pt between most blocks,
+            // 24pt above a scene heading). Ignoring them under-counts a page by
+            // several inches, so blocks got packed past the bottom margin and
+            // clipped. Margins depend only on the class, so resolve each class
+            // once rather than calling getComputedStyle per block.
+            const marginCache = new Map();
+            const marginsFor = block => {
+                let m = marginCache.get(block.className);
+                if (!m) {
+                    const cs = getComputedStyle(block);
+                    m = { top: parseFloat(cs.marginTop) || 0, bottom: parseFloat(cs.marginBottom) || 0 };
+                    marginCache.set(block.className, m);
+                }
+                return m;
+            };
+            const margins = blocks.map(marginsFor);
             if (window.__debugReflow) { window.__debugHeights = heights.slice(); window.__debugCapacity = capacity; }
 
             const pages = [[]];
             let used = 0;
+            let prevBottom = 0; // trailing margin of the previous block on this page
             blocks.forEach((block, i) => {
                 const h = heights[i];
-                if (used > 0 && used + h > capacity) {
+                const m = margins[i];
+                // Adjacent siblings collapse to the larger of the two margins.
+                // At the top of a page there is no previous sibling, and the
+                // frame's 1in padding stops the margin collapsing away, so the
+                // block's own top margin still takes up room.
+                const gap = used === 0 ? m.top : Math.max(prevBottom, m.top);
+                if (used > 0 && used + gap + h > capacity) {
                     pages.push([]);
-                    used = 0;
+                    used = m.top + h;
+                } else {
+                    used += gap + h;
                 }
                 pages[pages.length - 1].push(block);
-                used += h;
+                prevBottom = m.bottom;
             });
 
             while (frames.length < pages.length) {
@@ -1541,6 +1912,7 @@
                 } catch (e) { /* node removed by a merge (e.g. Backspace) -- nothing sensible to restore */ }
             }
 
+            pendingReflow = false;
             relabelFrames();
         }
 
@@ -1780,7 +2152,7 @@
             paneState[which] = visible;
             applyPaneLayout();
 
-            if (which === 'editable' && visible && wasHidden) {
+            if (which === 'editable' && visible && (wasHidden || pendingReflow)) {
                 // Pagination and stats are measured from layout, which reads as 0
                 // while the pane is display:none — recompute now that it has a box.
                 reflowPages();
@@ -1884,6 +2256,142 @@
             return blocks[blocks.length - 1] || null;
         }
 
+        // --- Finding one line inside a rendered PDF page ---
+        // The exact view is a canvas with pdf.js's invisible text layer on top, so the
+        // finest thing there is to land on is a run of text-layer spans. Group them
+        // back into visual lines once per page and keep the grouping on the element —
+        // it depends only on the render, not on the zoom or the script's edits.
+
+        function pdfPageLines(pageDiv) {
+            if (pageDiv._syncLines) return pageDiv._syncLines;
+            const layer = pageDiv.querySelector('.pdf-text-layer');
+            if (!layer) return (pageDiv._syncLines = []);
+
+            const spans = Array.from(layer.querySelectorAll('span'))
+                .filter(s => !s.querySelector('span') && s.textContent.trim())
+                .map(s => ({ el: s, r: s.getBoundingClientRect() }))
+                .filter(s => s.r.height > 0)
+                .sort((a, b) => (Math.abs(a.r.top - b.r.top) > a.r.height * 0.5
+                    ? a.r.top - b.r.top : a.r.left - b.r.left));
+
+            const lines = [];
+            let current = null;
+            for (const s of spans) {
+                // Same line while the baseline hasn't moved by more than half a glyph
+                // height — screenplay leading is a full line, so this never merges two.
+                if (!current || Math.abs(s.r.top - current.top) > s.r.height * 0.5) {
+                    current = { top: s.r.top, spans: [], text: '' };
+                    lines.push(current);
+                }
+                current.spans.push(s.el);
+                current.text += s.el.textContent;
+            }
+            lines.forEach(l => {
+                l.key = syncKey(l.text);
+                // A second key with the scene numbers stripped, since production
+                // drafts print them in both margins ("25 INT. BAR - NIGHT 25") and
+                // the imported block has neither. Kept as an alternative rather than
+                // a replacement, so a line that really does open on a number still
+                // matches on its own terms.
+                l.keyNoNum = l.key.replace(/^\d{1,4}/, '').replace(/\d{1,4}$/, '');
+            });
+            return (pageDiv._syncLines = lines);
+        }
+
+        // Compare on letters and digits alone. The text layer's word gaps are an
+        // artifact of how the PDF happens to split its glyph runs — italics inside a
+        // speech routinely arrive as "WHOCARESWHAT HE LIKES" — so spaces, curly
+        // quotes and punctuation can't be trusted on either side of the comparison.
+        function syncKey(s) {
+            const raw = (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+            // A trailing (CONT'D) belongs to the page, not the line: the same cue is
+            // printed bare higher up. Dropped only when something is left of the cue.
+            return raw.replace(/(CONTD|CONT|MORE)$/, '') || raw;
+        }
+
+        function commonPrefixLen(a, b) {
+            const n = Math.min(a.length, b.length);
+            let i = 0;
+            while (i < n && a[i] === b[i]) i++;
+            return i;
+        }
+
+        // How well does `line` account for the start of what's left of a block?
+        // Scored rather than accepted/rejected, because the honest answer is
+        // comparative: a cue block "ANDREW" matches the line "ANDREW" far better
+        // than the action line "ANDREW NODS. GET IT TOGETHER..." that also starts
+        // with it, and only a score can say so.
+        function lineMatchScore(rem, line) {
+            if (!line || !rem) return 0;
+            const cp = commonPrefixLen(rem, line);
+            if (!cp) return 0;
+            // A line the block fully covers is a clean wrap point; a line that runs
+            // past the end of the block is penalised by how far it overshoots.
+            const overshoot = line.length > rem.length ? rem.length / line.length : 1;
+            const score = (cp / line.length) * overshoot;
+            // ...unless the block sits entirely at the head of a longer line, which
+            // happens whenever the text layer welds a cue or action onto its
+            // neighbour. Enough matched characters make that safe to trust.
+            return (cp === rem.length && cp >= 12) ? Math.max(score, 0.5) : score;
+        }
+
+        const SYNC_MATCH_MIN = 0.35;
+
+        // Walk a page's blocks and its PDF lines together, in order, so a name that
+        // repeats five times on one page lands on the right occurrence rather than
+        // always on the first.
+        function alignBlocksToLines(blocksOnPage, lines) {
+            const map = new Map();
+            const best = (rem, from) => {
+                let at = -1, top = 0;
+                for (let k = from; k < lines.length; k++) {
+                    // Nudge earlier lines ahead of later ones so identical text picks
+                    // the occurrence nearest where the previous block left off.
+                    const s = Math.max(lineMatchScore(rem, lines[k].key), lineMatchScore(rem, lines[k].keyNoNum))
+                        * (1 - 0.002 * (k - from));
+                    if (s > top) { top = s; at = k; }
+                }
+                return top >= SYNC_MATCH_MIN ? at : -1;
+            };
+            const eat = (rem, line) => {
+                for (const key of [line.key, line.keyNoNum]) {
+                    if (key && rem.startsWith(key)) return rem.slice(key.length);
+                }
+                return ''; // fuzzy match: treat the block as spent rather than guess
+            };
+
+            let li = 0;
+            for (const block of blocksOnPage) {
+                let rem = syncKey(block.textContent);
+                if (!rem) continue;
+                // Search from where the last block ended, then from the top of the
+                // page, so one unmatched block can't strand all the ones after it.
+                let start = best(rem, li);
+                if (start === -1 && li > 0) start = best(rem, 0);
+                if (start === -1) continue;
+
+                let end = start;
+                rem = eat(rem, lines[start]);
+                while (rem && end + 1 < lines.length
+                    && Math.max(lineMatchScore(rem, lines[end + 1].key), lineMatchScore(rem, lines[end + 1].keyNoNum)) >= SYNC_MATCH_MIN) {
+                    end++;
+                    rem = eat(rem, lines[end]);
+                }
+                map.set(block, { start, end });
+                li = end + 1;
+            }
+            return map;
+        }
+
+        function flashSpans(spans) {
+            spans.forEach(s => {
+                s.classList.remove('sync-line-flash');
+                void s.offsetWidth; // restart the animation if it is already running
+                s.classList.add('sync-line-flash');
+            });
+            setTimeout(() => spans.forEach(s => s.classList.remove('sync-line-flash')), 1600);
+        }
+
         function syncExactToEditable() {
             const { blocks, pages } = resolveBlockPages();
             const anchor = editableAnchorBlock(blocks);
@@ -1891,6 +2399,25 @@
             if (i === -1 || !pages[i]) return false;
 
             const pageNum = pages[i];
+            const renderedPages = document.getElementById('pdf-viewer').children;
+            if (!renderedPages.length) return false;
+            const pageDiv = renderedPages[Math.min(pageNum, renderedPages.length) - 1];
+
+            // Land on the line the caret is actually in when it can be found on the
+            // page; only fall back to the page as a whole when it can't.
+            const lines = pdfPageLines(pageDiv);
+            const onPage = blocks.filter((b, j) => pages[j] === pageNum);
+            const hit = alignBlocksToLines(onPage, lines).get(anchor);
+            if (hit) {
+                const spans = [];
+                for (let k = hit.start; k <= hit.end; k++) spans.push(...lines[k].spans);
+                if (spans.length) {
+                    scrollPaneTo(paneBody('exact'), spans[0], -40);
+                    flashSpans(spans);
+                    return true;
+                }
+            }
+
             // Where in that PDF page the anchor sits, judged by its position among the
             // blocks that share the page.
             let first = i, count = 0;
@@ -1898,11 +2425,8 @@
             for (let j = first; j < pages.length && pages[j] === pageNum; j++) count++;
             const fraction = count > 1 ? (i - first) / count : 0;
 
-            const rendered = document.getElementById('pdf-viewer').children;
-            if (!rendered.length) return false;
-            const target = rendered[Math.min(pageNum, rendered.length) - 1];
-            scrollPaneTo(paneBody('exact'), target, fraction * target.getBoundingClientRect().height);
-            flashTarget(target);
+            scrollPaneTo(paneBody('exact'), pageDiv, fraction * pageDiv.getBoundingClientRect().height);
+            flashTarget(pageDiv);
             return true;
         }
 
@@ -2464,13 +2988,17 @@
         });
 
         window.onload = () => {
+            setupFormatButtons();
             togglePageBreaks(); // Ensure page numbers display correctly if toggle is on
-            extractEntities(); 
+            extractEntities();
             saveState(); 
             buildToc();
             updateStatistics();
         };
     </script>
+
+    <!-- Right-click menu for the formatting toolbar -->
+    <div id="suggest-menu" class="suggest-menu"></div>
 
     <!-- Settings Modal -->
     <div id="settings-modal">
@@ -2486,7 +3014,7 @@
                     <p>Use <b>Ctrl+Z</b> and <b>Ctrl+Y</b> to undo and redo changes.</p>
                     <p>With a PDF open, use the <b>Exact View</b> and <b>Editable Script</b> buttons to show either or both side by side, <b>⇄</b> to swap sides, and <b>Match ⇔</b> (or <b>Ctrl+M</b>) to scroll the other pane to the spot you're working in.</p>
                     <p>Click anywhere in the script to edit.</p>
-                    <p>Use the formatting toolbar to change the style of the current line.</p>
+                    <p>Formatting toolbar: <b>click</b> a button to insert a filled-in example of that element at the cursor (the example text is pre-selected, so just start typing over it). <b>Select</b> script text first and the button converts every line you selected instead. <b>Right-click</b> a button for a menu of that element's entries already used in the script, most frequent first.</p>
                     <p>Press <b>Enter</b> to create a new line. The editor will automatically maintain formatting blocks.</p>
                     <p>To export to PDF, choose "Export as PDF" and use your browser's Print to PDF feature.</p>
                 </div>
