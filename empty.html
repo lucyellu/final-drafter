@@ -1077,7 +1077,7 @@
         }
 
         /* Settings Modal */
-        #settings-modal {
+        .modal-overlay {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -1140,8 +1140,11 @@
             File
             <div class="dropdown">
                 <div onclick="newScript()">New</div>
-                <div onclick="document.getElementById('file-input').click()">Load Script...</div>
-                <div onclick="saveJSON()">Save (.json)</div>
+                <div onclick="document.getElementById('file-input-project').click()"
+                    title="Restore a Final Drafter project exactly as saved — script, variation stacks, entity lists, layout, everything">Open Project…</div>
+                <div onclick="openImportModal()"
+                    title="Bring a PDF, text, or Markdown screenplay in as script content — lossy, and can land in the current project or a new one">Import Script…</div>
+                <div onclick="saveJSON()">Save (.fdproj)</div>
                 <div onclick="saveJSONAs()">Save As...</div>
                 <div onclick="foldAltDrafts()" title="Turn hand-typed &quot;* ALT DRAFT *&quot; sections into variation stacks on the scenes they rewrite">Fold Alternates into Stacks…</div>
                 <div onclick="window.print()">Export as PDF</div>
@@ -1149,7 +1152,8 @@
                 <div onclick="exportTXT()">Export as Text</div>
             </div>
         </div>
-        <input type="file" id="file-input" style="display: none;" accept=".json,.md,.txt,.pdf" onchange="loadFile(event)">
+        <input type="file" id="file-input-project" style="display: none;" accept=".fdproj,.json" onchange="openProject(event)">
+        <input type="file" id="file-input-import" style="display: none;" accept=".pdf,.md,.txt" onchange="importScript(event)">
         
         <!-- Format buttons: click inserts an example block of that type, click
              with script text selected converts the selected blocks instead, and
@@ -4964,9 +4968,9 @@
                 try {
                     const handle = await window.showSaveFilePicker({
                         id: SAVE_PICKER_ID,
-                        suggestedName: withExtension(scriptName(), '.json'),
+                        suggestedName: withExtension(scriptName(), '.fdproj'),
                         startIn: currentFileHandle || undefined,
-                        types: [{ description: 'Final Drafter script', accept: { 'application/json': ['.json'] } }]
+                        types: [{ description: 'Final Drafter project', accept: { 'application/json': ['.fdproj', '.json'] } }]
                     });
                     await writeToHandle(handle, scriptJSON());
                     currentFileHandle = handle;
@@ -4986,7 +4990,7 @@
             const name = prompt("Save as:", scriptName());
             if (name === null) return;
             lastSavedName = sanitizeFilename(name);
-            downloadFile(withExtension(lastSavedName, '.json'), scriptJSON(), 'application/json');
+            downloadFile(withExtension(lastSavedName, '.fdproj'), scriptJSON(), 'application/json');
         }
 
         async function writeToHandle(handle, contents) {
@@ -5041,31 +5045,160 @@
             }
         }
 
-                async function loadFile(event) {
+        // --- Open Project vs Import Script ---
+        // Two different operations that only look alike because both end in
+        // "a script is on screen": Open Project is *restore* (lossless,
+        // replaces the whole session), Import Script is *conversion* (lossy,
+        // can fail, and can land inside the project you already have open
+        // instead of nuking it). They used to share one <input> and one
+        // handler, which is why the distinction was invisible.
+
+        // Open Project: .fdproj/.json only, always a full restore.
+        async function openProject(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            setEditableNotice(null);
+            setPdfLoaded(false);
+
+            // A bare <input> carries no writable handle either, but unlike an
+            // import this file *is* the project going forward, so name it now.
+            lastSavedName = sanitizeFilename(file.name.replace(/\.(fdproj|json)$/i, ''));
+            currentFileHandle = null;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const editor = document.getElementById('editor-page');
+                editor.innerHTML = '';
+                const stagingFrame = createPageFrame();
+                editor.appendChild(stagingFrame);
+
+                try {
+                    const data = JSON.parse(e.target.result);
+                    const scriptData = data.script ? data.script : data;
+                    const fallback = defaultAppState();
+                    if (data.formatVersion >= 3) {
+                        // v3: meta is its own key, and pageNumber/furniture
+                        // moved out of `lists` into `settings`.
+                        docMeta = Object.assign(defaultDocMeta(), data.meta || {});
+                        const lists = data.lists || {};
+                        const docSettings = data.settings || {};
+                        appState = {
+                            characters: lists.characters || fallback.characters,
+                            locations: lists.locations || fallback.locations,
+                            lastInsertion: lists.lastInsertion || fallback.lastInsertion,
+                            furniture: Object.assign({}, fallback.furniture, docSettings.furniture || {}),
+                            pageNumber: Object.assign({}, fallback.pageNumber, docSettings.pageNumber || {})
+                        };
+                    } else {
+                        // v2 and earlier: no meta, and pageNumber/furniture
+                        // (if present at all) lived inside `lists`.
+                        docMeta = defaultDocMeta();
+                        if (data.lists) {
+                            appState = data.lists;
+                            // Files saved before these features existed carry
+                            // no lastInsertion/furniture/pageNumber keys.
+                            if (!appState.lastInsertion) appState.lastInsertion = fallback.lastInsertion;
+                            if (!appState.furniture) appState.furniture = fallback.furniture;
+                            if (!appState.pageNumber) appState.pageNumber = fallback.pageNumber;
+                        } else {
+                            appState = defaultAppState();
+                        }
+                    }
+                    clearInsertionFocus();
+                    applyPageNumberUI();
+
+                    // Files written before variations existed simply carry no
+                    // `stacks` key, and load as a script with no alternates.
+                    loadStacks(data.stacks, true);
+
+                    scriptData.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = item.type;
+                        div.innerText = item.text;
+                        if (item.stack && stacks[item.stack]) {
+                            div.dataset.stack = item.stack;
+                            div.dataset.variant = item.variant || stacks[item.stack].order[0];
+                        }
+                        stagingFrame.appendChild(div);
+                    });
+                    reflowPages();
+                    refreshStacks();
+                    buildToc();
+                    extractEntities();
+                    updateStatistics();
+                    saveState();
+                } catch (err) { alert("Invalid project file."); }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // Where the next Import Script should land, set by chooseImportMode()
+        // before the (hidden) import <input> is clicked.
+        let importIntoMode = 'new';
+
+        function openImportModal() {
+            // Nothing worth protecting -- skip the question and go straight
+            // to conversion, same as opening a fresh app would.
+            if (!getBlocks().some(b => b.innerText.trim())) {
+                importIntoMode = 'new';
+                document.getElementById('file-input-import').click();
+                return;
+            }
+            document.getElementById('import-modal').style.display = 'flex';
+        }
+        function closeImportModal() {
+            document.getElementById('import-modal').style.display = 'none';
+        }
+        function chooseImportMode(mode) {
+            importIntoMode = mode; // 'new' | 'current'
+            closeImportModal();
+            document.getElementById('file-input-import').click();
+        }
+
+        // Appends already-classified {type, text} blocks to the end of
+        // whatever's open, then leaves reflowPages() to re-bin every block
+        // (old and new) into pages -- it reads document order via
+        // getBlocks(), not which frame currently holds a block, so where
+        // they land before that call doesn't matter.
+        function appendImportedBlocks(blocks) {
+            const editor = document.getElementById('editor-page');
+            const frames = editor.querySelectorAll(':scope > .page-frame');
+            const target = frames[frames.length - 1];
+            (blocks.length ? blocks : [{ type: 'action', text: ' ' }]).forEach(b => {
+                const div = document.createElement('div');
+                div.className = b.type;
+                div.innerText = b.text;
+                if (b.page) div.dataset.pdfPage = b.page;
+                target.appendChild(div);
+            });
+        }
+
+        // Import Script: .pdf/.md/.txt, lossy conversion. Lands either as a
+        // brand new project (replaces what's open, same as New + this file)
+        // or appended after the current one (variation stacks, entities and
+        // layout of the project already open are left alone).
+        async function importScript(event) {
             const file = event.target.files[0];
             if (!file) return;
             const editor = document.getElementById('editor-page');
             setEditableNotice(null);
+            const intoCurrent = importIntoMode === 'current';
+            importIntoMode = 'new';
 
-            // The loaded file names the script from here on. A file chosen through
-            // <input type="file"> carries no writable handle, so the first Save still
-            // has to ask where -- but it asks with this name already filled in.
-            lastSavedName = sanitizeFilename(file.name.replace(/\.(json|md|txt|pdf)$/i, ''));
-            currentFileHandle = null;
+            // An import never claims a writable handle to save back to --
+            // even in "append" mode the merged result isn't what the
+            // imported file on disk contains.
+            if (!intoCurrent) {
+                lastSavedName = sanitizeFilename(file.name.replace(/\.(pdf|md|txt)$/i, ''));
+                currentFileHandle = null;
+            }
 
             if (file.name.toLowerCase().endsWith('.pdf')) {
                 try {
                     const arrayBuffer = await file.arrayBuffer();
                     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-                    editor.innerHTML = '';
-                    resetStacks();
-                    const stagingFrame = createPageFrame();
-                    editor.appendChild(stagingFrame);
-
-                    // Text extraction (for the sidebar/editable view) is fast — pull it
-                    // for every page up front so the app becomes usable immediately,
-                    // rather than waiting on canvas rendering of every page first.
                     const allLines = [];
                     const pages = [];
                     for (let i = 1; i <= pdf.numPages; i++) {
@@ -5073,58 +5206,73 @@
                         pages.push(page);
                         allLines.push(...(await extractPdfPageLines(page, i)));
                     }
-
                     const blocks = classifyPdfLines(allLines);
-                    blocks.forEach(b => {
-                        const div = document.createElement('div');
-                        div.className = b.type;
-                        div.innerText = b.text;
-                        if (b.page) div.dataset.pdfPage = b.page;
-                        stagingFrame.appendChild(div);
-                    });
 
-                    setPdfLoaded(true);
+                    if (intoCurrent) {
+                        appendImportedBlocks(blocks);
+                        reflowPages();
+                        buildToc();
+                        extractEntities();
+                        updateStatistics();
+                        saveState();
+                    } else {
+                        editor.innerHTML = '';
+                        resetStacks();
+                        appState = defaultAppState();
+                        docMeta = defaultDocMeta();
+                        const stagingFrame = createPageFrame();
+                        editor.appendChild(stagingFrame);
+                        blocks.forEach(b => {
+                            const div = document.createElement('div');
+                            div.className = b.type;
+                            div.innerText = b.text;
+                            if (b.page) div.dataset.pdfPage = b.page;
+                            stagingFrame.appendChild(div);
+                        });
 
-                    if (blocks.length === 0) {
-                        if (allLines.length === 0) {
-                            setEditableNotice(
-                                'This PDF has no selectable text',
-                                'Every page rendered in Exact View, but the file carries no text layer — it is almost ' +
-                                'certainly a scan or an image-only export. There is nothing to reflow into an editable ' +
-                                'script, which is why this pane, the Navigator and the character and location lists are ' +
-                                'all empty. Run the file through OCR, or export a text-based PDF from whatever produced ' +
-                                'it, then load it again.');
-                        } else {
-                            setEditableNotice(
-                                'Could not read this PDF as a screenplay',
-                                'Text was extracted from the file (' + allLines.length + ' lines), but none of it matched ' +
-                                'a recognisable screenplay layout, so no blocks were created. Exact View still shows the ' +
-                                'document exactly as it is.');
+                        setPdfLoaded(true);
+
+                        if (blocks.length === 0) {
+                            if (allLines.length === 0) {
+                                setEditableNotice(
+                                    'This PDF has no selectable text',
+                                    'Every page rendered in Exact View, but the file carries no text layer — it is almost ' +
+                                    'certainly a scan or an image-only export. There is nothing to reflow into an editable ' +
+                                    'script, which is why this pane, the Navigator and the character and location lists are ' +
+                                    'all empty. Run the file through OCR, or export a text-based PDF from whatever produced ' +
+                                    'it, then load it again.');
+                            } else {
+                                setEditableNotice(
+                                    'Could not read this PDF as a screenplay',
+                                    'Text was extracted from the file (' + allLines.length + ' lines), but none of it matched ' +
+                                    'a recognisable screenplay layout, so no blocks were created. Exact View still shows the ' +
+                                    'document exactly as it is.');
+                            }
+                            // Don't leave the explanation hidden behind a pane the user
+                            // has no reason to open.
+                            setPaneVisible('editable', true);
                         }
-                        // Don't leave the explanation hidden behind a pane the user
-                        // has no reason to open.
-                        setPaneVisible('editable', true);
+                        reflowPages();
+                        buildToc();
+                        extractEntities();
+                        updateStatistics();
+                        // The reflow-based page estimate needs editor-page to be laid out
+                        // (display:none while Exact View is active reads as 0 height), and
+                        // in any case the PDF's own page count is more meaningful here.
+                        document.getElementById('stat-pages').innerText = pdf.numPages;
+                        saveState();
+
+                        // Exact-view canvas pages render progressively in the background —
+                        // each page's div appears in the DOM as soon as it's ready, without
+                        // blocking the (already-usable) editable view or sidebar above.
+                        const pdfViewer = document.getElementById('pdf-viewer');
+                        pdfViewer.innerHTML = '';
+                        (async () => {
+                            for (const page of pages) {
+                                await renderPdfExactPage(page);
+                            }
+                        })();
                     }
-                    reflowPages();
-                    buildToc();
-                    extractEntities();
-                    updateStatistics();
-                    // The reflow-based page estimate needs editor-page to be laid out
-                    // (display:none while Exact View is active reads as 0 height), and
-                    // in any case the PDF's own page count is more meaningful here.
-                    document.getElementById('stat-pages').innerText = pdf.numPages;
-                    saveState();
-
-                    // Exact-view canvas pages render progressively in the background —
-                    // each page's div appears in the DOM as soon as it's ready, without
-                    // blocking the (already-usable) editable view or sidebar above.
-                    const pdfViewer = document.getElementById('pdf-viewer');
-                    pdfViewer.innerHTML = '';
-                    (async () => {
-                        for (const page of pages) {
-                            await renderPdfExactPage(page);
-                        }
-                    })();
                 } catch (err) {
                     console.error(err);
                     alert("Error loading PDF file.");
@@ -5132,95 +5280,33 @@
                 event.target.value = '';
                 return;
             }
-            setPdfLoaded(false);
+
+            if (!intoCurrent) setPdfLoaded(false);
             const reader = new FileReader();
             reader.onload = function(e) {
-                const contents = e.target.result;
-                const editor = document.getElementById('editor-page');
+                const blocks = parseTextToBlocks(e.target.result);
 
-                editor.innerHTML = '';
-                const stagingFrame = createPageFrame();
-                editor.appendChild(stagingFrame);
-
-                if (file.name.endsWith('.json')) {
-                    try {
-                        const data = JSON.parse(contents);
-                        const scriptData = data.script ? data.script : data;
-                        const fallback = defaultAppState();
-                        if (data.formatVersion >= 3) {
-                            // v3: meta is its own key, and pageNumber/furniture
-                            // moved out of `lists` into `settings`.
-                            docMeta = Object.assign(defaultDocMeta(), data.meta || {});
-                            const lists = data.lists || {};
-                            const docSettings = data.settings || {};
-                            appState = {
-                                characters: lists.characters || fallback.characters,
-                                locations: lists.locations || fallback.locations,
-                                lastInsertion: lists.lastInsertion || fallback.lastInsertion,
-                                furniture: Object.assign({}, fallback.furniture, docSettings.furniture || {}),
-                                pageNumber: Object.assign({}, fallback.pageNumber, docSettings.pageNumber || {})
-                            };
-                        } else {
-                            // v2 and earlier: no meta, and pageNumber/furniture
-                            // (if present at all) lived inside `lists`.
-                            docMeta = defaultDocMeta();
-                            if (data.lists) {
-                                appState = data.lists;
-                                // Files saved before these features existed carry
-                                // no lastInsertion/furniture/pageNumber keys.
-                                if (!appState.lastInsertion) appState.lastInsertion = fallback.lastInsertion;
-                                if (!appState.furniture) appState.furniture = fallback.furniture;
-                                if (!appState.pageNumber) appState.pageNumber = fallback.pageNumber;
-                            } else {
-                                appState = defaultAppState();
-                            }
-                        }
-                        clearInsertionFocus();
-                        applyPageNumberUI();
-
-                        // Files written before variations existed simply carry no
-                        // `stacks` key, and load as a script with no alternates.
-                        loadStacks(data.stacks, true);
-
-                        scriptData.forEach(item => {
-                            const div = document.createElement('div');
-                            div.className = item.type;
-                            div.innerText = item.text;
-                            if (item.stack && stacks[item.stack]) {
-                                div.dataset.stack = item.stack;
-                                div.dataset.variant = item.variant || stacks[item.stack].order[0];
-                            }
-                            stagingFrame.appendChild(div);
-                        });
-                        reflowPages();
-                        refreshStacks();
-                        buildToc();
-                        extractEntities();
-                        updateStatistics();
-                        saveState();
-                    } catch (err) { alert("Invalid JSON format."); }
+                if (intoCurrent) {
+                    appendImportedBlocks(blocks);
                 } else {
+                    editor.innerHTML = '';
                     resetStacks();
-                    const blocks = parseTextToBlocks(contents);
-                    if (blocks.length === 0) {
-                        const empty = document.createElement('div');
-                        empty.className = 'action';
-                        empty.innerText = ' ';
-                        stagingFrame.appendChild(empty);
-                    } else {
-                        blocks.forEach(b => {
-                            const div = document.createElement('div');
-                            div.className = b.type;
-                            div.innerText = b.text;
-                            stagingFrame.appendChild(div);
-                        });
-                    }
-                    reflowPages();
-                    buildToc();
-                    extractEntities();
-                    updateStatistics();
-                    saveState();
+                    appState = defaultAppState();
+                    docMeta = defaultDocMeta();
+                    const stagingFrame = createPageFrame();
+                    editor.appendChild(stagingFrame);
+                    (blocks.length ? blocks : [{ type: 'action', text: ' ' }]).forEach(b => {
+                        const div = document.createElement('div');
+                        div.className = b.type;
+                        div.innerText = b.text;
+                        stagingFrame.appendChild(div);
+                    });
                 }
+                reflowPages();
+                buildToc();
+                extractEntities();
+                updateStatistics();
+                saveState();
             };
             reader.readAsText(file);
             event.target.value = '';
@@ -5356,8 +5442,29 @@
     <!-- Right-click menu for the formatting toolbar -->
     <div id="suggest-menu" class="suggest-menu"></div>
 
+    <!-- Import Script modal: which project the import lands in -->
+    <div id="import-modal" class="modal-overlay">
+        <div class="modal-content" style="width:320px;">
+            <div class="modal-header">
+                <h2>Import Script</h2>
+                <button class="close-btn" onclick="closeImportModal()">✕</button>
+            </div>
+            <p style="font-size:0.85rem; color:#aaa; margin:0 0 12px;">Where should the imported script go?</p>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <button onclick="chooseImportMode('current')" style="padding:10px; text-align:left;"
+                    title="Adds the imported script's blocks after what's already open. Your variation stacks, characters and layout stay untouched.">
+                    Append to current project
+                </button>
+                <button onclick="chooseImportMode('new')" style="padding:10px; text-align:left;"
+                    title="Replaces the open project entirely, the same as File > New followed by this import.">
+                    Replace with a new project
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
-    <div id="settings-modal">
+    <div id="settings-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Settings & Instructions</h2>

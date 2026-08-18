@@ -10,7 +10,7 @@ line numbers have since shifted as work landed; treat them as historical.
 
 ## Progress (as of 2026-08-17)
 
-Rows 1–6 of the suggested order are done and merged to `main`, with 150
+Rows 1–7 of the suggested order are done and merged to `main`, with 164
 automated tests in `scripts/test-variations.mjs` covering all of it (0
 failures, no console errors).
 
@@ -71,6 +71,22 @@ failures, no console errors).
   are stamped in `scriptJSON()` itself, so they're only set on an actual
   save. Still writes/reads the `.json` extension — renaming to `.fdproj` is
   item 6's job, not F3's.
+- **Item 6 — Open Project vs. Import Script, split.** The single
+  `<input accept=".json,.md,.txt,.pdf">` is gone. **Open Project…**
+  (`.fdproj`/`.json`) always fully restores — same behavior as before, just
+  its own menu item and its own `openProject()` handler. **Import
+  Script…** (`.pdf`/`.md`/`.txt`) now asks where the import goes whenever
+  something's actually open worth protecting (a small two-button modal:
+  "Append to current project" or "Replace with a new project"; skipped
+  automatically on an empty project). Append mode adds the imported blocks
+  to the end of the document and leaves stacks/entities/furniture alone;
+  `reflowPages()` re-bins old and new blocks into pages by document order
+  regardless of where they landed in the DOM, so this didn't need any new
+  pagination logic. Save now suggests the `.fdproj` extension; `.json`
+  still opens forever. `.fountain` was deliberately left off Import's accept
+  list — there's no Fountain parser yet (that's item 8b), and advertising
+  support that just mis-parses the file through the plain-text importer
+  would be worse than not offering it.
 
 **Known gap carried forward:** `skip title page` (item 4) is a blanket
 "blank every furniture slot on frame index 0" — there's no real title-page
@@ -79,9 +95,9 @@ script with no title page will have a blank, unnumbered page 1 by default
 until 8a lands. Flagged in the item 3/8a sections below; not a bug, just
 the interim tradeoff the original plan called for.
 
-**Not started:** Phase 3 (autosave/version history, split Open Project/
-Import Script), Phase 4 (OCR), Phase 5 (Fountain, doc types, structured
-title page, show bibles). Item 11 (Navigator third level) is being left —
+**Not started:** Phase 3 (autosave/version history), Phase 4 (OCR), Phase 5
+(Fountain, doc types, structured title page, show bibles). Item 11
+(Navigator third level) is being left —
 the existing Navigator nesting (scene rows with drafts collapsed
 underneath, per item 10/F2's variation-stack work) already covers what the
 original note asked for.
@@ -552,7 +568,7 @@ If the app moves to a localhost server, point the harness at that URL too.
 | 4 | F2 furniture layer | M | — | ✅ done |
 | 5 | **3** headers/footers · **4** page numbers | M+S | F1, F2 | ✅ done |
 | 6 | F3 format v3 | S | — | ✅ done |
-| 7 | **6** open project vs import script | M | F3 | not started |
+| 7 | **6** open project vs import script | M | F3 | ✅ done |
 | 8 | **5** autosave + history | L | F3, localhost | not started |
 | 9 | **7** OCR | L | localhost | not started |
 | 10 | **8a** structured title page | M | F3 | not started |

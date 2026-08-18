@@ -34,8 +34,27 @@ page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.
 await page.goto('file:///' + ROOT + '/empty.html', { waitUntil: 'networkidle2' });
 await new Promise(r => setTimeout(r, 600));
 
+// Open Project (.fdproj/.json, restore) and Import Script (.pdf/.md/.txt,
+// conversion) are two different <input>s/handlers since item 6 split them.
 async function loadFileInto(filePath) {
-  const input = await page.$('#file-input');
+  const input = await page.$('#file-input-project');
+  await input.uploadFile(filePath);
+  await new Promise(r => setTimeout(r, 1500));
+}
+
+// mode: 'new' (replaces the open project) or 'current' (appends). Drives the
+// import-destination modal the same way a real click on "Import Script..."
+// would, rather than reaching into importIntoMode directly.
+async function importFileInto(filePath, mode) {
+  await page.evaluate(() => openImportModal());
+  const modalShown = await page.evaluate(() =>
+    document.getElementById('import-modal').style.display === 'flex');
+  // If the modal didn't show, openImportModal() already decided 'new' for
+  // us (nothing open was worth protecting) and set importIntoMode itself.
+  if (modalShown) {
+    await page.evaluate(m => chooseImportMode(m), mode);
+  }
+  const input = await page.$('#file-input-import');
   await input.uploadFile(filePath);
   await new Promise(r => setTimeout(r, 1500));
 }
@@ -950,6 +969,78 @@ let v2Migration = await page.evaluate(() => ({
 ok('a v2 file (furniture nested in lists) still migrates correctly',
   v2Migration.charactersCarried && v2Migration.furnitureCarried && v2Migration.pageNumberCarried, v2Migration);
 ok('a v2 file gets fresh default meta (v2 files never carried one)', v2Migration.metaIsDefault, v2Migration);
+
+console.log('\n== 31. Open Project vs Import Script (item 6) ==');
+await loadFileInto(path.resolve(ROOT, 'text/social_network.json'));
+let baseline = await page.evaluate(() => ({
+  blockCount: getBlocks().length,
+  firstText: getBlocks()[0].innerText,
+  charCount: appState.characters.length,
+  lastSavedName,
+}));
+
+const importTxtPath = path.join(SCRATCH, 'import-fixture.txt');
+fs.writeFileSync(importTxtPath, 'FADE IN:\n\nEXT. ROOFTOP - NIGHT\n\nAn imported scene.\n');
+
+await importFileInto(importTxtPath, 'current');
+let appended = await page.evaluate(() => ({
+  blockCount: getBlocks().length,
+  firstText: getBlocks()[0].innerText,
+  lastText: getBlocks()[getBlocks().length - 1].innerText,
+  charCount: appState.characters.length,
+  lastSavedName,
+}));
+ok('append mode grows the block count instead of replacing it',
+  appended.blockCount > baseline.blockCount, { baseline, appended });
+ok('append mode leaves the original opening block untouched',
+  appended.firstText === baseline.firstText, { baseline, appended });
+ok('append mode leaves the original entity list untouched',
+  appended.charCount === baseline.charCount, { baseline, appended });
+ok('append mode lands the imported content at the end',
+  appended.lastText === 'An imported scene.', appended);
+ok('append mode does not rename the project after the imported file',
+  appended.lastSavedName === baseline.lastSavedName, { baseline, appended });
+
+await importFileInto(importTxtPath, 'new');
+let replaced = await page.evaluate(() => ({
+  blockCount: getBlocks().length,
+  firstText: getBlocks()[0].innerText,
+  charCount: appState.characters.length,
+  furnitureCleared: appState.furniture['footer-right'] === '',
+}));
+ok('new-project mode replaces the script instead of appending',
+  replaced.blockCount < appended.blockCount && replaced.firstText !== appended.firstText, { appended, replaced });
+ok('new-project mode resets the entity list', replaced.charCount === 0, replaced);
+ok('new-project mode resets document furniture back to defaults', replaced.furnitureCleared, replaced);
+
+let modalGating = await page.evaluate(async () => {
+  window.confirm = () => true; // the page.reload() in test 28 dropped the earlier override
+  newScript(); // empty project -- nothing worth protecting
+  openImportModal();
+  const skippedModal = document.getElementById('import-modal').style.display !== 'flex';
+  const modeAfterSkip = importIntoMode;
+  return { skippedModal, modeAfterSkip };
+});
+ok('importing into an empty project skips the destination question',
+  modalGating.skippedModal, modalGating);
+ok('...and defaults straight to new-project mode', modalGating.modeAfterSkip === 'new', modalGating);
+
+await loadFileInto(path.resolve(ROOT, 'text/social_network.json'));
+let modalShows = await page.evaluate(() => {
+  openImportModal();
+  const shown = document.getElementById('import-modal').style.display === 'flex';
+  closeImportModal();
+  return shown;
+});
+ok('importing into a project with content asks where it should land', modalShows);
+
+await importFileInto(path.resolve(ROOT, 'text/Lost_1x01_-_Pilot.pdf'), 'new');
+let pdfImport = await page.evaluate(() => ({ pdfLoaded, blockCount: getBlocks().length }));
+ok('PDF import (new-project mode) still populates Exact View', pdfImport.pdfLoaded === true, pdfImport);
+ok('PDF import (new-project mode) still classifies script blocks', pdfImport.blockCount > 50, pdfImport);
+
+let extCheck = await page.evaluate(() => withExtension('MyScript', '.fdproj'));
+ok('Save now suggests the .fdproj extension', extCheck === 'MyScript.fdproj', extCheck);
 
 console.log('\n== Console errors ==');
 if (errors.length) { errors.slice(0, 12).forEach(e => console.log('  ! ' + e)); fail += errors.length; }
