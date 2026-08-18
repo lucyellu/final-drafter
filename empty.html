@@ -548,18 +548,45 @@
             flex: 0 0 auto;
         }
 
-        /* Per-frame page number, hidden unless "Show Visual Page Breaks" is on */
-        .page-number-label {
+        /* Page furniture (F2): six addressable header/footer slots per page --
+           header/footer x left/center/right -- rendered by renderFurniture()
+           from a token template (see resolveFurnitureTokens()). Layout-
+           neutral by construction: position:absolute inside the frame's
+           existing 1in top/bottom padding, contentEditable=false, zero flow
+           height. Never add a border, margin or padding to this rule --
+           reflowPages() measures block heights/margins to place page breaks,
+           and any of those would silently repaginate the script (same rule
+           as the variation-stack warning just below).
+           Visibility is per-slot, not gated by a document-wide checkbox: an
+           empty slot renders nothing, a filled one always shows -- including
+           in print, which is the one place a page number matters most. */
+        .page-furniture {
             position: absolute;
-            top: 0.4in;
-            right: 0.5in;
             font-family: 'Courier Prime', 'Courier New', Courier, monospace;
             font-size: 12pt;
             color: #999;
             pointer-events: none;
+            white-space: nowrap;
             display: none;
         }
-        #editor-page.show-page-numbers .page-number-label { display: block; }
+        .page-furniture:not(:empty) { display: block; }
+        .page-furniture[data-slot="header-left"]   { top: 0.4in; left: 1.5in; text-align: left; }
+        .page-furniture[data-slot="header-center"] { top: 0.4in; left: 1.5in; right: 0.5in; text-align: center; }
+        .page-furniture[data-slot="header-right"]  { top: 0.4in; right: 0.5in; text-align: right; }
+        .page-furniture[data-slot="footer-left"]   { bottom: 0.4in; left: 1.5in; text-align: left; }
+        .page-furniture[data-slot="footer-center"] { bottom: 0.4in; left: 1.5in; right: 0.5in; text-align: center; }
+        .page-furniture[data-slot="footer-right"]  { bottom: 0.4in; right: 0.5in; text-align: right; }
+        .page-furniture.furniture-bold { font-weight: bold; }
+
+        /* Marks the block that was just inserted (or converted), so "what did
+           I just do?" has an answer. outline only -- never border or padding,
+           both of which would add flow height and silently re-paginate the
+           script (reflowPages() measures block height/margins to place page
+           breaks; see the variation-stack warning just below). */
+        .insertion-focus {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
+        }
 
         /* ------------------------------------------------------------------
            Variation stacks
@@ -984,8 +1011,12 @@
             body, #main-container, #editor-wrapper, .doc-pane, .pane-body {
                 background: white; height: auto; overflow: visible; display: block; padding: 0; margin: 0;
             }
-            #top-bar, #sidebar, #right-sidebar, .resizer, .page-number-label, .view-toggle,
+            #top-bar, #sidebar, #right-sidebar, .resizer, .view-toggle,
             .pane-header, .pane-splitter { display: none; }
+            /* Page furniture (headers, footers, page numbers) is the one
+               thing in this list that SHOULD print -- it's deliberately
+               absent here. */
+            .insertion-focus { outline: none; }
             /* Print exactly one document: the pane that is open, and the editable
                script when both are, so a side-by-side session doesn't print twice. */
             .doc-pane.hidden { display: none !important; }
@@ -1061,17 +1092,27 @@
             border-radius: 8px;
             width: 400px;
             max-width: 90%;
+            /* The modal used to have no height limit at all, so on anything
+               shorter than its content it ran off both the top and bottom of
+               the screen with no way to scroll to the rest -- including the
+               close button. */
+            max-height: 85vh;
+            overflow-y: auto;
             padding: 20px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             color: var(--text-color);
         }
         .modal-header {
+            position: sticky;
+            top: 0;
+            background: var(--sidebar-bg);
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 10px;
             margin-bottom: 15px;
+            z-index: 1;
         }
         .modal-header h2 { margin: 0; font-size: 1.2rem; }
         .close-btn { background: transparent; border: none; color: #ccc; cursor: pointer; font-size: 1.2rem; }
@@ -1118,8 +1159,8 @@
             <button data-type="scene-heading">Scene Heading</button>
             <button data-type="action">Action</button>
             <button data-type="character">Character</button>
-            <button data-type="parenthetical">Parenthetical</button>
             <button data-type="dialogue">Dialogue</button>
+            <button data-type="parenthetical">Parenthetical</button>
             <button data-type="transition">Transition</button>
 
 
@@ -1153,7 +1194,7 @@
                     <input type="range" id="zoom-slider" min="20" max="200" value="100" style="width:100%" oninput="updateZoom()">
                     
                     <label style="font-size: 0.85rem; margin-top: 15px; display:flex; align-items:center; gap: 8px; cursor:pointer;">
-                        <input type="checkbox" id="page-breaks-toggle" onchange="togglePageBreaks()"> Show Visual Page Breaks
+                        <input type="checkbox" id="page-number-toggle" onchange="togglePageNumbers()"> Show Page Numbers
                     </label>
                 </div>
             </div>
@@ -1163,8 +1204,11 @@
                 <h2 class="collapsible" onclick="toggleSection(this)">Document Statistics <span>▼</span></h2>
                 <div class="section-content" id="doc-stats" style="font-size: 0.85rem; color: #ccc;">
                     <div class="stat-row"><span>Pages:</span> <span class="stat-value" id="stat-pages">0</span></div>
+                    <div class="stat-row"><span>Scenes:</span> <span class="stat-value" id="stat-scenes">0</span></div>
                     <div class="stat-row"><span>Locations:</span> <span class="stat-value" id="stat-locations">0</span></div>
                     <div class="stat-row"><span>Characters:</span> <span class="stat-value" id="stat-chars">0</span></div>
+                    <div class="stat-row"><span>Dialogue cues:</span> <span class="stat-value" id="stat-dialogue">0</span></div>
+                    <div class="stat-row"><span>Transitions:</span> <span class="stat-value" id="stat-transitions">0</span></div>
                     <div class="stat-row"><span>Words:</span> <span class="stat-value" id="stat-words">0</span></div>
                     <div class="stat-row"><span>Letters:</span> <span class="stat-value" id="stat-letters">0</span></div>
                     <div class="stat-row" style="margin-top: 10px;"><span>Est. Runtime:</span> <span class="stat-value" id="stat-runtime">0 min</span></div>
@@ -1262,16 +1306,101 @@
 
     <script>
         // --- State Management ---
-        let appState = {
-            characters: [],
-            locations: []
-        };
+        // Document-level state: characters/locations, remembered insertions,
+        // and page furniture (F2) all ride in the project file (as `lists`)
+        // rather than in the app-level `settings` store, because a remembered
+        // character name or a script's own header template means nothing in
+        // another document. One factory so every reset site (new script,
+        // import, and the missing-field backfill when opening an older file)
+        // agrees on the shape.
+        function defaultAppState() {
+            return {
+                characters: [],
+                locations: [],
+                // Last text typed over each label-like format button's
+                // example, keyed by className. See insertExampleBlock() /
+                // rememberInsertion().
+                lastInsertion: {},
+                // Free-text token templates for the six header/footer slots
+                // (item 3). See renderFurniture() / resolveFurnitureTokens().
+                furniture: {
+                    'header-left': '', 'header-center': '', 'header-right': '',
+                    'footer-left': '', 'footer-center': '', 'footer-right': ''
+                },
+                // Page-number preset (item 4): a special case of furniture
+                // that claims one slot and overrides whatever manual
+                // template lives there. See renderFurniture().
+                pageNumber: {
+                    show: true,
+                    position: 'footer-right',
+                    format: '{page} / {pages}',
+                    bold: true,
+                    startAt: 1,
+                    skipTitlePage: true
+                }
+            };
+        }
+        let appState = defaultAppState();
         let lastSavedName = '';
 
         let dynamicCounts = { characters: {}, locations: {} };
-        
+
         // Highlight tracking
         let activeHighlights = new Set();
+
+        // --- F1: App settings store ---
+        // Everything here is app-level (persists across every project you open),
+        // as opposed to document-level settings that will ride inside the
+        // project file itself (header/footer template, doc type, etc. — later
+        // phases). One defaults table, one localStorage key, one apply function
+        // that the modal and boot path both funnel through instead of poking
+        // DOM/state directly.
+        const SETTINGS_STORAGE_KEY = 'fd-settings';
+        const SETTINGS_DEFAULTS = {
+            schemaVersion: 1,
+            zoom: 100,
+            sceneNumberMode: 'off',
+            reuseLastInsertion: true
+        };
+
+        function loadSettings() {
+            try {
+                const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+                if (raw) return Object.assign({}, SETTINGS_DEFAULTS, JSON.parse(raw));
+            } catch (e) {
+                // Corrupt or unavailable storage falls back to defaults rather
+                // than breaking boot.
+            }
+            return Object.assign({}, SETTINGS_DEFAULTS);
+        }
+
+        let settings = loadSettings();
+
+        function saveSettings() {
+            try { localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings)); }
+            catch (e) { /* storage full/unavailable — settings just won't persist */ }
+        }
+
+        // Pushes `settings` onto the DOM. Called once at boot and after every
+        // settings change, so zoom/scene-number-mode/reuse-toggle all survive
+        // a restart instead of living only in DOM state. Page numbers/headers/
+        // footers are document-level (appState.pageNumber/furniture) and are
+        // pushed by applyPageNumberUI() instead, on document load/reset.
+        function applySettings() {
+            document.getElementById('zoom-slider').value = settings.zoom;
+            document.getElementById('zoom-slider-modal').value = settings.zoom;
+            document.getElementById('zoom-val').innerText = settings.zoom;
+            document.getElementById('zoom-val-modal').innerText = settings.zoom + '%';
+            document.getElementById('editor-page').style.zoom = settings.zoom / 100;
+            document.getElementById('pdf-viewer').style.zoom = settings.zoom / 100;
+
+            const sceneNumSel = document.getElementById('scene-number-mode');
+            sceneNumSel.value = settings.sceneNumberMode;
+            sceneNumberMode = settings.sceneNumberMode;
+
+            const reuseToggle = document.getElementById('reuse-last-insertion-toggle');
+            if (reuseToggle) reuseToggle.checked = settings.reuseLastInsertion;
+        }
 
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -1688,10 +1817,77 @@
             updateZoom();
             document.getElementById('zoom-val-modal').innerText = val + '%';
         }
-        function togglePageBreaksModal() {
-            const isChecked = document.getElementById('page-breaks-toggle-modal').checked;
-            document.getElementById('page-breaks-toggle').checked = isChecked;
-            togglePageBreaks();
+        function toggleReuseLastInsertion() {
+            settings.reuseLastInsertion = document.getElementById('reuse-last-insertion-toggle').checked;
+            saveSettings();
+        }
+
+        // --- Page furniture settings (items 3/4) ---
+        // Document-level, so it all lives on appState (see defaultAppState())
+        // rather than the app-level `settings` store -- one script's header
+        // template shouldn't leak into the next one you open.
+
+        function updateFurnitureTemplate(slot, value) {
+            appState.furniture[slot] = value;
+            renderFurniture();
+            saveState();
+        }
+
+        function setPageNumberSetting(key, value) {
+            appState.pageNumber[key] = value;
+            applyPageNumberUI();
+            renderFurniture();
+            saveState();
+        }
+
+        // Sidebar and modal each carry their own "Show page numbers" checkbox
+        // (matching the existing zoom/page-breaks pattern), both driving the
+        // one appState.pageNumber.show.
+        function togglePageNumbers() {
+            setPageNumberSetting('show', document.getElementById('page-number-toggle').checked);
+        }
+        function togglePageNumbersModal() {
+            setPageNumberSetting('show', document.getElementById('page-number-toggle-modal').checked);
+        }
+        function setPageNumberPosition(value) { setPageNumberSetting('position', value); }
+        function setPageNumberFormat(value) { setPageNumberSetting('format', value); }
+        function togglePageNumberBold() {
+            setPageNumberSetting('bold', document.getElementById('page-number-bold').checked);
+        }
+        function setPageNumberStartAt(value) {
+            setPageNumberSetting('startAt', Math.max(1, parseInt(value, 10) || 1));
+        }
+        function togglePageNumberSkipTitle() {
+            setPageNumberSetting('skipTitlePage', document.getElementById('page-number-skip-title').checked);
+        }
+
+        // Pushes appState.furniture/pageNumber onto the settings-modal form.
+        // Called after every document load/reset/setting change, mirroring
+        // applySettings() for the app-level store.
+        function applyPageNumberUI() {
+            const pn = appState.pageNumber;
+            const fn = appState.furniture;
+
+            const showEl = document.getElementById('page-number-toggle');
+            const showElModal = document.getElementById('page-number-toggle-modal');
+            if (showEl) showEl.checked = pn.show;
+            if (showElModal) showElModal.checked = pn.show;
+
+            const posEl = document.getElementById('page-number-position');
+            if (posEl) posEl.value = pn.position;
+            const fmtEl = document.getElementById('page-number-format');
+            if (fmtEl) fmtEl.value = pn.format;
+            const boldEl = document.getElementById('page-number-bold');
+            if (boldEl) boldEl.checked = pn.bold;
+            const startEl = document.getElementById('page-number-start-at');
+            if (startEl) startEl.value = pn.startAt;
+            const skipEl = document.getElementById('page-number-skip-title');
+            if (skipEl) skipEl.checked = pn.skipTitlePage;
+
+            FURNITURE_SLOTS.forEach(slot => {
+                const el = document.getElementById('furniture-' + slot);
+                if (el) el.value = fn[slot];
+            });
         }
 
         // --- Document Statistics ---
@@ -1708,23 +1904,28 @@
             document.getElementById('stat-runtime').innerText = hrs > 0 ? `${hrs} hr ${mins} min` : `${mins} min`;
 
             // 2. Element Counts
-            let locations = 0;
-            let characters = 0;
+            let scenes = 0;
+            let dialogueCues = 0;
+            let transitions = 0;
             let totalWords = 0;
             let totalLetters = 0;
 
             getBlocks().forEach(child => {
-                if (child.classList.contains('scene-heading')) locations++;
-                if (child.classList.contains('character')) characters++;
+                if (child.classList.contains('scene-heading')) scenes++;
+                if (child.classList.contains('character')) dialogueCues++;
+                if (child.classList.contains('transition')) transitions++;
 
                 const text = child.innerText || '';
                 const words = text.trim().split(/\s+/).filter(w => w.length > 0);
                 totalWords += words.length;
                 totalLetters += text.replace(/\s+/g, '').length;
             });
-            
-            document.getElementById('stat-locations').innerText = locations;
-            document.getElementById('stat-chars').innerText = characters;
+
+            document.getElementById('stat-scenes').innerText = scenes;
+            document.getElementById('stat-locations').innerText = appState.locations.length;
+            document.getElementById('stat-chars').innerText = appState.characters.length;
+            document.getElementById('stat-dialogue').innerText = dialogueCues;
+            document.getElementById('stat-transitions').innerText = transitions;
             document.getElementById('stat-words').innerText = totalWords.toLocaleString();
             document.getElementById('stat-letters').innerText = totalLetters.toLocaleString();
         }
@@ -1735,12 +1936,10 @@
             document.getElementById('zoom-val').innerText = val;
             document.getElementById('editor-page').style.zoom = val / 100;
             document.getElementById('pdf-viewer').style.zoom = val / 100;
+            settings.zoom = Number(val);
+            saveSettings();
         }
 
-        function togglePageBreaks() {
-            const show = document.getElementById('page-breaks-toggle').checked;
-            document.getElementById('editor-page').classList.toggle('show-page-numbers', show);
-        }
 
         // Resizers
         function setupResizer(resizerId, targetId, isRight) {
@@ -1853,6 +2052,14 @@
             if (editor && editor.contains(range.commonAncestorContainer)) {
                 lastEditorRange = range.cloneRange();
                 updateDeckButton();
+
+                // The caret leaving every block we marked is this app's version
+                // of "blur" -- clear the focus box and, in the same breath,
+                // record whatever the writer left behind for next time.
+                if (focusedInsertionBlocks.length) {
+                    const node = findBlockNode(range.startContainer);
+                    if (!focusedInsertionBlocks.includes(node)) clearInsertionFocus();
+                }
             }
         });
 
@@ -1886,6 +2093,43 @@
             return range.toString() === exampleBlock.textContent;
         }
 
+        // --- Insertion focus box (item 1) + remembered insertions (item 10) ---
+        // Both features key off the same moment: the caret leaving the block(s)
+        // we just inserted or converted. That moment is this app's "blur".
+
+        let focusedInsertionBlocks = [];
+
+        function markInsertion(blocks) {
+            clearInsertionFocus();
+            focusedInsertionBlocks = Array.isArray(blocks) ? blocks.slice() : [blocks];
+            focusedInsertionBlocks.forEach(b => b.classList.add('insertion-focus'));
+        }
+
+        function clearInsertionFocus() {
+            if (focusedInsertionBlocks.length) rememberInsertion(focusedInsertionBlocks);
+            focusedInsertionBlocks.forEach(b => b.classList.remove('insertion-focus'));
+            focusedInsertionBlocks = [];
+        }
+
+        // Label-like blocks are worth re-suggesting verbatim next time the
+        // button is clicked; dialogue and action are near-unique by nature and
+        // nobody wants the previous line handed back to them.
+        const REMEMBERABLE_TYPES = new Set(['scene-heading', 'character', 'parenthetical', 'transition']);
+
+        function rememberInsertion(blocks) {
+            if (!settings.reuseLastInsertion) return;
+            blocks.forEach(block => {
+                if (!block.isConnected) return;
+                // blockType() strips transient UI classes (including this very
+                // focus box) so a block still wearing the outline is keyed by
+                // what it actually is, not by its current classList string.
+                const type = blockType(block);
+                if (!REMEMBERABLE_TYPES.has(type)) return;
+                const text = block.innerText.trim();
+                if (text) appState.lastInsertion[type] = text;
+            });
+        }
+
         // Every block the selection touches becomes `className` -- a selection
         // inside a single line converts just that line, which is what the button
         // always used to do.
@@ -1894,6 +2138,9 @@
             if (!targets.length) { insertExampleBlock(className); return; }
             targets.forEach(b => { b.className = className; });
             afterBlockChange();
+            // A multi-line conversion has no cursor to follow, so the "what did
+            // I just do?" box is even more useful here than on a fresh insert.
+            markInsertion(targets);
         }
 
         function blocksInRange(range) {
@@ -1918,8 +2165,13 @@
         function insertExampleBlock(className, text) {
             const editor = document.getElementById('editor-page');
             ensureAtLeastOneFrame();
+            // Unconditional: a second button click always means "insert
+            // another one", so whatever we were tracking is done with, and
+            // gets remembered before we move on.
+            clearInsertionFocus();
 
-            const content = text !== undefined ? text : (BLOCK_EXAMPLES[className] || '');
+            const remembered = settings.reuseLastInsertion ? appState.lastInsertion[className] : undefined;
+            const content = text !== undefined ? text : (remembered || BLOCK_EXAMPLES[className] || '');
             const range = activeEditorRange();
 
             // Insert after the caret's block; with no caret (e.g. the toolbar
@@ -1950,6 +2202,7 @@
 
             afterBlockChange();
             selectBlockText(block);
+            markInsertion(block);
             scrollToBlock(block, 'nearest');
         }
 
@@ -2079,26 +2332,35 @@
         // give the rest of the app the same flat, document-order view of the
         // screenplay's blocks that a single flat container used to provide for free.
 
+        // Everything that isn't a screenplay block but lives inside a
+        // .page-frame -- today just the six furniture slots (F2) -- carries
+        // this class. One selector, used everywhere getBlocks() and its kin
+        // need to skip non-content nodes, so a future furniture addition
+        // can't leak into exports, word counts or navigation by way of a
+        // missed call site.
+        const FURNITURE_CLASS = 'page-furniture';
+        const NON_FURNITURE_SELECTOR = '*:not(.' + FURNITURE_CLASS + ')';
+
         function getBlocks() {
-            return Array.from(document.querySelectorAll('#editor-page > .page-frame > *:not(.page-number-label)'));
+            return Array.from(document.querySelectorAll('#editor-page > .page-frame > ' + NON_FURNITURE_SELECTOR));
         }
 
         function nextBlock(node) {
             if (!node) return null;
-            if (node.nextElementSibling && !node.nextElementSibling.classList.contains('page-number-label')) {
+            if (node.nextElementSibling && !node.nextElementSibling.classList.contains(FURNITURE_CLASS)) {
                 return node.nextElementSibling;
             }
             const nextFrame = node.parentNode && node.parentNode.nextElementSibling;
-            return nextFrame ? nextFrame.querySelector(':scope > *:not(.page-number-label)') : null;
+            return nextFrame ? nextFrame.querySelector(':scope > ' + NON_FURNITURE_SELECTOR) : null;
         }
 
         function prevBlock(node) {
             if (!node) return null;
             const prevSibling = node.previousElementSibling;
-            if (prevSibling && !prevSibling.classList.contains('page-number-label')) return prevSibling;
+            if (prevSibling && !prevSibling.classList.contains(FURNITURE_CLASS)) return prevSibling;
             const prevFrame = node.parentNode && node.parentNode.previousElementSibling;
             if (!prevFrame) return null;
-            const blocks = prevFrame.querySelectorAll(':scope > *:not(.page-number-label)');
+            const blocks = prevFrame.querySelectorAll(':scope > ' + NON_FURNITURE_SELECTOR);
             return blocks.length ? blocks[blocks.length - 1] : null;
         }
 
@@ -2116,20 +2378,76 @@
             return null;
         }
 
+        // Header/footer x left/center/right. Order matters: createPageFrame()
+        // appends them in this order, and reflowPages() relies on the last
+        // one being the last furniture child so content gets inserted after
+        // all six, not interleaved with them.
+        const FURNITURE_SLOTS = ['header-left', 'header-center', 'header-right',
+                                  'footer-left', 'footer-center', 'footer-right'];
+
         function createPageFrame() {
             const frame = document.createElement('div');
             frame.className = 'page page-frame';
-            const label = document.createElement('div');
-            label.className = 'page-number-label';
-            label.contentEditable = 'false';
-            frame.appendChild(label);
+            FURNITURE_SLOTS.forEach(slot => {
+                const el = document.createElement('div');
+                el.className = FURNITURE_CLASS;
+                el.dataset.slot = slot;
+                el.contentEditable = 'false';
+                frame.appendChild(el);
+            });
             return frame;
         }
 
-        function relabelFrames() {
-            document.querySelectorAll('#editor-page > .page-frame').forEach((frame, idx) => {
-                const label = frame.querySelector(':scope > .page-number-label');
-                if (label) label.innerText = (idx + 1) + '.';
+        function lastFurnitureNode(frame) {
+            const nodes = frame.querySelectorAll(':scope > .' + FURNITURE_CLASS);
+            return nodes.length ? nodes[nodes.length - 1] : null;
+        }
+
+        // Fills in {page}/{pages}/{title}/... in a furniture template. Missing
+        // tokens are left as-is rather than blanked, so a typo reads as a typo
+        // instead of silently vanishing.
+        function resolveFurnitureTokens(template, ctx) {
+            if (!template) return '';
+            return template.replace(/\{(\w+)\}/g, (m, key) => (key in ctx ? String(ctx[key]) : m));
+        }
+
+        // Renders every furniture slot on every page from appState.furniture
+        // (item 3's free-text templates) and appState.pageNumber (item 4's
+        // preset, which claims whichever slot it's pointed at and overrides
+        // any manual template there). {title} is scriptName()'s best guess;
+        // {author}/{date}/{draft} have no real source until the structured
+        // title page (item 8a) exists, so they resolve empty for now.
+        // skipTitlePage stands in for a real data-role="title" frame until
+        // then -- it blanks every slot on page 1, not just the page number.
+        function renderFurniture() {
+            const frames = Array.from(document.querySelectorAll('#editor-page > .page-frame'));
+            const pn = appState.pageNumber;
+            const fn = appState.furniture;
+            const totalPages = frames.length + pn.startAt - 1;
+            const title = scriptName();
+
+            frames.forEach((frame, idx) => {
+                const skip = pn.skipTitlePage && idx === 0;
+                const ctx = {
+                    page: idx + pn.startAt, pages: totalPages,
+                    title: title, author: '', date: '', draft: '', scene: ''
+                };
+                FURNITURE_SLOTS.forEach(slot => {
+                    const el = frame.querySelector(':scope > [data-slot="' + slot + '"]');
+                    if (!el) return;
+                    if (skip) {
+                        el.textContent = '';
+                        el.classList.remove('furniture-bold');
+                        return;
+                    }
+                    if (pn.show && pn.position === slot) {
+                        el.textContent = resolveFurnitureTokens(pn.format, ctx);
+                        el.classList.toggle('furniture-bold', !!pn.bold);
+                    } else {
+                        el.textContent = resolveFurnitureTokens(fn[slot], ctx);
+                        el.classList.remove('furniture-bold');
+                    }
+                });
             });
         }
 
@@ -2143,7 +2461,7 @@
                 frame.appendChild(block);
                 editor.appendChild(frame);
             }
-            relabelFrames();
+            renderFurniture();
         }
 
         // Set when a reflow was asked for while the editable pane had no layout
@@ -2198,7 +2516,7 @@
             // let the pane becoming visible trigger the real reflow.
             if (capacity <= 0) {
                 pendingReflow = true;
-                relabelFrames();
+                renderFurniture();
                 return;
             }
 
@@ -2259,7 +2577,7 @@
             // needlessly dirtying/moving thousands of untouched nodes.
             pages.forEach((pageBlocks, i) => {
                 const frame = frames[i];
-                let expectedPrev = frame.querySelector(':scope > .page-number-label');
+                let expectedPrev = lastFurnitureNode(frame);
                 pageBlocks.forEach(block => {
                     if (block.previousElementSibling !== expectedPrev || block.parentNode !== frame) {
                         frame.insertBefore(block, expectedPrev.nextSibling);
@@ -2275,7 +2593,7 @@
             }
 
             pendingReflow = false;
-            relabelFrames();
+            renderFurniture();
             // Runs move between page frames on every reflow, so which block is
             // the first and last of a stack has to be recomputed here rather
             // than being stored anywhere.
@@ -2648,7 +2966,7 @@
         // Classes the app paints on a block for the moment, which are no part of
         // what the block *is*. They must never reach a saved card, or reloading
         // it would restore a hover state as though it were formatting.
-        const TRANSIENT_CLASSES = new Set(['stack-hot', 'sync-flash', 'sync-line-flash']);
+        const TRANSIENT_CLASSES = new Set(['stack-hot', 'sync-flash', 'sync-line-flash', 'insertion-focus']);
 
         function blockType(n) {
             const kept = Array.from(n.classList).filter(c => !TRANSIENT_CLASSES.has(c));
@@ -2849,6 +3167,8 @@
             sceneNumberMode = mode;
             const sel = document.getElementById('scene-number-mode');
             if (sel && sel.value !== mode) sel.value = mode;
+            settings.sceneNumberMode = mode;
+            saveSettings();
             buildToc();
         }
 
@@ -4652,7 +4972,7 @@
             editor.innerHTML = '';
             ensureAtLeastOneFrame(); // one page, holding one blank line
 
-            appState = { characters: [], locations: [] };
+            appState = defaultAppState();
             dynamicCounts = { characters: {}, locations: {} };
             activeHighlights.clear();
             historyStack = [];
@@ -4661,10 +4981,12 @@
             currentFileHandle = null;
             lastEditorRange = null;
             exampleBlock = null;
+            clearInsertionFocus();
             resetStacks();
 
             setEditableNotice(null);
             setPdfLoaded(false);
+            applyPageNumberUI();
             reflowPages();
             buildToc();
             extractEntities();
@@ -4791,9 +5113,17 @@
                         const scriptData = data.script ? data.script : data;
                         if (data.lists) {
                             appState = data.lists;
+                            // Files saved before these features existed carry
+                            // no lastInsertion/furniture/pageNumber keys.
+                            const fallback = defaultAppState();
+                            if (!appState.lastInsertion) appState.lastInsertion = fallback.lastInsertion;
+                            if (!appState.furniture) appState.furniture = fallback.furniture;
+                            if (!appState.pageNumber) appState.pageNumber = fallback.pageNumber;
                         } else {
-                            appState = { characters: [], locations: [] };
+                            appState = defaultAppState();
                         }
+                        clearInsertionFocus();
+                        applyPageNumberUI();
 
                         // Files written before variations existed simply carry no
                         // `stacks` key, and load as a script with no alternates.
@@ -4939,7 +5269,7 @@
                 if (range.startContainer !== blockNode && range.startContainer.previousSibling) return;
 
                 const frame = blockNode.parentNode;
-                if (blockNode !== frame.querySelector(':scope > *:not(.page-number-label)')) return;
+                if (blockNode !== frame.querySelector(':scope > ' + NON_FURNITURE_SELECTOR)) return;
 
                 const prev = prevBlock(blockNode);
                 if (!prev) return;
@@ -4961,9 +5291,10 @@
 
         window.onload = () => {
             setupFormatButtons();
-            togglePageBreaks(); // Ensure page numbers display correctly if toggle is on
+            applySettings(); // Restores zoom, scene-number mode, reuse-insertion from last session
+            applyPageNumberUI(); // Pushes the (default, until a project loads) furniture/page-number state
             extractEntities();
-            saveState(); 
+            saveState();
             buildToc();
             updateStatistics();
         };
@@ -4980,9 +5311,117 @@
                 <button class="close-btn" onclick="closeSettings()">✕</button>
             </div>
             
-            <div style="margin-bottom: 20px;">
-                <h3 style="margin-top:0; font-size:1rem; border-bottom:1px solid #444; padding-bottom:5px;">Instructions</h3>
-                <div style="font-size: 0.85rem; color: #bbb; line-height: 1.4;">
+            <div>
+                <h3 style="margin-top:0; font-size:1rem; border-bottom:1px solid #444; padding-bottom:5px;">Layout</h3>
+                <div style="padding: 10px 0;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:5px;">
+                        <span>Zoom</span>
+                        <span id="zoom-val-modal">100%</span>
+                    </div>
+                    <input type="range" id="zoom-slider-modal" min="20" max="200" value="100" style="width:100%" oninput="updateZoomModal()">
+
+                    <label style="font-size: 0.85rem; margin-top: 15px; display:flex; align-items:center; gap: 8px;"
+                           title="Prints into the left margin, e.g. S004.D002. Off by default — a script you send out usually shouldn't carry them.">
+                        Scene numbers in script
+                        <select id="scene-number-mode" onchange="setSceneNumberMode(this.value)"
+                                style="margin-left:auto; background:#333; color:#eee; border:1px solid #444; border-radius:4px; padding:3px 6px;">
+                            <option value="off">Off</option>
+                            <option value="scene">Scene — S004</option>
+                            <option value="draft">Scene + draft — S004.D002</option>
+                        </select>
+                    </label>
+
+                    <label style="font-size: 0.85rem; margin-top: 15px; display:flex; align-items:center; gap: 8px; cursor:pointer;"
+                           title="Scene Heading/Character/Parenthetical/Transition reuse what you last typed instead of the example. Dialogue and Action always start fresh.">
+                        <input type="checkbox" id="reuse-last-insertion-toggle" checked onchange="toggleReuseLastInsertion()"> Reuse last insertion
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <h3 style="font-size:1rem; border-bottom:1px solid #444; padding-bottom:5px;">Headers, Footers &amp; Page Numbers</h3>
+                <div style="padding: 10px 0;">
+                    <p style="font-size:0.78rem; color:#8f8f8f; margin:0 0 8px;"
+                       title="Rides with this document — each script keeps its own.">
+                        Tokens: <code>{page}</code> <code>{pages}</code> <code>{title}</code>
+                        <code>{author}</code> <code>{date}</code> <code>{draft}</code> <code>{scene}</code>
+                    </p>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 4px 10px;">
+                        <div style="font-size:0.78rem; color:#8f8f8f;">Header</div>
+                        <div style="font-size:0.78rem; color:#8f8f8f;">Footer</div>
+                        <input id="furniture-header-left" placeholder="Left" title="Header — left"
+                               oninput="updateFurnitureTemplate('header-left', this.value)"
+                               style="width:100%; box-sizing:border-box; background:#333; color:#eee; border:1px solid #444; border-radius:4px; padding:3px 6px; font-size:0.8rem;">
+                        <input id="furniture-footer-left" placeholder="Left" title="Footer — left"
+                               oninput="updateFurnitureTemplate('footer-left', this.value)"
+                               style="width:100%; box-sizing:border-box; background:#333; color:#eee; border:1px solid #444; border-radius:4px; padding:3px 6px; font-size:0.8rem;">
+                        <input id="furniture-header-center" placeholder="Center" title="Header — center"
+                               oninput="updateFurnitureTemplate('header-center', this.value)"
+                               style="width:100%; box-sizing:border-box; background:#333; color:#eee; border:1px solid #444; border-radius:4px; padding:3px 6px; font-size:0.8rem;">
+                        <input id="furniture-footer-center" placeholder="Center" title="Footer — center"
+                               oninput="updateFurnitureTemplate('footer-center', this.value)"
+                               style="width:100%; box-sizing:border-box; background:#333; color:#eee; border:1px solid #444; border-radius:4px; padding:3px 6px; font-size:0.8rem;">
+                        <input id="furniture-header-right" placeholder="Right" title="Header — right"
+                               oninput="updateFurnitureTemplate('header-right', this.value)"
+                               style="width:100%; box-sizing:border-box; background:#333; color:#eee; border:1px solid #444; border-radius:4px; padding:3px 6px; font-size:0.8rem;">
+                        <input id="furniture-footer-right" placeholder="Right" title="Footer — right"
+                               oninput="updateFurnitureTemplate('footer-right', this.value)"
+                               style="width:100%; box-sizing:border-box; background:#333; color:#eee; border:1px solid #444; border-radius:4px; padding:3px 6px; font-size:0.8rem;">
+                    </div>
+
+                    <label style="font-size: 0.85rem; margin-top: 15px; display:flex; align-items:center; gap: 8px; cursor:pointer;">
+                        <input type="checkbox" id="page-number-toggle-modal" onchange="togglePageNumbersModal()"> Show page numbers
+                    </label>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; margin-top:10px;"
+                         title="Claims that slot — overrides whatever's typed into its box above.">
+                        <span>Position</span>
+                        <select id="page-number-position" onchange="setPageNumberPosition(this.value)"
+                                style="background:#333; color:#eee; border:1px solid #444; border-radius:4px; padding:3px 6px;">
+                            <option value="header-left">Header — left</option>
+                            <option value="header-center">Header — center</option>
+                            <option value="header-right">Header — right</option>
+                            <option value="footer-left">Footer — left</option>
+                            <option value="footer-center">Footer — center</option>
+                            <option value="footer-right">Footer — right</option>
+                        </select>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; margin-top:10px;">
+                        <span>Format</span>
+                        <select id="page-number-format" onchange="setPageNumberFormat(this.value)"
+                                style="background:#333; color:#eee; border:1px solid #444; border-radius:4px; padding:3px 6px;">
+                            <option value="{page}">1</option>
+                            <option value="{page}.">1.</option>
+                            <option value="{page} / {pages}">1 / 27</option>
+                            <option value="Page {page} of {pages}">Page 1 of 27</option>
+                        </select>
+                    </div>
+
+                    <label style="font-size: 0.85rem; margin-top: 10px; display:flex; align-items:center; gap: 8px; cursor:pointer;">
+                        <input type="checkbox" id="page-number-bold" onchange="togglePageNumberBold()"> Bold
+                    </label>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; margin-top:10px;">
+                        <span>Start at page</span>
+                        <input type="number" id="page-number-start-at" min="1" value="1"
+                               onchange="setPageNumberStartAt(this.value)"
+                               style="width:60px; background:#333; color:#eee; border:1px solid #444; border-radius:4px; padding:3px 6px;">
+                    </div>
+
+                    <label style="font-size: 0.85rem; margin-top: 10px; display:flex; align-items:center; gap: 8px; cursor:pointer;"
+                           title="Blanks every header/footer slot on page 1, standing in for a real title page.">
+                        <input type="checkbox" id="page-number-skip-title" onchange="togglePageNumberSkipTitle()"> Skip title page
+                    </label>
+                </div>
+            </div>
+
+            <div class="sidebar-section" style="border-top:1px solid var(--border-color); margin-top:15px;">
+                <h3 class="collapsible collapsed" onclick="toggleSection(this)"
+                    style="font-size:1rem; margin:15px 0 0; padding:8px 0; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                    Instructions <span style="font-size:0.7rem;">▼</span>
+                </h3>
+                <div class="section-content" style="font-size: 0.85rem; color: #bbb; line-height: 1.4; padding: 10px 0 0;">
                     <p>File menu: <b>New</b> starts an empty script. <b>Save As...</b> opens your system's save dialog so you can choose the folder, and reopens in that same folder next time. <b>Save</b> writes straight back to the file you last saved to, and only asks where if there isn't one yet. The filename is suggested from the script's title page, or from the file it was loaded from. <b>Ctrl+S</b> saves.</p>
                     <p>Use <b>Ctrl+Z</b> and <b>Ctrl+Y</b> to undo and redo changes.</p>
                     <p>With a PDF open, use the <b>Exact View</b> and <b>Editable Script</b> buttons to show either or both side by side, <b>⇄</b> to swap sides, and <b>Match ⇔</b> (or <b>Ctrl+M</b>) to scroll the other pane to the spot you're working in.</p>
@@ -4993,41 +5432,9 @@
                     <p><b>Ranking.</b> A stack is an ordered pile and the top of it is the version that stands — the one on the page, in the export, in the PDF. Drag a draft to the top of the list, in the Navigator or on the deck tabs, and it becomes that version immediately; <b>↑ Move to top</b> does the same thing for whichever one you're reading. The star marks the top.</p>
                     <p><b>Numbering.</b> Scenes are numbered down the script — <b>S001</b>, <b>S002</b> — and every draft carries its own number, so <b>S004.D002</b> names one specific piece of writing. Draft numbers are handed out once, when the draft is created, and never change: re-ranking a stack moves the star, not the numbers, so <b>S004.D002</b> still means the same pages next week. That makes the label safe to quote in a note or an email. (Scene numbers do follow the script, so they shift if you reorder scenes.)</p>
                     <p>The Navigator numbers every scene and nests that scene's drafts beneath it, shut by default — the count on the right says how many are in there, and clicking it opens the list. <b>Has variations</b> narrows the list to just the scenes that carry any. Only the top-ranked draft is ever exported, printed or written out as the script; the rest ride along in the .json.</p>
-                    <p>Under <b>Layout Settings</b>, <b>Scene numbers in the script</b> prints those labels into the left margin, the way a shooting script carries its scene numbers — so an exported PDF says which draft of each scene it is holding. It is off by default, since a script you send out usually shouldn't carry them.</p>
                     <p>Scripts that mark their alternates by hand, with lines like <b>* ALT DRAFT -- "THE SCULLERY EXCHANGE" *</b>, can be converted in one step: <b>File ▸ Fold Alternates into Stacks…</b> lifts each one out of the appendix and staples it onto the scene it rewrites.</p>
                     <p>Press <b>Enter</b> to create a new line. The editor will automatically maintain formatting blocks.</p>
                     <p>To export to PDF, choose "Export as PDF" and use your browser's Print to PDF feature.</p>
-                </div>
-            </div>
-            
-            <div>
-                <h3 style="font-size:1rem; border-bottom:1px solid #444; padding-bottom:5px;">Layout Settings</h3>
-                <div style="padding: 10px 0;">
-                    <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:5px;">
-                        <span>Zoom</span>
-                        <span id="zoom-val-modal">100%</span>
-                    </div>
-                    <input type="range" id="zoom-slider-modal" min="20" max="200" value="100" style="width:100%" oninput="updateZoomModal()">
-                    
-                    <label style="font-size: 0.85rem; margin-top: 15px; display:flex; align-items:center; gap: 8px; cursor:pointer;">
-                        <input type="checkbox" id="page-breaks-toggle-modal" onchange="togglePageBreaksModal()"> Show Visual Page Breaks
-                    </label>
-
-                    <label style="font-size: 0.85rem; margin-top: 15px; display:flex; align-items:center; gap: 8px;">
-                        Scene numbers in the script
-                        <select id="scene-number-mode" onchange="setSceneNumberMode(this.value)"
-                                style="margin-left:auto; background:#333; color:#eee; border:1px solid #444; border-radius:4px; padding:3px 6px;">
-                            <option value="off">Off</option>
-                            <option value="scene">Scene only — S004</option>
-                            <option value="draft">Scene + draft — S004.D002</option>
-                        </select>
-                    </label>
-                    <p style="font-size:0.78rem; color:#8f8f8f; line-height:1.45; margin:6px 0 0;">
-                        Prints into the left margin, the way a shooting script carries its scene
-                        numbers — so an exported PDF says which draft of each scene it is holding.
-                        Only the top-ranked draft is ever exported; the alternates stay in the .json.
-                        The Navigator always numbers scenes regardless of this setting.
-                    </p>
                 </div>
             </div>
         </div>

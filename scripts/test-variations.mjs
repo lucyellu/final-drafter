@@ -677,6 +677,225 @@ let stay2 = await page.evaluate(() => {
 });
 ok('re-ranking leaves the row open too', stay2.open === 3, stay2);
 
+console.log('\n== 24. Toolbar order: Dialogue sits next to Character ==');
+let toolbarOrder = await page.evaluate(() =>
+  Array.from(document.querySelectorAll('#format-toolbar button[data-type]')).map(b => b.dataset.type));
+ok('scene-heading, action, character, dialogue, parenthetical, transition',
+  JSON.stringify(toolbarOrder) === JSON.stringify(
+    ['scene-heading', 'action', 'character', 'dialogue', 'parenthetical', 'transition']),
+  toolbarOrder);
+
+console.log('\n== 25. Document Statistics: corrected labels ==');
+let stats = await page.evaluate(() => {
+  updateStatistics();
+  return {
+    scenes: Number(document.getElementById('stat-scenes').innerText),
+    locations: Number(document.getElementById('stat-locations').innerText),
+    characters: Number(document.getElementById('stat-chars').innerText),
+    dialogue: Number(document.getElementById('stat-dialogue').innerText),
+    transitions: Number(document.getElementById('stat-transitions').innerText),
+    sceneHeadingCount: document.querySelectorAll('#editor-page .scene-heading').length,
+    characterCueCount: document.querySelectorAll('#editor-page .character').length,
+    transitionCount: document.querySelectorAll('#editor-page .transition').length,
+    distinctLocations: appState.locations.length,
+    distinctCharacters: appState.characters.length,
+  };
+});
+ok('Scenes counts scene-heading blocks', stats.scenes === stats.sceneHeadingCount, stats);
+ok('Dialogue cues counts character-cue blocks (the old mislabelled "Characters")',
+  stats.dialogue === stats.characterCueCount, stats);
+ok('Transitions counted (new row)', stats.transitions === stats.transitionCount, stats);
+ok('Locations is the distinct-location count (the old mislabelled row), not the scene count',
+  stats.locations === stats.distinctLocations && stats.locations !== stats.scenes, stats);
+ok('Characters is the distinct-character count, not the dialogue-cue count',
+  stats.characters === stats.distinctCharacters && stats.characters !== stats.dialogue, stats);
+
+console.log('\n== 26. Insertion focus box (item 1) ==');
+let focusTest = await page.evaluate(() => {
+  window.confirm = () => true;
+  newScript();
+  settings.reuseLastInsertion = true;
+  appState.lastInsertion = {};
+
+  formatBlock('character');
+  const block = document.querySelector('#editor-page .character');
+  const focusedOnInsert = block.classList.contains('insertion-focus');
+  const typeWhileFocused = blockType(block);
+
+  document.execCommand('insertText', false, 'MARGO');
+  const textAfterTyping = block.innerText;
+
+  // Clicking another format button is the "caret left the block" moment.
+  formatBlock('action');
+  const focusClearedAfterBlur = !block.classList.contains('insertion-focus');
+
+  return { focusedOnInsert, typeWhileFocused, textAfterTyping, focusClearedAfterBlur };
+});
+ok('a freshly inserted block wears the outline', focusTest.focusedOnInsert, focusTest);
+ok('the outline never leaks into the saved block type', focusTest.typeWhileFocused === 'character', focusTest);
+ok('typing over the example replaces it', focusTest.textAfterTyping === 'MARGO', focusTest);
+ok('moving to another block clears the outline', focusTest.focusClearedAfterBlur, focusTest);
+
+console.log('\n== 27. Remembered insertions (item 10) ==');
+let rememberTest = await page.evaluate(() => {
+  // block from test 26 already holds 'MARGO' as a character line; blurring it
+  // (the formatBlock('action') call above) should have remembered it.
+  formatBlock('character');
+  const secondCharacterBlock = document.querySelectorAll('#editor-page .character')[1];
+  const reused = secondCharacterBlock.innerText;
+
+  // Dialogue/action are excluded on purpose -- nobody wants the last line back.
+  formatBlock('dialogue');
+  const dlgBlock = document.querySelector('#editor-page .dialogue');
+  document.execCommand('insertText', false, 'A very specific line.');
+  formatBlock('character'); // blurs the dialogue block
+  formatBlock('dialogue');
+  const dlgBlocks = document.querySelectorAll('#editor-page .dialogue');
+  const secondDialogueText = dlgBlocks[dlgBlocks.length - 1].innerText;
+
+  return { reused, secondDialogueText, example: BLOCK_EXAMPLES.dialogue };
+});
+ok('a second Character insert reuses what was typed over the first', rememberTest.reused === 'MARGO', rememberTest);
+ok('Dialogue never reuses -- it keeps inserting the generic example',
+  rememberTest.secondDialogueText === rememberTest.example, rememberTest);
+
+let reuseToggleTest = await page.evaluate(() => {
+  settings.reuseLastInsertion = false;
+  formatBlock('character');
+  const blocks = document.querySelectorAll('#editor-page .character');
+  const text = blocks[blocks.length - 1].innerText;
+  settings.reuseLastInsertion = true;
+  return { text, example: BLOCK_EXAMPLES.character };
+});
+ok('turning the setting off falls back to the example again',
+  reuseToggleTest.text === reuseToggleTest.example, reuseToggleTest);
+
+console.log('\n== 28. F1 settings persist across a reload ==');
+await page.evaluate(() => {
+  settings.zoom = 63;
+  settings.sceneNumberMode = 'draft';
+  settings.reuseLastInsertion = false;
+  saveSettings();
+});
+await page.reload({ waitUntil: 'networkidle2' });
+await new Promise(r => setTimeout(r, 400));
+let restored = await page.evaluate(() => ({
+  zoom: settings.zoom,
+  sceneNumberMode: settings.sceneNumberMode,
+  reuseLastInsertion: settings.reuseLastInsertion,
+  zoomSliderValue: document.getElementById('zoom-slider').value,
+  sceneNumberSelectValue: document.getElementById('scene-number-mode').value,
+}));
+ok('zoom survives a restart', restored.zoom === 63, restored);
+ok('scene-number mode survives a restart', restored.sceneNumberMode === 'draft', restored);
+ok('reuse-last-insertion survives a restart', restored.reuseLastInsertion === false, restored);
+ok('applySettings() pushed zoom onto the slider at boot', restored.zoomSliderValue === '63', restored);
+ok('applySettings() pushed scene-number mode onto the select at boot', restored.sceneNumberSelectValue === 'draft', restored);
+
+console.log('\n== 29. Page furniture (F2) + headers/footers/page numbers (items 3, 4) ==');
+await loadFileInto(path.resolve(ROOT, 'text/social_network.json'));
+let furniture = await page.evaluate(() => {
+  const frame = document.querySelector('#editor-page > .page-frame');
+  const slots = Array.from(frame.querySelectorAll(':scope > .page-furniture')).map(el => el.dataset.slot);
+  const frames = Array.from(document.querySelectorAll('#editor-page > .page-frame'));
+  return {
+    slotCount: slots.length,
+    slots,
+    excludedFromGetBlocks: getBlocks().some(b => b.classList.contains('page-furniture')),
+    defaultPosition: appState.pageNumber.position,
+    defaultShow: appState.pageNumber.show,
+    defaultSkipTitle: appState.pageNumber.skipTitlePage,
+    // skipTitlePage defaults on, and frame 0 is the only "page 1" this app
+    // knows about until item 8a gives it a real title-page role -- so by
+    // default page 1 is blank and page 2 carries the first visible number.
+    page1FooterRight: frames[0].querySelector(':scope > [data-slot="footer-right"]').textContent,
+    page2FooterRight: frames[1] ? frames[1].querySelector(':scope > [data-slot="footer-right"]').textContent : null,
+  };
+});
+ok('every frame gets all six furniture slots', furniture.slotCount === 6, furniture);
+ok('slots are the six header/footer x left/center/right combinations',
+  JSON.stringify(furniture.slots.slice().sort()) === JSON.stringify(
+    ['footer-center', 'footer-left', 'footer-right', 'header-center', 'header-left', 'header-right'].sort()),
+  furniture);
+ok('furniture never leaks into getBlocks()', !furniture.excludedFromGetBlocks, furniture);
+ok('page numbers default on, footer-right, skip title page on',
+  furniture.defaultShow && furniture.defaultPosition === 'footer-right' && furniture.defaultSkipTitle, furniture);
+ok('page 1 is blank by default (stands in for the title page)', furniture.page1FooterRight === '', furniture);
+ok('page 2 renders "2 / N" by default', /^2 \/ \d+$/.test(furniture.page2FooterRight), furniture);
+
+let furnitureEdit = await page.evaluate(() => {
+  // Turn off the title-page stand-in so page 1 becomes an ordinary page --
+  // this fixture has no real title page, so that's the fairer state to
+  // exercise manual templates and the page-number preset against.
+  setPageNumberSetting('skipTitlePage', false);
+  updateFurnitureTemplate('header-left', 'DRAFT — {date}');
+  setPageNumberFormat('Page {page} of {pages}');
+  setPageNumberPosition('footer-center');
+  const frames = Array.from(document.querySelectorAll('#editor-page > .page-frame'));
+  return {
+    headerLeftPage1: frames[0].querySelector(':scope > [data-slot="header-left"]').textContent,
+    footerRightNowEmpty: frames[0].querySelector(':scope > [data-slot="footer-right"]').textContent,
+    footerCenterPage1: frames[0].querySelector(':scope > [data-slot="footer-center"]').textContent,
+    totalFrames: frames.length,
+  };
+});
+ok('a manual template resolves its token', furnitureEdit.headerLeftPage1.startsWith('DRAFT — '), furnitureEdit);
+ok('moving the page-number position vacates the old slot', furnitureEdit.footerRightNowEmpty === '', furnitureEdit);
+ok('the new slot shows the new format',
+  furnitureEdit.footerCenterPage1 === 'Page 1 of ' + furnitureEdit.totalFrames, furnitureEdit);
+
+// Furniture is layout-neutral by construction (position:absolute, zero flow
+// height) -- stuffing every slot with long text must not move a single
+// script block to another page. This is the one cross-cutting risk the plan
+// calls out by name for F2.
+let paginationStability = await page.evaluate(() => {
+  const before = getBlocks().length;
+  const beforePageCount = document.querySelectorAll('#editor-page > .page-frame').length;
+  const beforeFirstBlockText = getBlocks()[0].innerText;
+  FURNITURE_SLOTS.forEach(slot => {
+    if (slot === 'header-left') return; // already holds a template from the step above
+    updateFurnitureTemplate(slot, 'A conspicuously long furniture line meant to stress the layout {page} {pages} {title}');
+  });
+  reflowPages();
+  return {
+    before, after: getBlocks().length,
+    beforePageCount, afterPageCount: document.querySelectorAll('#editor-page > .page-frame').length,
+    firstBlockUnchanged: getBlocks()[0].innerText === beforeFirstBlockText,
+  };
+});
+ok('filling every furniture slot does not change the block count', paginationStability.before === paginationStability.after, paginationStability);
+ok('filling every furniture slot does not change the page count', paginationStability.beforePageCount === paginationStability.afterPageCount, paginationStability);
+ok('the first block stays put', paginationStability.firstBlockUnchanged, paginationStability);
+
+let skipTitle = await page.evaluate(() => {
+  setPageNumberSetting('skipTitlePage', true);
+  const frame1 = document.querySelector('#editor-page > .page-frame');
+  return {
+    headerLeftBlank: frame1.querySelector(':scope > [data-slot="header-left"]').textContent,
+    footerCenterBlank: frame1.querySelector(':scope > [data-slot="footer-center"]').textContent,
+  };
+});
+ok('re-enabling skip-title-page blanks every slot on page 1 again, including manual templates',
+  skipTitle.headerLeftBlank === '' && skipTitle.footerCenterBlank === '', skipTitle);
+
+// Furniture/page-number settings are document state (appState), so the
+// project file has to actually carry them -- scriptJSON() is what Save
+// writes to disk, and loadFile()'s .json branch is what reads it back in.
+let furniturePersists = await page.evaluate(() => {
+  const saved = JSON.parse(scriptJSON());
+  return {
+    furniture: saved.lists.furniture,
+    pageNumber: saved.lists.pageNumber,
+  };
+});
+ok('scriptJSON() carries the furniture templates',
+  furniturePersists.furniture['header-left'] === 'DRAFT — {date}', furniturePersists);
+ok('scriptJSON() carries the page-number preset',
+  furniturePersists.pageNumber.position === 'footer-center' &&
+  furniturePersists.pageNumber.format === 'Page {page} of {pages}' &&
+  furniturePersists.pageNumber.skipTitlePage === true,
+  furniturePersists);
+
 console.log('\n== Console errors ==');
 if (errors.length) { errors.slice(0, 12).forEach(e => console.log('  ! ' + e)); fail += errors.length; }
 else console.log('  none');
