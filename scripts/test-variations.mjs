@@ -236,7 +236,7 @@ const saved = await page.evaluate(() => { closeDeck(); return scriptJSON(); });
 const savedPath = SCRATCH + '/roundtrip.json';
 fs.writeFileSync(savedPath, saved, 'utf8');
 const parsed = JSON.parse(saved);
-ok('formatVersion 2', parsed.formatVersion === 2);
+ok('formatVersion 3', parsed.formatVersion === 3);
 ok('stacks serialized', Object.keys(parsed.stacks).length === 1, Object.keys(parsed.stacks));
 ok('cards serialized', Object.values(parsed.stacks)[0].order.length === 2);
 ok('blocks carry stack ids', parsed.script.filter(b => b.stack).length === 11, parsed.script.filter(b => b.stack).length);
@@ -349,7 +349,7 @@ let foldedRt = await page.evaluate(() => {
   const j = scriptJSON();
   return { fv: JSON.parse(j).formatVersion, stacks: Object.keys(JSON.parse(j).stacks).length };
 });
-ok('folded project serializes', foldedRt.fv === 2 && foldedRt.stacks >= 1, foldedRt);
+ok('folded project serializes', foldedRt.fv === 3 && foldedRt.stacks >= 1, foldedRt);
 }
 
 console.log('\n== 14. Robustness ==');
@@ -881,20 +881,75 @@ ok('re-enabling skip-title-page blanks every slot on page 1 again, including man
 // Furniture/page-number settings are document state (appState), so the
 // project file has to actually carry them -- scriptJSON() is what Save
 // writes to disk, and loadFile()'s .json branch is what reads it back in.
+// F3 moved them out of `lists` into their own `settings` key.
 let furniturePersists = await page.evaluate(() => {
   const saved = JSON.parse(scriptJSON());
   return {
-    furniture: saved.lists.furniture,
-    pageNumber: saved.lists.pageNumber,
+    formatVersion: saved.formatVersion,
+    furniture: saved.settings.furniture,
+    pageNumber: saved.settings.pageNumber,
+    hasHistory: Array.isArray(saved.history),
+    metaDocType: saved.meta.docType,
   };
 });
-ok('scriptJSON() carries the furniture templates',
+ok('scriptJSON() writes formatVersion 3', furniturePersists.formatVersion === 3, furniturePersists);
+ok('scriptJSON() carries the furniture templates under settings, not lists',
   furniturePersists.furniture['header-left'] === 'DRAFT — {date}', furniturePersists);
-ok('scriptJSON() carries the page-number preset',
+ok('scriptJSON() carries the page-number preset under settings',
   furniturePersists.pageNumber.position === 'footer-center' &&
   furniturePersists.pageNumber.format === 'Page {page} of {pages}' &&
   furniturePersists.pageNumber.skipTitlePage === true,
   furniturePersists);
+ok('scriptJSON() carries a meta block', furniturePersists.metaDocType === 'screenplay', furniturePersists);
+ok('scriptJSON() carries a history scaffold', furniturePersists.hasHistory, furniturePersists);
+
+console.log('\n== 30. F3 format v3: round-trip and v2 migration ==');
+// Save what's currently open (furniture['header-left'] === 'DRAFT — {date}',
+// pageNumber.position === 'footer-center' from the tests above), then load
+// that exact v3 JSON back in through the real <input> + loadFile() path --
+// not a re-implementation of the migration logic, the actual app code.
+const v3FixturePath = path.join(SCRATCH, 'f3-roundtrip.json');
+let savedJSON = await page.evaluate(() => scriptJSON());
+fs.writeFileSync(v3FixturePath, savedJSON);
+await loadFileInto(v3FixturePath);
+let v3RoundTrip = await page.evaluate(() => ({
+  furniture: appState.furniture['header-left'],
+  pageNumberPos: appState.pageNumber.position,
+  pageNumberFormat: appState.pageNumber.format,
+  metaDocType: docMeta.docType,
+}));
+ok('v3 round-trips furniture templates through the real load path',
+  v3RoundTrip.furniture === 'DRAFT — {date}', v3RoundTrip);
+ok('v3 round-trips the page-number preset through the real load path',
+  v3RoundTrip.pageNumberPos === 'footer-center' && v3RoundTrip.pageNumberFormat === 'Page {page} of {pages}', v3RoundTrip);
+ok('v3 round-trips meta', v3RoundTrip.metaDocType === 'screenplay', v3RoundTrip);
+
+// An old file saved before F3: formatVersion 2, furniture/pageNumber nested
+// inside `lists` (as scriptJSON() used to write them, and as real files on
+// disk from before this session's F3 work actually are).
+const v2FixturePath = path.join(SCRATCH, 'f3-legacy-v2.json');
+fs.writeFileSync(v2FixturePath, JSON.stringify({
+  formatVersion: 2,
+  script: [{ type: 'action', text: 'Legacy content.' }],
+  stacks: {},
+  lists: {
+    characters: ['ALICE'],
+    locations: ['KITCHEN'],
+    lastInsertion: {},
+    furniture: { 'header-left': '', 'header-center': '', 'header-right': '', 'footer-left': '', 'footer-center': '', 'footer-right': 'LEGACY' },
+    pageNumber: { show: false, position: 'header-left', format: '1', bold: false, startAt: 1, skipTitlePage: false }
+  }
+}));
+await loadFileInto(v2FixturePath);
+let v2Migration = await page.evaluate(() => ({
+  charactersCarried: appState.characters[0] === 'ALICE',
+  furnitureCarried: appState.furniture['footer-right'] === 'LEGACY',
+  pageNumberCarried: appState.pageNumber.show === false,
+  metaIsDefault: docMeta.docType === 'screenplay' && docMeta.created === null,
+}));
+ok('a v2 file (furniture nested in lists) still migrates correctly',
+  v2Migration.charactersCarried && v2Migration.furnitureCarried && v2Migration.pageNumberCarried, v2Migration);
+ok('a v2 file gets fresh default meta (v2 files never carried one)', v2Migration.metaIsDefault, v2Migration);
 
 console.log('\n== Console errors ==');
 if (errors.length) { errors.slice(0, 12).forEach(e => console.log('  ! ' + e)); fail += errors.length; }

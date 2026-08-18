@@ -10,7 +10,7 @@ line numbers have since shifted as work landed; treat them as historical.
 
 ## Progress (as of 2026-08-17)
 
-Rows 1–5 of the suggested order are done and merged to `main`, with 142
+Rows 1–6 of the suggested order are done and merged to `main`, with 150
 automated tests in `scripts/test-variations.mjs` covering all of it (0
 failures, no console errors).
 
@@ -59,6 +59,18 @@ failures, no console errors).
   first; the long prose "Instructions" block is now collapsed by default
   (same collapsible pattern as the sidebar sections) instead of pushing
   every control below the fold.
+- **F3 — project file format v3.** `scriptJSON()` now writes
+  `formatVersion: 3` with `meta` (title/author/docType/created/modified —
+  title/author stay blank until item 8a gives them a real source),
+  `settings` (page-number preset + header/footer templates, moved out of
+  `lists`), `script`, `stacks`, `lists` (now just characters/locations/
+  lastInsertion), and an empty `history` scaffold for item 5. The loader
+  branches on `formatVersion`: v3 reads the new shape, anything older
+  (including files this app itself wrote during Phase 2, before F3 existed)
+  reads furniture/pageNumber out of `lists` the old way. `created`/`modified`
+  are stamped in `scriptJSON()` itself, so they're only set on an actual
+  save. Still writes/reads the `.json` extension — renaming to `.fdproj` is
+  item 6's job, not F3's.
 
 **Known gap carried forward:** `skip title page` (item 4) is a blanket
 "blank every furniture slot on frame index 0" — there's no real title-page
@@ -67,9 +79,12 @@ script with no title page will have a blank, unnumbered page 1 by default
 until 8a lands. Flagged in the item 3/8a sections below; not a bug, just
 the interim tradeoff the original plan called for.
 
-**Not started:** F3 (format v3), Phase 3 (autosave/version history, split
-Open Project/Import Script), Phase 4 (OCR), Phase 5 (Fountain, doc types,
-structured title page, show bibles), item 11 (Navigator third level).
+**Not started:** Phase 3 (autosave/version history, split Open Project/
+Import Script), Phase 4 (OCR), Phase 5 (Fountain, doc types, structured
+title page, show bibles). Item 11 (Navigator third level) is being left —
+the existing Navigator nesting (scene rows with drafts collapsed
+underneath, per item 10/F2's variation-stack work) already covers what the
+original note asked for.
 
 ---
 
@@ -479,17 +494,18 @@ Two calls to make:
 
 ---
 
-## 11. From `finaldrafter_notes.txt`, not in the message
+## 11. From `finaldrafter_notes.txt`, not in the message — parked
 
 > "in the left hand panel we have navigation. can we nest all the current ones
 > into scenes or shot"
 
-The Navigator already nests: `buildToc()` (`empty.html:2351`) builds scene rows
-with each scene's drafts collapsed underneath, a count chip, and a
-`__preamble__` bucket for anything before the first scene heading. So either
-this note predates that work, or you mean something more — a **third level**,
-`Scene → Shot → Draft`, with shots as a new block type. Say which and it slots
-into Phase 5 next to the other structural types.
+**Decision (2026-08-17): leave this alone for now.** The Navigator already
+nests: `buildToc()` (`empty.html:2351`) builds scene rows with each scene's
+drafts collapsed underneath, a count chip, and a `__preamble__` bucket for
+anything before the first scene heading — the variations/version-stack work
+already covers what this note was asking for. A true third level
+(`Scene → Shot → Draft`, with shots as a new block type) would still be a
+Phase-5-sized addition if wanted later, but it's not queued.
 
 ---
 
@@ -535,12 +551,15 @@ If the app moves to a localhost server, point the harness at that URL too.
 | 3 | **9** Dialogue button · **2** stats · **1** focus box · **10** remember | S+S+S+M | F1 | ✅ done |
 | 4 | F2 furniture layer | M | — | ✅ done |
 | 5 | **3** headers/footers · **4** page numbers | M+S | F1, F2 | ✅ done |
-| 6 | F3 format v3 | S | — | not started |
+| 6 | F3 format v3 | S | — | ✅ done |
 | 7 | **6** open project vs import script | M | F3 | not started |
 | 8 | **5** autosave + history | L | F3, localhost | not started |
 | 9 | **7** OCR | L | localhost | not started |
 | 10 | **8a** structured title page | M | F3 | not started |
 | 11 | **8b** doc types, bibles, TOC, Fountain | XL | 8a | not started |
+
+Item 11 (Navigator third level) is parked — see the note in its own section
+below.
 
 Rows 3 and 5 are the ones you'd feel immediately. Row 9 is the one that unblocks
 files you currently can't open at all.

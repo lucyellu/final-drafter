@@ -1341,6 +1341,20 @@
             };
         }
         let appState = defaultAppState();
+
+        // Document identity/provenance (F3). Separate from both appState
+        // (entity lists + furniture, which affect rendering) and the
+        // app-level `settings` object (zoom etc., which isn't per-document)
+        // -- this is just bookkeeping about the file itself. `title`/`author`
+        // stay blank until item 8a's structured title page gives them a real
+        // source to read from; `docType` stays 'screenplay' until item 8b
+        // adds others. `created` is stamped on first save, not at this
+        // declaration, so a script that's never been saved doesn't claim a
+        // creation time it doesn't have yet.
+        function defaultDocMeta() {
+            return { title: '', author: '', docType: 'screenplay', created: null, modified: null };
+        }
+        let docMeta = defaultDocMeta();
         let lastSavedName = '';
 
         let dynamicCounts = { characters: {}, locations: {} };
@@ -4891,11 +4905,31 @@
                     data.push(entry);
                 }
             }
+
+            const now = new Date().toISOString();
+            if (!docMeta.created) docMeta.created = now;
+            docMeta.modified = now;
+
             return JSON.stringify({
-                formatVersion: 2,
+                formatVersion: 3,
+                meta: docMeta,
+                // Document-level settings -- rides in the file so a script
+                // carries its own header/footer/page-number layout. Distinct
+                // from the app-level `settings` object (zoom etc.), which is
+                // per-install, not per-document.
+                settings: {
+                    pageNumber: appState.pageNumber,
+                    furniture: appState.furniture
+                },
                 script: data,
                 stacks: savedStacks,
-                lists: appState
+                lists: {
+                    characters: appState.characters,
+                    locations: appState.locations,
+                    lastInsertion: appState.lastInsertion
+                },
+                // Whole-document time-snapshots (item 5), not yet populated.
+                history: []
             }, null, 2);
         }
 
@@ -4973,6 +5007,7 @@
             ensureAtLeastOneFrame(); // one page, holding one blank line
 
             appState = defaultAppState();
+            docMeta = defaultDocMeta();
             dynamicCounts = { characters: {}, locations: {} };
             activeHighlights.clear();
             historyStack = [];
@@ -5111,16 +5146,34 @@
                     try {
                         const data = JSON.parse(contents);
                         const scriptData = data.script ? data.script : data;
-                        if (data.lists) {
-                            appState = data.lists;
-                            // Files saved before these features existed carry
-                            // no lastInsertion/furniture/pageNumber keys.
-                            const fallback = defaultAppState();
-                            if (!appState.lastInsertion) appState.lastInsertion = fallback.lastInsertion;
-                            if (!appState.furniture) appState.furniture = fallback.furniture;
-                            if (!appState.pageNumber) appState.pageNumber = fallback.pageNumber;
+                        const fallback = defaultAppState();
+                        if (data.formatVersion >= 3) {
+                            // v3: meta is its own key, and pageNumber/furniture
+                            // moved out of `lists` into `settings`.
+                            docMeta = Object.assign(defaultDocMeta(), data.meta || {});
+                            const lists = data.lists || {};
+                            const docSettings = data.settings || {};
+                            appState = {
+                                characters: lists.characters || fallback.characters,
+                                locations: lists.locations || fallback.locations,
+                                lastInsertion: lists.lastInsertion || fallback.lastInsertion,
+                                furniture: Object.assign({}, fallback.furniture, docSettings.furniture || {}),
+                                pageNumber: Object.assign({}, fallback.pageNumber, docSettings.pageNumber || {})
+                            };
                         } else {
-                            appState = defaultAppState();
+                            // v2 and earlier: no meta, and pageNumber/furniture
+                            // (if present at all) lived inside `lists`.
+                            docMeta = defaultDocMeta();
+                            if (data.lists) {
+                                appState = data.lists;
+                                // Files saved before these features existed carry
+                                // no lastInsertion/furniture/pageNumber keys.
+                                if (!appState.lastInsertion) appState.lastInsertion = fallback.lastInsertion;
+                                if (!appState.furniture) appState.furniture = fallback.furniture;
+                                if (!appState.pageNumber) appState.pageNumber = fallback.pageNumber;
+                            } else {
+                                appState = defaultAppState();
+                            }
                         }
                         clearInsertionFocus();
                         applyPageNumberUI();
