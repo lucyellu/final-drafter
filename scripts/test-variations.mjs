@@ -794,6 +794,7 @@ await page.evaluate(() => {
   settings.zoom = 63;
   settings.sceneNumberMode = 'draft';
   settings.reuseLastInsertion = false;
+  settings.deckBarPos = { left: 200, top: 55 };
   saveSettings();
 });
 await page.reload({ waitUntil: 'networkidle2' });
@@ -802,14 +803,21 @@ let restored = await page.evaluate(() => ({
   zoom: settings.zoom,
   sceneNumberMode: settings.sceneNumberMode,
   reuseLastInsertion: settings.reuseLastInsertion,
+  deckBarPos: settings.deckBarPos,
   zoomSliderValue: document.getElementById('zoom-slider').value,
   sceneNumberSelectValue: document.getElementById('scene-number-mode').value,
 }));
 ok('zoom survives a restart', restored.zoom === 63, restored);
 ok('scene-number mode survives a restart', restored.sceneNumberMode === 'draft', restored);
 ok('reuse-last-insertion survives a restart', restored.reuseLastInsertion === false, restored);
+ok('a dragged deck-bar position survives a restart too',
+  restored.deckBarPos && restored.deckBarPos.left === 200 && restored.deckBarPos.top === 55, restored.deckBarPos);
 ok('applySettings() pushed zoom onto the slider at boot', restored.zoomSliderValue === '63', restored);
 ok('applySettings() pushed scene-number mode onto the select at boot', restored.sceneNumberSelectValue === 'draft', restored);
+
+// Clear it back out so later sections (which check the default top-of-pane
+// position) aren't reading a stale drag from this reload test.
+await page.evaluate(() => { settings.deckBarPos = null; saveSettings(); });
 
 console.log('\n== 29. Page furniture (F2) + headers/footers/page numbers (items 3, 4) ==');
 await loadFileInto(path.resolve(ROOT, 'text/social_network.json'));
@@ -824,11 +832,13 @@ let furniture = await page.evaluate(() => {
     defaultPosition: appState.pageNumber.position,
     defaultShow: appState.pageNumber.show,
     defaultSkipTitle: appState.pageNumber.skipTitlePage,
+    defaultBold: appState.pageNumber.bold,
     // skipTitlePage defaults on, and frame 0 is the only "page 1" this app
     // knows about until item 8a gives it a real title-page role -- so by
     // default page 1 is blank and page 2 carries the first visible number.
-    page1FooterRight: frames[0].querySelector(':scope > [data-slot="footer-right"]').textContent,
-    page2FooterRight: frames[1] ? frames[1].querySelector(':scope > [data-slot="footer-right"]').textContent : null,
+    page1HeaderRight: frames[0].querySelector(':scope > [data-slot="header-right"]').textContent,
+    page2HeaderRight: frames[1] ? frames[1].querySelector(':scope > [data-slot="header-right"]').textContent : null,
+    page2HeaderRightBold: frames[1] ? frames[1].querySelector(':scope > [data-slot="header-right"]').classList.contains('furniture-bold') : false,
   };
 });
 ok('every frame gets all six furniture slots', furniture.slotCount === 6, furniture);
@@ -837,10 +847,10 @@ ok('slots are the six header/footer x left/center/right combinations',
     ['footer-center', 'footer-left', 'footer-right', 'header-center', 'header-left', 'header-right'].sort()),
   furniture);
 ok('furniture never leaks into getBlocks()', !furniture.excludedFromGetBlocks, furniture);
-ok('page numbers default on, footer-right, skip title page on',
-  furniture.defaultShow && furniture.defaultPosition === 'footer-right' && furniture.defaultSkipTitle, furniture);
-ok('page 1 is blank by default (stands in for the title page)', furniture.page1FooterRight === '', furniture);
-ok('page 2 renders "2 / N" by default', /^2 \/ \d+$/.test(furniture.page2FooterRight), furniture);
+ok('page numbers default on, header-right, bold, skip title page on',
+  furniture.defaultShow && furniture.defaultPosition === 'header-right' && furniture.defaultBold && furniture.defaultSkipTitle, furniture);
+ok('page 1 is blank by default (stands in for the title page)', furniture.page1HeaderRight === '', furniture);
+ok('page 2 renders "2 / N" in bold by default', /^2 \/ \d+$/.test(furniture.page2HeaderRight) && furniture.page2HeaderRightBold, furniture);
 
 let furnitureEdit = await page.evaluate(() => {
   // Turn off the title-page stand-in so page 1 becomes an ordinary page --
@@ -853,13 +863,13 @@ let furnitureEdit = await page.evaluate(() => {
   const frames = Array.from(document.querySelectorAll('#editor-page > .page-frame'));
   return {
     headerLeftPage1: frames[0].querySelector(':scope > [data-slot="header-left"]').textContent,
-    footerRightNowEmpty: frames[0].querySelector(':scope > [data-slot="footer-right"]').textContent,
+    headerRightNowEmpty: frames[0].querySelector(':scope > [data-slot="header-right"]').textContent,
     footerCenterPage1: frames[0].querySelector(':scope > [data-slot="footer-center"]').textContent,
     totalFrames: frames.length,
   };
 });
 ok('a manual template resolves its token', furnitureEdit.headerLeftPage1.startsWith('DRAFT — '), furnitureEdit);
-ok('moving the page-number position vacates the old slot', furnitureEdit.footerRightNowEmpty === '', furnitureEdit);
+ok('moving the page-number position vacates the old slot', furnitureEdit.headerRightNowEmpty === '', furnitureEdit);
 ok('the new slot shows the new format',
   furnitureEdit.footerCenterPage1 === 'Page 1 of ' + furnitureEdit.totalFrames, furnitureEdit);
 
@@ -1038,6 +1048,231 @@ await importFileInto(path.resolve(ROOT, 'text/Lost_1x01_-_Pilot.pdf'), 'new');
 let pdfImport = await page.evaluate(() => ({ pdfLoaded, blockCount: getBlocks().length }));
 ok('PDF import (new-project mode) still populates Exact View', pdfImport.pdfLoaded === true, pdfImport);
 ok('PDF import (new-project mode) still classifies script blocks', pdfImport.blockCount > 50, pdfImport);
+
+if (fs.existsSync(path.resolve(ROOT, 'text/following-1998.pdf'))) {
+  await importFileInto(path.resolve(ROOT, 'text/following-1998.pdf'), 'new');
+  let followingCheck = await page.evaluate(() => {
+    setPaneVisible('editable', true);
+    reflowPages();
+    const blocks = Array.from(document.querySelectorAll('#editor-page [class]'));
+    const p4 = blocks.filter(b => b.dataset && b.dataset.pdfPage === '4');
+    const hasCharContd = blocks.some(b => b.className === 'character' && /CONT/i.test(b.innerText));
+    const hasFadeToBlack = blocks.some(b => b.className === 'transition' && /FADE TO BLACK/i.test(b.innerText));
+    const actionCount = blocks.filter(b => b.className === 'action').length;
+    const charCount = blocks.filter(b => b.className === 'character').length;
+    const dlgCount = blocks.filter(b => b.className === 'dialogue').length;
+    return {
+      total: blocks.length,
+      p4Count: p4.length,
+      hasCharContd,
+      hasFadeToBlack,
+      actionCount,
+      charCount,
+      dlgCount,
+    };
+  });
+  ok('following-1998 PDF imports with smart-apostrophe CONT’D character cues', followingCheck.hasCharContd, followingCheck);
+  ok('following-1998 classifies FADE TO BLACK as transition', followingCheck.hasFadeToBlack, followingCheck);
+  ok('following-1998 page 4 retains rich multi-block structure instead of a single merged wall of text', followingCheck.p4Count > 10, followingCheck);
+  ok('following-1998 extracts dialogue and character cues comprehensively', followingCheck.charCount > 500 && followingCheck.dlgCount > 500, followingCheck);
+}
+
+console.log('\n== 32. Insert as scene: split a version out of the stack ==');
+await loadFileInto(path.resolve(ROOT, 'text/social_network.json'));
+let insertSetup = await page.evaluate(() => {
+  const b = getBlocks();
+  const r = document.createRange();
+  r.setStart(b[0], 0);
+  r.setEnd(b[10], b[10].childNodes.length);
+  const s = window.getSelection();
+  s.removeAllRanges(); s.addRange(r);
+  addVariation();
+  const id = Object.keys(stacks)[0];
+  const nodes = blocksOfStack(id);
+  const alt = ['A WHOLLY DIFFERENT OPENING--'];
+  nodes.forEach((nd, i) => { if (alt[i] !== undefined) nd.innerText = alt[i]; });
+  reflowPages(); refreshStacks();
+  return { id, blockCountBefore: getBlocks().length, order: stacks[id].order.slice() };
+});
+
+let inserted = await page.evaluate(id => {
+  const s = stacks[id];
+  const runLength = blocksOfStack(id).length;
+  openDeck(id);
+  // Currently viewing the new alt card (it was left on top by addCardTo).
+  const viewingBefore = s.viewing;
+  const runBefore = blocksOfStack(id);
+  const anchorIndex = getBlocks().indexOf(runBefore[runBefore.length - 1]);
+  window.confirm = () => true;
+  insertViewedCardAsScript();
+  const blocks = getBlocks();
+  return {
+    viewingBefore,
+    runLength,
+    anchorIndex,
+    blockCountAfter: blocks.length,
+    stackGone: !stacks[id],
+    insertedText: blocks[anchorIndex + 1] ? blocks[anchorIndex + 1].innerText : null,
+    insertedHasStackAttr: blocks[anchorIndex + 1] ? !!blocks[anchorIndex + 1].dataset.stack : null,
+    // The stack dissolved, so the surviving run no longer carries data-stack
+    // -- read its text back by position instead of by attribute. It sits
+    // where the stack always sat, ahead of the newly split-out content.
+    remainingRunText: blocks.slice(anchorIndex + 1 - runLength, anchorIndex + 1)
+      .map(x => x.innerText).join(' | '),
+  };
+}, insertSetup.id);
+
+ok('the stack had exactly two versions going in', insertSetup.order.length === 2, insertSetup);
+ok('the split-out version lands right after the run it came from',
+  inserted.insertedText === 'A WHOLLY DIFFERENT OPENING--', inserted);
+ok('the inserted blocks are plain script, not tagged into any stack',
+  inserted.insertedHasStackAttr === false, inserted);
+ok('the whole varied run landed, not just one block',
+  inserted.blockCountAfter === insertSetup.blockCountBefore + inserted.runLength, {
+    before: insertSetup.blockCountBefore, after: inserted.blockCountAfter, runLength: inserted.runLength,
+  });
+// Only one version remains once the other is pulled out -- the stack has
+// nothing left to disambiguate, so it dissolves and that lone card becomes
+// ordinary script too.
+ok('a two-card stack dissolves once the other version is split out', inserted.stackGone === true, inserted);
+ok('the remaining scene keeps its original text',
+  inserted.remainingRunText.includes('genius IQ') && inserted.remainingRunText.includes('ERICA'),
+  inserted);
+
+console.log('\n== 33. Deck bar: top-anchored by default, draggable, and remembers where it lands ==');
+await loadFileInto(path.resolve(ROOT, 'text/social_network.json'));
+let deckPos = await page.evaluate(() => {
+  // Vary a passage well down the page so a passage-anchored bar (the old
+  // behaviour) would land far from the top -- proves the new default really
+  // is decoupled from where the run sits.
+  const b = getBlocks();
+  const mid = Math.floor(b.length / 2);
+  const r = document.createRange();
+  r.setStart(b[mid], 0); r.setEnd(b[mid + 5], b[mid + 5].childNodes.length);
+  const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+  addVariation();
+  const id = Object.keys(stacks)[0];
+  addCardTo(id);   // three versions total, so left/right pickers can land on genuinely distinct cards
+  openDeck(id);
+  positionDeck();
+  const bar = document.getElementById('deck-bar');
+  const pane = document.getElementById('pane-editable');
+  const br = bar.getBoundingClientRect();
+  const pr = pane.getBoundingClientRect();
+  return { id, savedBefore: settings.deckBarPos, top: br.top, paneTop: pr.top, visible: bar.style.visibility };
+});
+ok('nothing dragged yet -- still on the default', deckPos.savedBefore === null, deckPos.savedBefore);
+ok('default position sits near the top of the pane, not down by the varied passage',
+  deckPos.top >= deckPos.paneTop && deckPos.top < deckPos.paneTop + 40, deckPos);
+ok('the bar is visible', deckPos.visible === 'visible', deckPos.visible);
+
+let dragResult = await page.evaluate(() => {
+  const grip = document.getElementById('deck-grip');
+  const bar = document.getElementById('deck-bar');
+  const r = bar.getBoundingClientRect();
+  const startX = r.left + 10, startY = r.top + 8;
+  const endX = startX + 120, endY = startY + 220;
+  grip.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: startX, clientY: startY }));
+  document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: endX, clientY: endY }));
+  document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: endX, clientY: endY }));
+  return { top: parseFloat(bar.style.top), saved: settings.deckBarPos ? Object.assign({}, settings.deckBarPos) : null };
+});
+ok('dragging moved the bar down the screen', dragResult.top > 150, dragResult);
+ok('the dropped position was saved to settings',
+  dragResult.saved && Math.round(dragResult.saved.top) === Math.round(dragResult.top), dragResult);
+
+let afterReopen = await page.evaluate(id => {
+  closeDeck();
+  openDeck(id);
+  const bar = document.getElementById('deck-bar');
+  return { top: parseFloat(bar.style.top), savedTop: settings.deckBarPos.top };
+}, deckPos.id);
+ok('reopening the deck reuses the dragged spot instead of snapping back to the default',
+  Math.round(afterReopen.top) === Math.round(afterReopen.savedTop), afterReopen);
+
+let resetResult = await page.evaluate(() => {
+  document.getElementById('deck-grip').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  const pane = document.getElementById('pane-editable');
+  return {
+    saved: settings.deckBarPos,
+    top: parseFloat(document.getElementById('deck-bar').style.top),
+    paneTop: pane.getBoundingClientRect().top,
+  };
+});
+ok('double-clicking the grip resets the saved position', resetResult.saved === null, resetResult);
+ok('...and the bar snaps back to the top', resetResult.top < resetResult.paneTop + 40, resetResult);
+
+console.log('\n== 34. Compare: both sides are pickers, and removed text is highlighted, not struck through ==');
+let compareUi = await page.evaluate(id => {
+  toggleCompare();
+  const head = document.getElementById('compare-head');
+  const selects = Array.from(head.querySelectorAll('select'));
+  const rightBefore = viewedCard(stacks[id]);
+  const leftBefore = compareWith;
+  return {
+    pickerCount: selects.length,
+    leftHasBothOptions: selects[0].options.length === stacks[id].order.length,
+    rightIsLiveTagged: selects[1].classList.contains('compare-live'),
+    hasLiveTag: !!head.querySelector('.compare-live-tag'),
+    hasSwap: !!head.querySelector('.compare-swap'),
+    rightBefore, leftBefore,
+  };
+}, deckPos.id);
+ok('both sides of the comparison are pickers', compareUi.pickerCount === 2, compareUi);
+ok('the left picker offers every version in the stack', compareUi.leftHasBothOptions, compareUi);
+ok('the right picker is marked as the live/editable side', compareUi.rightIsLiveTagged, compareUi);
+ok('a "live · editable" tag calls out which side is which', compareUi.hasLiveTag, compareUi);
+ok('a swap control is offered', compareUi.hasSwap, compareUi);
+
+let pickRight = await page.evaluate(id => {
+  const st = stacks[id];
+  // Distinct from both the current right (viewing) AND the current left
+  // (compareWith) -- with three cards in the stack there is always one.
+  const other = st.order.find(c => c !== viewedCard(st) && c !== compareWith);
+  const rightSel = document.querySelectorAll('#compare-head select')[1];
+  rightSel.value = other;
+  rightSel.dispatchEvent(new Event('change'));
+  return { nowViewing: viewedCard(st), picked: other };
+}, deckPos.id);
+ok('picking a different version on the right actually flips the script to it',
+  pickRight.nowViewing === pickRight.picked, pickRight);
+
+let swapResult = await page.evaluate(id => {
+  const st = stacks[id];
+  const rightBefore = viewedCard(st);
+  const leftBefore = compareWith;
+  document.querySelector('.compare-swap').click();
+  return { rightBefore, leftBefore, rightAfter: viewedCard(st), leftAfter: compareWith };
+}, deckPos.id);
+ok('swap flips the script to what was on the left', swapResult.rightAfter === swapResult.leftBefore, swapResult);
+ok('swap moves the old right side over to the left', swapResult.leftAfter === swapResult.rightBefore, swapResult);
+
+let strikeCheck = await page.evaluate(id => {
+  // Replace the text outright so word-level diffing has something to mark
+  // as removed (a pure append only produces insertions).
+  const first = blocksOfStack(id)[0];
+  first.innerText = 'A COMPLETELY REWRITTEN LINE';
+  handleInput();
+  return null;
+}, deckPos.id);
+await new Promise(r => setTimeout(r, 1400));   // past the input debounce
+let strikeStyle = await page.evaluate(id => {
+  const del = document.querySelector('.diff-cell del');
+  if (!del) return {
+    found: false,
+    openStackId, compareWith,
+    active: document.getElementById('compare-viewer').classList.contains('active'),
+    runLen: blocksOfStack(id).length,
+    firstText: blocksOfStack(id)[0] ? blocksOfStack(id)[0].innerText : null,
+    bodyText: document.getElementById('compare-body').innerText.slice(0, 200),
+  };
+  const cs = getComputedStyle(del);
+  return { found: true, decoration: cs.textDecorationLine, background: cs.backgroundColor };
+}, deckPos.id);
+ok('a removed-word <del> actually renders in the diff', strikeStyle.found, strikeStyle);
+ok('...with no line-through', strikeStyle.decoration === 'none', strikeStyle);
+ok('...just a highlight background so the removed text stays readable',
+  strikeStyle.background && strikeStyle.background !== 'rgba(0, 0, 0, 0)', strikeStyle);
 
 let extCheck = await page.evaluate(() => withExtension('MyScript', '.fdproj'));
 ok('Save now suggests the .fdproj extension', extCheck === 'MyScript.fdproj', extCheck);

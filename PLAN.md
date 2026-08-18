@@ -353,8 +353,8 @@ A preset over item 3's token system, plus Settings UI:
 | Setting | Options | Default |
 | --- | --- | --- |
 | Show page numbers | on / off | **on** |
-| Position | header/footer × left/centre/right | **footer right** |
-| Format | `1` · `1.` · `1 / 27` · `Page 1 of 27` | `1 / 27` |
+| Position | header/footer × left/centre/right | **header right** |
+| Format | `1` · `1.` · `1/27` · `1 / 27` · `Page 1 of 27` | `1 / 27` |
 | Bold | on / off | **on** |
 | Start at | page N | 1 |
 | Skip title page | on / off | on |

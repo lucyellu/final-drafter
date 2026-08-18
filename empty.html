@@ -560,22 +560,26 @@
            Visibility is per-slot, not gated by a document-wide checkbox: an
            empty slot renders nothing, a filled one always shows -- including
            in print, which is the one place a page number matters most. */
-        .page-furniture {
-            position: absolute;
+        .page-furniture, .page > .page-furniture {
+            position: absolute !important;
             font-family: 'Courier Prime', 'Courier New', Courier, monospace;
             font-size: 12pt;
-            color: #999;
+            line-height: 1;
+            color: var(--page-text, #000000);
             pointer-events: none;
             white-space: nowrap;
             display: none;
+            min-height: 0 !important;
+            z-index: 20;
+            box-sizing: border-box;
         }
-        .page-furniture:not(:empty) { display: block; }
-        .page-furniture[data-slot="header-left"]   { top: 0.4in; left: 1.5in; text-align: left; }
-        .page-furniture[data-slot="header-center"] { top: 0.4in; left: 1.5in; right: 0.5in; text-align: center; }
-        .page-furniture[data-slot="header-right"]  { top: 0.4in; right: 0.5in; text-align: right; }
-        .page-furniture[data-slot="footer-left"]   { bottom: 0.4in; left: 1.5in; text-align: left; }
-        .page-furniture[data-slot="footer-center"] { bottom: 0.4in; left: 1.5in; right: 0.5in; text-align: center; }
-        .page-furniture[data-slot="footer-right"]  { bottom: 0.4in; right: 0.5in; text-align: right; }
+        .page-furniture:not(:empty), .page > .page-furniture:not(:empty) { display: block; }
+        .page-furniture[data-slot="header-left"]   { top: 0.3in; left: 1.2in; text-align: left; }
+        .page-furniture[data-slot="header-center"] { top: 0.3in; left: 1.2in; right: 0.3in; text-align: center; }
+        .page-furniture[data-slot="header-right"]  { top: 0.3in; right: 0.3in; text-align: right; }
+        .page-furniture[data-slot="footer-left"]   { bottom: 0.3in; left: 1.2in; text-align: left; }
+        .page-furniture[data-slot="footer-center"] { bottom: 0.3in; left: 1.2in; right: 0.3in; text-align: center; }
+        .page-furniture[data-slot="footer-right"]  { bottom: 0.3in; right: 0.3in; text-align: right; }
         .page-furniture.furniture-bold { font-weight: bold; }
 
         /* Marks the block that was just inserted (or converted), so "what did
@@ -742,6 +746,11 @@
             font-size: .82rem;
         }
         #deck-bar.open { display: flex; }
+        #deck-grip {
+            cursor: move; color: #888; font-size: .95rem; letter-spacing: -1px;
+            padding: 0 2px; user-select: none;
+        }
+        #deck-grip:hover { color: #ddd; }
         #deck-bar .deck-count {
             color: #aaa; font-size: .72rem; white-space: nowrap;
             padding-right: 6px; border-right: 1px solid var(--border-color);
@@ -781,7 +790,18 @@
         }
         #compare-head select {
             background: #333; color: #eee; border: 1px solid var(--border-color);
-            border-radius: 4px; padding: 3px 6px; font-size: .78rem; max-width: 15ch;
+            border-radius: 4px; padding: 3px 6px; font-size: .78rem; max-width: 17ch;
+        }
+        .compare-side-label { color: #888; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
+        .compare-swap {
+            background: #333; color: #ccc; border: 1px solid var(--border-color);
+            border-radius: 4px; padding: 3px 7px; cursor: pointer; font-size: .82rem; line-height: 1;
+        }
+        .compare-swap:hover { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
+        #compare-head select.compare-live { border-color: var(--accent-color); }
+        .compare-live-tag {
+            color: var(--accent-color); font-size: .68rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: .03em;
         }
         #compare-head .swatch { display: inline-flex; align-items: center; gap: 4px; color: #999; }
         #compare-body { flex: 1; overflow: auto; padding: 10px; }
@@ -812,7 +832,7 @@
         .diff-cell.add { border-left-color: #3fb950; }
         .diff-cell .kind { display: block; font-family: 'Segoe UI', sans-serif; font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: #888; }
         .diff-cell ins { background: var(--diff-add); text-decoration: none; border-radius: 2px; }
-        .diff-cell del { background: var(--diff-del); text-decoration: line-through; border-radius: 2px; }
+        .diff-cell del { background: var(--diff-del); text-decoration: none; border-radius: 2px; }
         .diff-gap { text-align: center; color: #666; font-size: 10px; padding: 4px 0; letter-spacing: .2em; }
         .diff-take {
             float: right; margin-left: 6px; cursor: pointer; border: 1px solid #4d4d4d;
@@ -874,7 +894,7 @@
         ul.toc-cards li.drop-target { border-top: 2px solid var(--accent-color); }
 
         /* Script Elements */
-        .page > div {
+        .page > div:not(.page-furniture) {
             white-space: pre-wrap;
             min-height: 1em; /* Allow empty lines */
             position: relative;
@@ -1074,6 +1094,7 @@
             
             .scene-heading, .character { page-break-after: avoid; break-after: avoid; }
             .dialogue { page-break-before: avoid; break-before: avoid; }
+            .page-furniture.furniture-bold { font-weight: bold !important; }
         }
 
         /* Settings Modal */
@@ -1297,12 +1318,14 @@
     <!-- The fanned-out stack. Anchored to the run it belongs to, but kept out of
          #editor-page so it can never be caught by getBlocks() or moved by a reflow. -->
     <div id="deck-bar">
+        <span id="deck-grip" title="Drag to move this bar. Double-click to reset it to the top.">⠿</span>
         <span class="deck-count" id="deck-count"></span>
         <div id="deck-cards"></div>
         <div class="deck-sep"></div>
         <button id="deck-top" onclick="moveViewedToTop()" title="Restaple: make the version you're reading the one that prints">↑ Move to top</button>
         <button id="deck-compare" onclick="toggleCompare()" title="Show this version beside another, side by side">⇄ Compare</button>
         <button id="deck-new" onclick="addVariation()" title="Add another version of this passage">+ New</button>
+        <button id="deck-split" onclick="insertViewedCardAsScript()" title="Take the version you're reading out of the stack and drop it into the script as its own scene, right after this one">⏎ Insert as scene</button>
         <button id="deck-del" onclick="deleteViewedCard()" title="Delete the version you're reading">🗑</button>
         <div class="deck-sep"></div>
         <button onclick="closeDeck()" title="Close (Esc) — springs back to the top version">✕</button>
@@ -1336,7 +1359,7 @@
                 // template lives there. See renderFurniture().
                 pageNumber: {
                     show: true,
-                    position: 'footer-right',
+                    position: 'header-right',
                     format: '{page} / {pages}',
                     bold: true,
                     startAt: 1,
@@ -1378,7 +1401,11 @@
             schemaVersion: 1,
             zoom: 100,
             sceneNumberMode: 'off',
-            reuseLastInsertion: true
+            reuseLastInsertion: true,
+            // null means "not dragged yet" -- positionDeck() then pins the bar
+            // near the top of the pane instead of reading this. Once the user
+            // drags it, {left, top} sticks across stacks, documents and reloads.
+            deckBarPos: null
         };
 
         function loadSettings() {
@@ -3421,6 +3448,56 @@
             saveState();
         }
 
+        // Splits the version you're reading out of the stack entirely and
+        // drops it into the script as its own scene, right after the run it
+        // was riffing on. Unlike deleting it, nothing is lost -- it just
+        // stops being an alternate and becomes ordinary, exported script.
+        function insertViewedCardAsScript() {
+            if (!openStackId) return;
+            const st = stacks[openStackId];
+            if (!st) return;
+            const cid = viewedCard(st);
+            const card = st.cards[cid];
+            if (st.order.length <= 1) {
+                alert('This is the only version left -- there is nothing left in the stack to split it from.');
+                return;
+            }
+            if (!confirm('Insert "' + card.name + '" into the script as its own scene, right after this one? It stops being a version in the stack.'))
+                return;
+
+            const nodes = blocksOfStack(openStackId);
+            if (!nodes.length) return;
+            // Whatever is on screen is the freshest copy of the card being
+            // read -- typing in it doesn't write through to card.blocks until
+            // something harvests, and this is the moment that has to.
+            card.blocks = harvestBlocks(nodes);
+            const anchor = nodes[nodes.length - 1];
+            const frame = anchor.parentNode;
+            const after = anchor.nextSibling;
+
+            // Plain blocks, no data-stack/data-variant -- this is now just
+            // script. Scene headings pick up a fresh id from buildToc().
+            const frag = document.createDocumentFragment();
+            card.blocks.forEach(b => frag.appendChild(buildBlockEl(b)));
+            frame.insertBefore(frag, after);
+
+            const i = st.order.indexOf(cid);
+            st.order.splice(i, 1);
+            delete st.cards[cid];
+            const nextId = st.order[Math.min(i, st.order.length - 1)];
+            st.viewing = null;
+            swapRunTo(openStackId, nextId);
+
+            if (st.order.length === 1) {
+                unstack(openStackId);
+            } else {
+                decorateStacks();
+                renderDeck();
+                buildToc();
+                saveState();
+            }
+        }
+
         // Dissolves a stack, leaving whatever card is on screen as plain script.
         function unstack(stackId) {
             const nodes = blocksOfStack(stackId);
@@ -3576,31 +3653,73 @@
         // The bar tracks the run it belongs to: it is anchored above the first
         // block of the stack and clamped into view, so scrolling the script
         // never leaves it stranded.
+        // Anchoring the bar above the passage it labels used to drop it in the
+        // middle of the screen on a long scene, or off-screen entirely once
+        // you'd scrolled past it. It now defaults to a fixed spot near the top
+        // of the pane -- and if the user has dragged it (see wireDeckDrag),
+        // that saved spot wins instead, on every stack and every reload.
         function positionDeck() {
             const bar = document.getElementById('deck-bar');
             if (!openStackId || !bar.classList.contains('open')) return;
-            const first = blocksOfStack(openStackId)[0];
             const pane = document.getElementById('pane-editable');
-            if (!first || !pane) return;
-            const r = first.getBoundingClientRect();
+            if (!pane) return;
             const pr = pane.getBoundingClientRect();
             const bw = bar.offsetWidth || 420;
             const bh = bar.offsetHeight || 36;
 
-            let left = r.left - 4;
-            left = Math.max(pr.left + 6, Math.min(left, pr.right - bw - 6));
-            // Prefer sitting just above the run. With no room -- the passage is
-            // at the very top of the script -- pin under the pane header rather
-            // than dropping the bar into the middle of the passage it labels.
-            let top = r.top - bh - 8;
-            if (top < pr.top + 6) top = pr.top + 6;
+            let left, top;
+            if (settings.deckBarPos) {
+                left = settings.deckBarPos.left;
+                top = settings.deckBarPos.top;
+            } else {
+                left = pr.left + (pr.width - bw) / 2;
+                top = pr.top + 10;
+            }
+            // Clamp into the viewport so a window resize -- or a drag that let
+            // go near an edge -- never stakes the bar somewhere unreachable.
+            left = Math.max(6, Math.min(left, window.innerWidth - bw - 6));
+            top = Math.max(6, Math.min(top, window.innerHeight - bh - 6));
 
             bar.style.left = left + 'px';
             bar.style.top = top + 'px';
-            // Scrolled entirely out of the pane: hide rather than float over
-            // unrelated script.
-            bar.style.visibility = (r.bottom < pr.top || r.top > pr.bottom) ? 'hidden' : 'visible';
+            bar.style.visibility = 'visible';
         }
+
+        // Drag the grip to move the bar anywhere; it remembers the spot (via
+        // the F1 settings store) across stacks, documents and reloads.
+        // Double-click resets it back to the default top-of-pane position.
+        (function wireDeckDrag() {
+            const bar = document.getElementById('deck-bar');
+            const grip = document.getElementById('deck-grip');
+            let dragging = false, dx = 0, dy = 0;
+
+            grip.addEventListener('mousedown', e => {
+                dragging = true;
+                const r = bar.getBoundingClientRect();
+                dx = e.clientX - r.left;
+                dy = e.clientY - r.top;
+                e.preventDefault();
+            });
+            grip.addEventListener('dblclick', () => {
+                settings.deckBarPos = null;
+                saveSettings();
+                positionDeck();
+            });
+            document.addEventListener('mousemove', e => {
+                if (!dragging) return;
+                const bw = bar.offsetWidth, bh = bar.offsetHeight;
+                const left = Math.max(6, Math.min(e.clientX - dx, window.innerWidth - bw - 6));
+                const top = Math.max(6, Math.min(e.clientY - dy, window.innerHeight - bh - 6));
+                bar.style.left = left + 'px';
+                bar.style.top = top + 'px';
+            });
+            document.addEventListener('mouseup', () => {
+                if (!dragging) return;
+                dragging = false;
+                settings.deckBarPos = { left: parseFloat(bar.style.left), top: parseFloat(bar.style.top) };
+                saveSettings();
+            });
+        })();
 
         // --- Compare (side-by-side diff in the side pane) -----------------
 
@@ -3653,21 +3772,57 @@
             const rightId = viewedCard(st);
 
             head.innerHTML = '';
-            const sel = document.createElement('select');
-            st.order.forEach(cid => {
-                const o = document.createElement('option');
-                o.value = cid;
-                o.text = st.cards[cid].name + (cid === topCard(st) ? ' ★' : '');
-                if (cid === leftId) o.selected = true;
-                sel.appendChild(o);
-            });
-            sel.onchange = () => { compareWith = sel.value; renderCompare(); };
-            head.appendChild(sel);
-            head.appendChild(Object.assign(document.createElement('span'), { innerText: '→' }));
-            head.appendChild(Object.assign(document.createElement('b'), {
-                innerText: st.cards[rightId].name + (rightId === topCard(st) ? ' ★' : ''),
-                title: 'The version currently open in the script'
-            }));
+
+            // Both sides are pickers -- symmetric, so which one is "left" vs
+            // "right" is never a mystery. Picking a new right side actually
+            // flips the script to it (that's the side you can type into);
+            // picking a new left side just changes what it's held up against.
+            const buildPicker = (currentId, onPick) => {
+                const s = document.createElement('select');
+                st.order.forEach(cid => {
+                    const o = document.createElement('option');
+                    o.value = cid;
+                    o.text = draftLabel(st.cards[cid]) + ' ' + st.cards[cid].name + (cid === topCard(st) ? ' ★' : '');
+                    if (cid === currentId) o.selected = true;
+                    s.appendChild(o);
+                });
+                s.onchange = () => onPick(s.value);
+                return s;
+            };
+
+            const leftLabel = document.createElement('span');
+            leftLabel.className = 'compare-side-label';
+            leftLabel.innerText = 'Comparing';
+            head.appendChild(leftLabel);
+
+            const leftSel = buildPicker(leftId, v => { compareWith = v; renderCompare(); });
+            leftSel.title = 'Choose what to compare against';
+            head.appendChild(leftSel);
+
+            const swap = document.createElement('button');
+            swap.type = 'button';
+            swap.className = 'compare-swap';
+            swap.innerText = '⇄';
+            swap.title = 'Swap sides — flips the script to what is now on the left';
+            swap.onclick = () => { compareWith = rightId; flipTo(openStackId, leftId); };
+            head.appendChild(swap);
+
+            const rightLabel = document.createElement('span');
+            rightLabel.className = 'compare-side-label';
+            rightLabel.innerText = 'against';
+            head.appendChild(rightLabel);
+
+            const rightSel = buildPicker(rightId, v => flipTo(openStackId, v));
+            rightSel.className = 'compare-live';
+            rightSel.title = 'The version open in the script — picking a different one flips to it';
+            head.appendChild(rightSel);
+
+            const liveTag = document.createElement('span');
+            liveTag.className = 'compare-live-tag';
+            liveTag.innerText = 'live · editable';
+            liveTag.title = 'This side is what the script pane shows and what typing edits';
+            head.appendChild(liveTag);
+
             const a = st.cards[leftId].blocks;
             const b = harvestBlocks(blocksOfStack(openStackId));
             const diff = computeDiff(a, b);
@@ -4094,8 +4249,8 @@
         // rather than one unstructured blob.
         function parseTextToBlocks(contents) {
             const SCENE_RE = /^(INT\.|EXT\.|I\/E\.|INT\/EXT\.)\s+.+/i;
-            const TRANSITION_RE = /^[A-Z][A-Z0-9 .'\-]*\bTO:$/;
-            const CHARACTER_RE = /^[A-Z][A-Z0-9 .'\-]{0,38}$/;
+            const TRANSITION_RE = /^(?:[A-Z][A-Z0-9 .'\u2019\-]*\bTO:|(?:FADE\s+(?:IN|OUT|TO\s+BLACK)|CUT\s+TO\s+BLACK|DISSOLVE\s+TO\s+BLACK|BLACKOUT)\.?)$/i;
+            const CHARACTER_RE = /^[A-Z0-9][A-Z0-9 .'\u2018\u2019\u201C\u201D\u2013\u2014\-/()&#+?!]{0,80}$/;
 
             function stripMd(line) {
                 return line
@@ -4709,8 +4864,9 @@
         // isn't mistaken for a character cue (sitting at the indented cue column).
         function classifyPdfLines(allLines) {
             const SCENE_RE = /^(INT\.|EXT\.|I\/E\.|INT\/EXT\.)\s+.+/i;
-            const TRANSITION_RE = /^[A-Z][A-Z0-9 .'\-]*\bTO:$/;
-            const CHARACTER_SHAPE_RE = /^[A-Z][A-Z0-9 .'\-()\/]{0,42}$/;
+            const TRANSITION_RE = /^(?:[A-Z][A-Z0-9 .'\u2019\-]*\bTO:|(?:FADE\s+(?:IN|OUT|TO\s+BLACK)|CUT\s+TO\s+BLACK|DISSOLVE\s+TO\s+BLACK|BLACKOUT)\.?)$/i;
+            const CHARACTER_SHAPE_RE = /^[A-Z0-9][A-Z0-9 .'\u2018\u2019\u201C\u201D\u2013\u2014\-/()&#+?!]{0,80}$/;
+            const PAGE_NUM_RE = /^[-–—\s]*(?:page\s+)?\d{1,4}\.?[-–—\s]*$/i;
 
             const lines = [];
             allLines.forEach(line => {
@@ -4718,6 +4874,7 @@
                 if (!text) return;
                 text = text.replace(/^\d{1,4}\s+(?=[A-Za-z(])/, '').replace(/\s+\d{1,4}$/, '').trim();
                 if (!text) return;
+                if (PAGE_NUM_RE.test(text)) return;
                 lines.push({ text, x: line.x, y: line.y, page: line.page });
             });
             if (lines.length === 0) return [];
@@ -4745,11 +4902,27 @@
             let charX = null, charXCount = 0;
             Object.entries(charXCounts).forEach(([x, c]) => { if (c > charXCount) { charXCount = c; charX = parseFloat(x); } });
 
+            // Handle wrapped parentheticals (e.g. "(knows its true, but\ndoesn't like it)")
+            const normalizedLines = [];
+            for (let i = 0; i < lines.length; i++) {
+                const l = lines[i];
+                if (l.text.startsWith('(') && !l.text.endsWith(')') && i + 1 < lines.length) {
+                    const nextL = lines[i + 1];
+                    const gap = Math.abs(l.y - nextL.y);
+                    if (l.page === nextL.page && gap <= 20 && nextL.text.endsWith(')')) {
+                        normalizedLines.push({ text: l.text + ' ' + nextL.text, x: l.x, y: l.y, page: l.page });
+                        i++;
+                        continue;
+                    }
+                }
+                normalizedLines.push(l);
+            }
+
             const blocks = [];
             let seenSceneHeading = false;
             let prevY = null, prevPage = null, prevType = null;
 
-            lines.forEach(l => {
+            normalizedLines.forEach(l => {
                 const text = l.text;
                 const upper = text.toUpperCase();
                 const indent = l.x - baseX;
@@ -4761,10 +4934,10 @@
                     type = 'scene-heading';
                 } else if (/^\(.+\)$/.test(text)) {
                     type = 'parenthetical';
-                } else if (TRANSITION_RE.test(upper) && indent > 60) {
+                } else if (TRANSITION_RE.test(upper) && (indent > 60 || l.x > 350 || /^(FADE IN|FADE OUT|FADE TO BLACK)/i.test(upper))) {
                     type = 'transition';
                 } else if (text === upper && CHARACTER_SHAPE_RE.test(text) &&
-                           (charX !== null ? Math.abs(l.x - charX) < 20 : indent > 25)) {
+                           (charX !== null ? Math.abs(l.x - charX) < 25 : indent > 25)) {
                     type = 'character';
                 } else if (l.page === 1 && !seenSceneHeading && indent > 15 && text.length < 60) {
                     type = 'center-title';
@@ -4812,11 +4985,12 @@
                 }
             }
 
-            // Re-merge runs that became the same type after reclassification.
+            // Re-merge runs of dialogue that became dialogue after reclassification
+            // (keeping distinct action paragraphs separated).
             const merged = [];
             blocks.forEach(b => {
                 const last = merged[merged.length - 1];
-                if (last && last.type === b.type && (b.type === 'dialogue' || b.type === 'action')) {
+                if (last && last.type === b.type && b.type === 'dialogue' && last.page === b.page) {
                     last.text += ' ' + b.text;
                 } else {
                     merged.push({ type: b.type, text: b.text, page: b.page });
@@ -5540,7 +5714,7 @@
                                 style="background:#333; color:#eee; border:1px solid #444; border-radius:4px; padding:3px 6px;">
                             <option value="header-left">Header — left</option>
                             <option value="header-center">Header — center</option>
-                            <option value="header-right">Header — right</option>
+                            <option value="header-right" selected>Header — right</option>
                             <option value="footer-left">Footer — left</option>
                             <option value="footer-center">Footer — center</option>
                             <option value="footer-right">Footer — right</option>
@@ -5553,13 +5727,14 @@
                                 style="background:#333; color:#eee; border:1px solid #444; border-radius:4px; padding:3px 6px;">
                             <option value="{page}">1</option>
                             <option value="{page}.">1.</option>
+                            <option value="{page}/{pages}">1/27</option>
                             <option value="{page} / {pages}">1 / 27</option>
                             <option value="Page {page} of {pages}">Page 1 of 27</option>
                         </select>
                     </div>
 
                     <label style="font-size: 0.85rem; margin-top: 10px; display:flex; align-items:center; gap: 8px; cursor:pointer;">
-                        <input type="checkbox" id="page-number-bold" onchange="togglePageNumberBold()"> Bold
+                        <input type="checkbox" id="page-number-bold" onchange="togglePageNumberBold()" checked> Bold
                     </label>
 
                     <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; margin-top:10px;">
@@ -5588,8 +5763,10 @@
                     <p>Click anywhere in the script to edit.</p>
                     <p>Formatting toolbar: <b>click</b> a button to insert a filled-in example of that element at the cursor (the example text is pre-selected, so just start typing over it). <b>Select</b> script text first and the button converts every line you selected instead. <b>Right-click</b> a button for a menu of that element's entries already used in the script, most frequent first.</p>
                     <p><b>Variations.</b> A passage can exist in several versions at once, like alternate pages stapled over a printed script. Press <b>+ Variation</b> (or <b>Ctrl+Shift+V</b>): with nothing selected it varies the whole scene the cursor is in, and with text selected it varies exactly that passage. The passage picks up a tinted band, a rule down the margin and a card count in the gutter, with the edges of the pages behind it showing at the foot.</p>
-                    <p>Click that gutter card to fan the stack open. Flipping between versions (click a tab, or <b>Alt+←</b> / <b>Alt+→</b>) swaps them in place in the script, so you read each one at its real page position — but it only reads: the stack keeps its order until you say otherwise, and closing the deck (<b>Esc</b>) springs the passage back to the version that prints. <b>⇄ Compare</b> opens two versions side by side with the changed words marked, and <b>take →</b> on any line pulls it across into the version you're editing.</p>
+                    <p>Click that gutter card to fan the stack open. The deck bar pins near the top of the script pane by default, out of the way of whatever you're reading — drag it by the <b>⠿</b> grip to wherever you'd rather have it (double-click the grip to put it back). Flipping between versions (click a tab, or <b>Alt+←</b> / <b>Alt+→</b>) swaps them in place in the script, so you read each one at its real page position — but it only reads: the stack keeps its order until you say otherwise, and closing the deck (<b>Esc</b>) springs the passage back to the version that prints.</p>
+                    <p><b>⇄ Compare</b> opens two versions side by side with the changed words marked. Both sides are dropdowns — "Comparing" on the left is whichever version you're holding it up against, "against" on the right (marked <b>live · editable</b>) is the version open in the script, so picking a different one there actually flips the script to it. The <b>⇄</b> button between them swaps which side is which. Removed words are shown with a red highlight (not crossed out, so the old wording stays easy to read), added words with a green one, and <b>take →</b> on any line pulls it across into the version you're editing.</p>
                     <p><b>Ranking.</b> A stack is an ordered pile and the top of it is the version that stands — the one on the page, in the export, in the PDF. Drag a draft to the top of the list, in the Navigator or on the deck tabs, and it becomes that version immediately; <b>↑ Move to top</b> does the same thing for whichever one you're reading. The star marks the top.</p>
+                    <p><b>Splitting a version out.</b> Sometimes a "variation" turns out to be its own scene rather than a replacement for the one it was riffing on. Flip to it and press <b>⏎ Insert as scene</b>: it leaves the stack, lands in the script as ordinary text right after the run it was compared against, and prints and exports like any other scene from then on. The stack stays behind with whatever versions are left; if only one remains, the stack dissolves and that one becomes plain script too.</p>
                     <p><b>Numbering.</b> Scenes are numbered down the script — <b>S001</b>, <b>S002</b> — and every draft carries its own number, so <b>S004.D002</b> names one specific piece of writing. Draft numbers are handed out once, when the draft is created, and never change: re-ranking a stack moves the star, not the numbers, so <b>S004.D002</b> still means the same pages next week. That makes the label safe to quote in a note or an email. (Scene numbers do follow the script, so they shift if you reorder scenes.)</p>
                     <p>The Navigator numbers every scene and nests that scene's drafts beneath it, shut by default — the count on the right says how many are in there, and clicking it opens the list. <b>Has variations</b> narrows the list to just the scenes that carry any. Only the top-ranked draft is ever exported, printed or written out as the script; the rest ride along in the .json.</p>
                     <p>Scripts that mark their alternates by hand, with lines like <b>* ALT DRAFT -- "THE SCULLERY EXCHANGE" *</b>, can be converted in one step: <b>File ▸ Fold Alternates into Stacks…</b> lifts each one out of the appendix and staples it onto the scene it rewrites.</p>
