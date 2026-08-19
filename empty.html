@@ -853,6 +853,10 @@
         }
         #toc-filter button.active { background: var(--accent-color); color: #fff; }
         .toc-scene-row { display: flex; align-items: center; gap: 4px; }
+        /* A scene clicked open in the Navigator stays marked here, in step with
+           the highlight it drops on the scene's own blocks in the script pane,
+           until the same link is clicked again. */
+        #toc-list a.active { background: var(--accent-color); color: #fff; }
         .toc-twisty {
             width: 14px; flex: 0 0 14px; text-align: center; cursor: pointer;
             color: #888; font-size: .65rem; user-select: none;
@@ -899,6 +903,14 @@
             min-height: 1em; /* Allow empty lines */
             position: relative;
             z-index: 10;
+        }
+        /* The scene a Navigator click opened -- every block from its heading up
+           to (not including) the next one. Distinct from the character/location
+           word highlight, which uses the CSS Custom Highlight API instead of a
+           class, since this marks whole blocks rather than text matches. */
+        .scene-nav-highlight {
+            background-color: rgba(0, 123, 255, 0.14);
+            box-shadow: -3px 0 0 0 var(--accent-color);
         }
         .scene-heading {
             text-transform: uppercase;
@@ -1006,24 +1018,37 @@
         .view-toggle button:disabled { opacity: 0.45; cursor: default; }
         #view-btn-swap { font-size: 1rem; line-height: 1; padding: 5px 10px; }
 
-        /* Brief ring on whatever a Match landed on, so the jump is legible. */
-        .sync-flash { animation: syncFlash 1s ease-out; }
-        @keyframes syncFlash {
-            0%   { box-shadow: 0 0 0 3px var(--accent-color); }
-            70%  { box-shadow: 0 0 0 3px var(--accent-color); }
-            100% { box-shadow: 0 0 0 3px rgba(0, 123, 255, 0); }
-        }
-
-        /* The exact view can't take a caret, so a Match into it paints the matched
-           line the way a selection would instead. */
-        .pdf-text-layer span.sync-line-flash {
+        /* Match ⇔ marks both sides of the match and leaves it up, rather than the
+           brief flash this used to be -- it's meant to be read side by side, not
+           just caught on the way past. Cleared by clicking into either pane, or
+           replaced outright by the next Match click. The editable side uses the
+           same CSS Custom Highlight technique as the character/location
+           highlights (see toggleHighlight): the browser boxes it per wrapped
+           visual line on its own, at that line's own height, the same as a real
+           text selection would -- no manual line-splitting needed. */
+        ::highlight(match) { background-color: rgba(0, 123, 255, 0.28); }
+        /* The exact view can't take a caret or a Custom Highlight range, so its
+           side is painted directly on the matched text-layer spans instead. */
+        .pdf-text-layer span.match-line-active {
+            background: rgba(0, 123, 255, 0.32);
             border-radius: 2px;
-            animation: syncLineFlash 1.6s ease-out;
         }
-        @keyframes syncLineFlash {
-            0%   { background: rgba(0, 123, 255, 0.55); }
-            70%  { background: rgba(0, 123, 255, 0.30); }
-            100% { background: rgba(0, 123, 255, 0); }
+        /* Fallback when no specific line could be matched to a page -- rings the
+           page as a whole instead of leaving that side unmarked. */
+        .match-page-active { box-shadow: inset 0 0 0 3px var(--accent-color); }
+
+        /* The exact view has no real caret -- clicking or selecting text there
+           used to leave no trace, so there was no way to tell what a Match would
+           anchor on. This marks the line that landed on, in a different color
+           from the match highlight itself so "where I clicked" stays visually
+           distinct from "what matched". */
+        .pdf-text-layer span.pdf-cursor-line {
+            background: rgba(201, 151, 58, 0.30);
+            box-shadow: -3px 0 0 0 var(--stack-edge);
+        }
+        .pdf-text-layer span.pdf-cursor-line.match-line-active {
+            background: rgba(0, 123, 255, 0.32);
+            box-shadow: -3px 0 0 0 var(--accent-color);
         }
 
         /* Print Media */
@@ -1202,7 +1227,7 @@
         <div class="view-toggle" id="view-toggle">
             <button id="view-btn-exact" onclick="togglePane('exact')" title="Show/hide the pixel-perfect replica of the source PDF">Exact View</button>
             <button id="view-btn-editable" onclick="togglePane('editable')" title="Show/hide the reflowed, editable screenplay">Editable Script</button>
-            <button id="view-btn-sync" onclick="syncPanes()" title="Match the other pane to the one you're working in (Ctrl+M)">Match ⇔</button>
+            <button id="view-btn-sync" onclick="syncPanes()" title="Highlight the matching line in both panes (Ctrl+M) — click again to re-match where you are now, click into a pane to clear it">Match ⇔</button>
             <button id="view-btn-swap" onclick="swapPanes()" title="Swap the left and right panes">⇄</button>
         </div>
         <button class="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
@@ -1388,6 +1413,10 @@
 
         // Highlight tracking
         let activeHighlights = new Set();
+        // Scenes opened from the Navigator, by scene-heading element id. Separate
+        // from activeHighlights (character/location word highlights) because this
+        // marks whole blocks rather than text matches -- see toggleSceneHighlight.
+        let activeSceneHighlights = new Set();
 
         // --- F1: App settings store ---
         // Everything here is app-level (persists across every project you open),
@@ -1805,6 +1834,9 @@
             const html = typeof snap === 'string' ? snap : snap.html;
             if (typeof snap !== 'string') loadStacks(JSON.parse(snap.stacks));
             document.getElementById('editor-page').innerHTML = html;
+            // A wholesale content swap orphans any match highlight's block/spans --
+            // clearing it here rather than leaving a stale, invisible "on" state.
+            if (typeof clearMatchHighlight === 'function') clearMatchHighlight();
             reflowPages();
             refreshStacks();
             buildToc();
@@ -1848,7 +1880,51 @@
             });
         }
 
-        
+        // Every block belonging to a scene: its heading plus everything after it
+        // up to (not including) the next scene-heading.
+        function sceneRunBlocks(heading) {
+            const blocks = getBlocks();
+            const idx = blocks.indexOf(heading);
+            if (idx === -1) return [heading];
+            const run = [heading];
+            for (let i = idx + 1; i < blocks.length; i++) {
+                if (blocks[i].classList.contains('scene-heading')) break;
+                run.push(blocks[i]);
+            }
+            return run;
+        }
+
+        // Toggling a Navigator scene link marks every block in that scene in the
+        // script pane and keeps the link itself marked to match, until the same
+        // link is clicked again. Multiple scenes can be open at once, same as
+        // the character/location highlights.
+        function toggleSceneHighlight(heading, aElement, forceOn) {
+            const id = heading.id;
+            const isOn = activeSceneHighlights.has(id);
+            if (!forceOn && isOn) {
+                activeSceneHighlights.delete(id);
+                sceneRunBlocks(heading).forEach(b => b.classList.remove('scene-nav-highlight'));
+                if (aElement) aElement.classList.remove('active');
+                return;
+            }
+            if (isOn) return;
+            activeSceneHighlights.add(id);
+            sceneRunBlocks(heading).forEach(b => b.classList.add('scene-nav-highlight'));
+            if (aElement) aElement.classList.add('active');
+        }
+
+        // Blocks marking a highlighted scene are ordinary editor nodes, so any
+        // rebuild of the run (a card flip, an undo restore) loses the class even
+        // though the scene is still meant to be open. Called from buildToc(),
+        // which already runs after every one of those rebuilds.
+        function refreshSceneHighlights() {
+            Array.from(activeSceneHighlights).forEach(id => {
+                const heading = document.getElementById(id);
+                if (!heading) { activeSceneHighlights.delete(id); return; }
+                sceneRunBlocks(heading).forEach(b => b.classList.add('scene-nav-highlight'));
+            });
+        }
+
         // --- Settings Modal ---
         function openSettings() {
             document.getElementById('settings-modal').style.display = 'flex';
@@ -2820,7 +2896,12 @@
 
                 const a = document.createElement('a');
                 a.innerText = heading.innerText || "EMPTY SCENE";
-                a.onclick = () => scrollToBlock(heading, 'start');
+                a.title = "Click to jump to this scene and highlight it in the script; click again to clear the highlight";
+                if (activeSceneHighlights.has(heading.id)) a.classList.add('active');
+                a.onclick = () => {
+                    scrollToBlock(heading, 'start');
+                    toggleSceneHighlight(heading, a);
+                };
                 row.appendChild(a);
 
                 if (mine.length) {
@@ -2843,6 +2924,11 @@
                 note.innerText = 'No stacked passages yet. Put the cursor in a scene and press + Variation.';
                 tocList.appendChild(note);
             }
+
+            // Blocks are ordinary editor nodes, not the Navigator rows just
+            // built, so a scene left open needs its class reapplied any time
+            // this ran because the run underneath it was rebuilt.
+            refreshSceneHighlights();
         }
 
         function renderTocFilter(byScene) {
@@ -3011,7 +3097,7 @@
         // Classes the app paints on a block for the moment, which are no part of
         // what the block *is*. They must never reach a saved card, or reloading
         // it would restore a hover state as though it were formatting.
-        const TRANSIENT_CLASSES = new Set(['stack-hot', 'sync-flash', 'sync-line-flash', 'insertion-focus']);
+        const TRANSIENT_CLASSES = new Set(['stack-hot', 'insertion-focus', 'scene-nav-highlight']);
 
         function blockType(n) {
             const kept = Array.from(n.classList).filter(c => !TRANSIENT_CLASSES.has(c));
@@ -4322,6 +4408,8 @@
             document.getElementById('view-toggle').style.display = loaded ? 'flex' : 'none';
             if (!loaded) {
                 document.getElementById('pdf-viewer').innerHTML = '';
+                // Old pageDiv/span references are gone with it.
+                if (typeof clearExactCursorLine === 'function') clearExactCursorLine();
                 // Without a source PDF there is no exact render to show.
                 paneState.exact = false;
                 paneState.editable = true;
@@ -4382,6 +4470,9 @@
             document.getElementById('pane-close-editable').disabled = btnEditable.disabled;
             document.getElementById('view-btn-swap').disabled = !both;
             document.getElementById('view-btn-sync').disabled = !both;
+            // A match only means something with both panes on screen -- closing
+            // either one strands whichever half of the highlight was in it.
+            if (!both && typeof clearMatchHighlight === 'function') clearMatchHighlight();
             // Opening, closing or swapping a pane moves the script sideways, and
             // the deck bar is anchored in viewport coordinates -- re-clamp it or
             // it ends up floating over the neighbouring pane.
@@ -4453,12 +4544,63 @@
 
         let lastActivePane = 'editable';
 
+        // Match ⇔'s highlight: stays up on both sides until the user clicks into
+        // a pane (cleared below, in trackActivePane) or runs Match again, which
+        // replaces it outright rather than requiring an off click first.
+        let matchHighlightActive = false;
+        let matchExactSpans = [];
+        let matchFallbackPageDiv = null;
+        const MATCH_HL_NAME = 'match';
+
+        function clearMatchHighlight() {
+            if (window.CSS && CSS.highlights && CSS.highlights.has(MATCH_HL_NAME)) {
+                CSS.highlights.delete(MATCH_HL_NAME);
+            }
+            matchExactSpans.forEach(s => s.classList.remove('match-line-active'));
+            matchExactSpans = [];
+            if (matchFallbackPageDiv) matchFallbackPageDiv.classList.remove('match-page-active');
+            matchFallbackPageDiv = null;
+            matchHighlightActive = false;
+            const btn = document.getElementById('view-btn-sync');
+            if (btn) btn.classList.remove('active');
+        }
+
+        // Marks the matched block on the editable side -- every wrapped line it
+        // takes, each at that line's own height, the same box a real text
+        // selection would draw -- and the matched line(s) on the exact side.
+        // Called from both sync directions below with whichever side is source
+        // and which is destination; `spans` is empty when only a whole page
+        // could be pinned down, in which case `fallbackPageDiv` rings the page.
+        function applyMatchHighlight(block, spans, fallbackPageDiv) {
+            clearMatchHighlight();
+            if (block && window.CSS && CSS.highlights) {
+                const range = document.createRange();
+                range.selectNodeContents(block);
+                CSS.highlights.set(MATCH_HL_NAME, new Highlight(range));
+            }
+            if (spans && spans.length) {
+                spans.forEach(s => s.classList.add('match-line-active'));
+                matchExactSpans = spans;
+            } else if (fallbackPageDiv) {
+                fallbackPageDiv.classList.add('match-page-active');
+                matchFallbackPageDiv = fallbackPageDiv;
+            }
+            matchHighlightActive = true;
+            const btn = document.getElementById('view-btn-sync');
+            if (btn) btn.classList.add('active');
+        }
+
         function trackActivePane() {
             [['exact', 'pane-exact'], ['editable', 'pane-editable']].forEach(([key, id]) => {
                 const el = document.getElementById(id);
                 // Capture phase, so a click that lands deep inside still registers.
                 ['mousedown', 'focusin', 'wheel'].forEach(ev =>
                     el.addEventListener(ev, () => { lastActivePane = key; }, true));
+                // A click into either pane is "clicking off" the match highlight --
+                // scrolling or just refocusing isn't, so this is mousedown only.
+                el.addEventListener('mousedown', () => {
+                    if (matchHighlightActive) clearMatchHighlight();
+                }, true);
             });
         }
         trackActivePane();
@@ -4482,19 +4624,25 @@
             return document.querySelector('#pane-' + which + ' .pane-body');
         }
 
-        // Scroll `body` so that `el` sits just below its top edge. Measured from live
-        // rects rather than offsetTop so the zoom slider is accounted for.
-        function scrollPaneTo(body, el, extra) {
-            const delta = el.getBoundingClientRect().top - body.getBoundingClientRect().top;
-            body.scrollTop += delta + (extra || 0) - 20;
+        // Scroll `body` so that `el` (offset `insetPx` further down, for landing
+        // partway into a whole page div rather than at its very top) ends up
+        // `screenOffset` pixels below the pane's own top edge -- default 20 for a
+        // small margin, but Match passes the source's actual on-screen position
+        // here so the two panes' matched lines land level with each other rather
+        // than both just snapping to the top. Measured from live rects rather
+        // than offsetTop so the zoom slider is accounted for.
+        function scrollPaneTo(body, el, insetPx, screenOffset) {
+            const targetTop = el.getBoundingClientRect().top + (insetPx || 0);
+            const delta = targetTop - body.getBoundingClientRect().top;
+            body.scrollTop += delta - (screenOffset != null ? screenOffset : 20);
         }
 
-        function flashTarget(el) {
-            if (!el) return;
-            el.classList.remove('sync-flash');
-            void el.offsetWidth; // restart the animation if it is already running
-            el.classList.add('sync-flash');
-            setTimeout(() => el.classList.remove('sync-flash'), 1000);
+        // Clamps an on-screen target offset to somewhere actually visible in a
+        // pane, so a source sitting near the very top or bottom of its own pane
+        // doesn't push the destination off the edge of its pane instead.
+        function clampScreenOffset(offset, body) {
+            const h = body.getBoundingClientRect().height;
+            return Math.max(20, Math.min(offset, Math.max(20, h - 60)));
         }
 
         // The block the user means: whatever the caret is in, else whatever is at the
@@ -4511,6 +4659,19 @@
                 if (b.getBoundingClientRect().bottom > top + 4) return b;
             }
             return blocks[blocks.length - 1] || null;
+        }
+
+        // The caret's own on-screen top when it's inside `anchor`, else the
+        // block's. Getting the exact line (not just the block) matters for a
+        // long action paragraph, which can span several visual lines -- Match
+        // should line up with the line the writer is actually looking at.
+        function editableAnchorScreenTop(anchor) {
+            const sel = window.getSelection();
+            if (sel.rangeCount && anchor.contains(sel.anchorNode)) {
+                const r = sel.getRangeAt(0).getClientRects()[0];
+                if (r) return r.top;
+            }
+            return anchor.getBoundingClientRect().top;
         }
 
         // --- Finding one line inside a rendered PDF page ---
@@ -4640,15 +4801,6 @@
             return map;
         }
 
-        function flashSpans(spans) {
-            spans.forEach(s => {
-                s.classList.remove('sync-line-flash');
-                void s.offsetWidth; // restart the animation if it is already running
-                s.classList.add('sync-line-flash');
-            });
-            setTimeout(() => spans.forEach(s => s.classList.remove('sync-line-flash')), 1600);
-        }
-
         function syncExactToEditable() {
             const { blocks, pages } = resolveBlockPages();
             const anchor = editableAnchorBlock(blocks);
@@ -4660,6 +4812,12 @@
             if (!renderedPages.length) return false;
             const pageDiv = renderedPages[Math.min(pageNum, renderedPages.length) - 1];
 
+            // Where the caret actually sits on screen, so the exact side lands at
+            // that same height rather than always snapping to the top of its pane.
+            const exactBody = paneBody('exact');
+            const screenOffset = clampScreenOffset(
+                editableAnchorScreenTop(anchor) - paneBody('editable').getBoundingClientRect().top, exactBody);
+
             // Land on the line the caret is actually in when it can be found on the
             // page; only fall back to the page as a whole when it can't.
             const lines = pdfPageLines(pageDiv);
@@ -4669,46 +4827,186 @@
                 const spans = [];
                 for (let k = hit.start; k <= hit.end; k++) spans.push(...lines[k].spans);
                 if (spans.length) {
-                    scrollPaneTo(paneBody('exact'), spans[0], -40);
-                    flashSpans(spans);
+                    scrollPaneTo(exactBody, spans[0], 0, screenOffset);
+                    applyMatchHighlight(anchor, spans);
                     return true;
                 }
             }
 
-            // Where in that PDF page the anchor sits, judged by its position among the
-            // blocks that share the page.
-            let first = i, count = 0;
-            while (first > 0 && pages[first - 1] === pageNum) first--;
-            for (let j = first; j < pages.length && pages[j] === pageNum; j++) count++;
-            const fraction = count > 1 ? (i - first) / count : 0;
+            // No text match on the page -- fall back to the anchor's own recorded
+            // position on it (see extractPdfPageLines) rather than assuming blocks
+            // are spaced evenly by index, which is a bad guess on any sparsely,
+            // unevenly filled page -- a title page most of all.
+            const yFrac = parseFloat(anchor.dataset.pdfYFrac);
+            let fraction;
+            if (!Number.isNaN(yFrac)) {
+                fraction = yFrac;
+            } else {
+                let first = i, count = 0;
+                while (first > 0 && pages[first - 1] === pageNum) first--;
+                for (let j = first; j < pages.length && pages[j] === pageNum; j++) count++;
+                fraction = count > 1 ? (i - first) / count : 0;
+            }
 
-            scrollPaneTo(paneBody('exact'), pageDiv, fraction * pageDiv.getBoundingClientRect().height);
-            flashTarget(pageDiv);
+            scrollPaneTo(exactBody, pageDiv, fraction * pageDiv.getBoundingClientRect().height, screenOffset);
+            applyMatchHighlight(anchor, [], pageDiv);
             return true;
         }
 
+        // Picks the block on a PDF page nearest a given vertical fraction (0 top -
+        // 1 bottom) of that page. Prefers each block's own recorded position over
+        // assuming blocks are spaced evenly by index, which falls apart on any
+        // page whose few, unevenly spaced lines don't fill it -- a title page
+        // most of all. Blocks imported before pdfYFrac existed fall back to the
+        // index guess.
+        function pickBlockByFraction(onPage, fraction) {
+            let best = null, bestDist = Infinity;
+            onPage.forEach(b => {
+                const bf = parseFloat(b.dataset.pdfYFrac);
+                if (Number.isNaN(bf)) return;
+                const dist = Math.abs(bf - fraction);
+                if (dist < bestDist) { bestDist = dist; best = b; }
+            });
+            if (best) return best;
+            return onPage[Math.min(onPage.length - 1, Math.floor(fraction * onPage.length))];
+        }
+
+        // --- A visible "cursor" for the exact pane ---
+        // The exact view has no real caret -- it's rendered text, not editable --
+        // so without this there was no way to tell what Match would use as its
+        // anchor there: a plain click looked like it did nothing, and selecting
+        // text was ignored outright (Match went by pane scroll position alone,
+        // never by what was actually clicked or selected). Clicking or selecting
+        // text now marks the line it landed on, visibly, and Match reads that
+        // line directly instead of guessing from scroll position.
+        let exactCursorLine = null; // { pageDiv, lineIndex } | null
+        let exactCursorSpans = [];
+
+        function clearExactCursorLine() {
+            exactCursorSpans.forEach(s => s.classList.remove('pdf-cursor-line'));
+            exactCursorSpans = [];
+            exactCursorLine = null;
+        }
+
+        function setExactCursorLine(pageDiv, lineIndex) {
+            const lines = pdfPageLines(pageDiv);
+            const line = lines[lineIndex];
+            if (!line) return;
+            clearExactCursorLine();
+            line.spans.forEach(s => s.classList.add('pdf-cursor-line'));
+            exactCursorSpans = line.spans;
+            exactCursorLine = { pageDiv, lineIndex };
+        }
+
+        function pdfLineIndexOfSpan(pageDiv, span) {
+            const lines = pdfPageLines(pageDiv);
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].spans.includes(span)) return i;
+            }
+            return -1;
+        }
+
+        function setupExactCursorTracking() {
+            // mouseup, not click: some browsers suppress the click event right
+            // after a drag-selection, but mouseup always fires, and the
+            // selection (if any) is already final by then.
+            document.getElementById('pdf-viewer').addEventListener('mouseup', () => {
+                const sel = window.getSelection();
+                const node = sel && sel.anchorNode;
+                const el = node ? (node.nodeType === 3 ? node.parentElement : node) : null;
+                const span = el && el.closest ? el.closest('.pdf-text-layer span') : null;
+                if (!span) return; // landed outside any recognizable text
+                const pageDiv = span.closest('.pdf-page');
+                if (!pageDiv) return;
+                const lineIndex = pdfLineIndexOfSpan(pageDiv, span);
+                if (lineIndex === -1) return;
+                setExactCursorLine(pageDiv, lineIndex);
+            });
+        }
+        setupExactCursorTracking();
+
         function syncEditableToExact() {
-            const body = paneBody('exact');
-            const top = body.getBoundingClientRect().top;
-            let target = null, fraction = 0;
-            for (const el of document.getElementById('pdf-viewer').children) {
-                const r = el.getBoundingClientRect();
-                if (r.bottom > top + 4) {
-                    target = el;
-                    fraction = Math.min(0.95, Math.max(0, (top - r.top) / r.height));
-                    break;
+            const { blocks, pages } = resolveBlockPages();
+            const exactBody = paneBody('exact');
+
+            // Prefer the line actually clicked or selected in the exact pane.
+            // Only when nothing's been clicked there yet (right after opening)
+            // fall back to guessing from scroll position.
+            let pageDiv, lines, lineIndex, sourceTop;
+            if (exactCursorLine && exactCursorLine.pageDiv.isConnected) {
+                pageDiv = exactCursorLine.pageDiv;
+                lines = pdfPageLines(pageDiv);
+                lineIndex = exactCursorLine.lineIndex;
+                const line = lines[lineIndex];
+                if (!line || !line.spans.length) return false;
+                sourceTop = line.spans[0].getBoundingClientRect().top;
+            } else {
+                const top = exactBody.getBoundingClientRect().top;
+                let target = null, fraction = 0;
+                for (const el of document.getElementById('pdf-viewer').children) {
+                    const r = el.getBoundingClientRect();
+                    if (r.bottom > top + 4) {
+                        target = el;
+                        fraction = Math.min(0.95, Math.max(0, (top - r.top) / r.height));
+                        break;
+                    }
+                }
+                if (!target) return false;
+                pageDiv = target;
+                lines = pdfPageLines(pageDiv);
+                lineIndex = lines.length ? Math.min(lines.length - 1, Math.floor(fraction * lines.length)) : -1;
+                sourceTop = lines[lineIndex]
+                    ? lines[lineIndex].spans[0].getBoundingClientRect().top
+                    : pageDiv.getBoundingClientRect().top + fraction * pageDiv.getBoundingClientRect().height;
+            }
+
+            let pageNum = parseInt(pageDiv.dataset.pdfPage, 10);
+            let onPage = blocks.filter((b, i) => pages[i] === pageNum);
+
+            // A page with no blocks of its own -- a title page, a blank page, one
+            // that rendered as an image with no text layer -- has nothing to land
+            // on. Walk forward to the nearest page that does (a cover almost
+            // always precedes the body), wrapping back to the last page with
+            // blocks if there's nothing ahead, rather than leaving Match to do
+            // nothing.
+            if (!onPage.length) {
+                const known = [...new Set(pages.filter(Boolean))].sort((a, b) => a - b);
+                if (!known.length) return false;
+                const nextPage = known.find(p => p >= pageNum);
+                pageNum = nextPage !== undefined ? nextPage : known[known.length - 1];
+                const renderedPages = document.getElementById('pdf-viewer').children;
+                pageDiv = renderedPages[Math.min(pageNum, renderedPages.length) - 1] || pageDiv;
+                lines = pdfPageLines(pageDiv);
+                onPage = blocks.filter((b, i) => pages[i] === pageNum);
+                lineIndex = -1; // landing on a different page than the one clicked
+                sourceTop = pageDiv.getBoundingClientRect().top;
+            }
+
+            // The specific line clicked, if it falls inside a block's matched
+            // range; otherwise fall back to that line's position among the
+            // page's lines as a fraction, the same way the no-text-match
+            // fallback works in the other direction.
+            const hitMap = alignBlocksToLines(onPage, lines);
+            let block = null, spans = [];
+            if (lineIndex >= 0) {
+                for (const [b, h] of hitMap) {
+                    if (lineIndex >= h.start && lineIndex <= h.end) {
+                        block = b;
+                        for (let k = h.start; k <= h.end; k++) spans.push(...lines[k].spans);
+                        break;
+                    }
                 }
             }
-            if (!target) return false;
+            if (!block) {
+                const frac = lines.length > 1 && lineIndex >= 0 ? lineIndex / (lines.length - 1) : 0;
+                block = pickBlockByFraction(onPage, frac);
+            }
+            if (!block) return false;
 
-            const pageNum = parseInt(target.dataset.pdfPage, 10);
-            const { blocks, pages } = resolveBlockPages();
-            const onPage = blocks.filter((b, i) => pages[i] === pageNum);
-            if (!onPage.length) return false;
-
-            const block = onPage[Math.min(onPage.length - 1, Math.floor(fraction * onPage.length))];
-            scrollPaneTo(paneBody('editable'), block);
-            flashTarget(block);
+            const editableBody = paneBody('editable');
+            const screenOffset = clampScreenOffset(sourceTop - exactBody.getBoundingClientRect().top, editableBody);
+            scrollPaneTo(editableBody, block, 0, screenOffset);
+            applyMatchHighlight(block, spans, pageDiv);
             return true;
         }
 
@@ -4817,11 +5115,21 @@
         // Groups a PDF page's text items into lines by y-proximity, keeping x so
         // classifyPdfLines() can derive this document's own margins from it.
         async function extractPdfPageLines(page, pageNum) {
+            // PDF text coordinates are bottom-left-origin, y increasing upward, so a
+            // line near the top of the page has y close to pageHeight. Recorded as a
+            // 0 (top) - 1 (bottom) fraction here because it's the one thing that
+            // survives into a saved block and lets Match land accurately later on
+            // pages -- title pages especially -- where the few lines present are
+            // spaced too unevenly for "this is the Nth of M blocks on the page" to
+            // approximate well.
+            const pageHeight = page.getViewport({ scale: 1 }).height;
             const textContent = await page.getTextContent();
             const items = textContent.items.slice().sort((a, b) => {
                 if (Math.abs(a.transform[5] - b.transform[5]) > 5) return b.transform[5] - a.transform[5];
                 return a.transform[4] - b.transform[4];
             });
+
+            const yFracOf = (y) => pageHeight ? Math.min(1, Math.max(0, 1 - y / pageHeight)) : 0;
 
             const lines = [];
             let lastY = -1;
@@ -4834,7 +5142,7 @@
                 const fontSize = item.height || Math.abs(item.transform[3]) || 10;
                 if (lastY !== -1 && Math.abs(y - lastY) > 5) {
                     if (current) lines.push(current);
-                    current = { str: item.str, x, y, page: pageNum };
+                    current = { str: item.str, x, y, page: pageNum, yFrac: yFracOf(y) };
                 } else if (current) {
                     // Insert a space only when the gap to the previous glyph run looks like
                     // a real word-break, not per-glyph kerning — some PDFs emit letter-spaced
@@ -4845,7 +5153,7 @@
                     const needsSpace = !current.str.endsWith(' ') && !item.str.startsWith(' ') && gap > fontSize * 0.25;
                     current.str += (needsSpace ? ' ' : '') + item.str;
                 } else {
-                    current = { str: item.str, x, y, page: pageNum };
+                    current = { str: item.str, x, y, page: pageNum, yFrac: yFracOf(y) };
                 }
                 lastY = y;
                 lastXEnd = x + (item.width || 0);
@@ -4875,7 +5183,7 @@
                 text = text.replace(/^\d{1,4}\s+(?=[A-Za-z(])/, '').replace(/\s+\d{1,4}$/, '').trim();
                 if (!text) return;
                 if (PAGE_NUM_RE.test(text)) return;
-                lines.push({ text, x: line.x, y: line.y, page: line.page });
+                lines.push({ text, x: line.x, y: line.y, page: line.page, yFrac: line.yFrac });
             });
             if (lines.length === 0) return [];
 
@@ -4910,7 +5218,7 @@
                     const nextL = lines[i + 1];
                     const gap = Math.abs(l.y - nextL.y);
                     if (l.page === nextL.page && gap <= 20 && nextL.text.endsWith(')')) {
-                        normalizedLines.push({ text: l.text + ' ' + nextL.text, x: l.x, y: l.y, page: l.page });
+                        normalizedLines.push({ text: l.text + ' ' + nextL.text, x: l.x, y: l.y, page: l.page, yFrac: l.yFrac });
                         i++;
                         continue;
                     }
@@ -4950,9 +5258,9 @@
                 if (canMerge && blocks.length) {
                     blocks[blocks.length - 1].text += ' ' + text;
                 } else {
-                    // Keep the source page: it is what lets the two panes find the
-                    // same spot in each other later.
-                    blocks.push({ type, text, indent, page: l.page });
+                    // Keep the source page and vertical position: together they're
+                    // what lets the two panes find the same spot in each other later.
+                    blocks.push({ type, text, indent, page: l.page, yFrac: l.yFrac });
                 }
 
                 prevY = l.y;
@@ -5188,6 +5496,8 @@
             docMeta = defaultDocMeta();
             dynamicCounts = { characters: {}, locations: {} };
             activeHighlights.clear();
+            activeSceneHighlights.clear();
+            if (typeof clearMatchHighlight === 'function') clearMatchHighlight();
             historyStack = [];
             historyIndex = -1;
             lastSavedName = '';
@@ -5344,6 +5654,7 @@
                 div.className = b.type;
                 div.innerText = b.text;
                 if (b.page) div.dataset.pdfPage = b.page;
+                if (b.yFrac !== undefined) div.dataset.pdfYFrac = b.yFrac;
                 target.appendChild(div);
             });
         }
@@ -5401,6 +5712,7 @@
                             div.className = b.type;
                             div.innerText = b.text;
                             if (b.page) div.dataset.pdfPage = b.page;
+                            if (b.yFrac !== undefined) div.dataset.pdfYFrac = b.yFrac;
                             stagingFrame.appendChild(div);
                         });
 
@@ -5441,6 +5753,7 @@
                         // blocking the (already-usable) editable view or sidebar above.
                         const pdfViewer = document.getElementById('pdf-viewer');
                         pdfViewer.innerHTML = '';
+                        clearExactCursorLine();
                         (async () => {
                             for (const page of pages) {
                                 await renderPdfExactPage(page);
