@@ -114,6 +114,70 @@
             border-color: var(--border-color);
         }
 
+        /* Highlighter tool: a small color popover hanging off its toolbar button. */
+        .hl-tool { position: relative; }
+        .hl-tool-btn.active {
+            border-color: var(--hl-swatch, var(--accent-color));
+            box-shadow: inset 0 -3px 0 var(--hl-swatch, var(--accent-color));
+        }
+        .hl-popover {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            background: var(--sidebar-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            z-index: 500;
+        }
+        .hl-popover.hidden { display: none; }
+        .hl-swatches { display: flex; align-items: center; gap: 6px; }
+        .hl-swatch {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.25);
+            cursor: pointer;
+            padding: 0;
+        }
+        .hl-swatch:hover { border-color: #fff; transform: scale(1.1); }
+        .hl-swatch.hl-eraser {
+            background: transparent;
+            color: var(--text-color);
+            font-size: 0.75rem;
+            display: flex; align-items: center; justify-content: center;
+            border-style: dashed;
+        }
+        input.hl-custom {
+            width: 22px; height: 22px;
+            padding: 0;
+            border: 2px solid rgba(255,255,255,0.25);
+            border-radius: 50%;
+            background: transparent;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        /* Permanent highlight marks left inside block text by the highlighter
+           tool (as opposed to the transient character/location/scene highlights,
+           which are CSS Custom Highlight API overlays and never touch markup). */
+        mark.fd-hl { padding: 0 1px; border-radius: 2px; color: inherit; }
+
+        /* Show/hide toggles: the underlying color/markup stays put, this only
+           suppresses how it paints on screen, so turning it back on needs no
+           rebuild -- and screen-only means these never fight the print
+           stylesheet's own (already deliberate) rules for the same elements. */
+        @media screen {
+            body.fd-hl-hidden mark.fd-hl { background-color: transparent !important; }
+            body.fd-hl-hidden [data-hl-color] { background-color: transparent !important; }
+
+            body.fd-stacks-hidden .page > [data-stack] { background: none !important; box-shadow: none !important; }
+            body.fd-stacks-hidden .page > [data-stack]::before { display: none !important; }
+            body.fd-stacks-hidden .page > [data-gutter]::after { display: none !important; }
+        }
+
+        .toolbar button.toggled-off { opacity: 0.5; }
+
         /* Right-click suggestion menu for the formatting buttons. Lists the
            entries of that type already used in the script (most frequent first)
            plus a few generic examples. */
@@ -230,9 +294,22 @@
         }
         .collapse-toggle:hover { background: var(--accent-color); }
 
+        /* Vertical resizer: drags the height of the section/panel above it.
+           Same drag mechanics as .resizer, just on the other axis. */
+        .v-resizer {
+            height: 5px;
+            background-color: transparent;
+            cursor: ns-resize;
+            flex-shrink: 0;
+            transition: background 0.2s;
+            position: relative;
+            z-index: 5;
+        }
+        .v-resizer:hover { background-color: var(--accent-color); }
+
         /* While a panel is being dragged, nothing else on the page should be
            selectable or claim the pointer. */
-        body.resizing, body.resizing * {
+        body.resizing, body.resizing *, body.resizing-v, body.resizing-v * {
             user-select: none !important;
         }
         body.resizing #editor-wrapper { pointer-events: none; }
@@ -240,6 +317,8 @@
         .sidebar-section {
             display: flex;
             flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
         }
         .sidebar-section:not(:last-child) {
             border-bottom: 1px solid var(--border-color);
@@ -264,6 +343,8 @@
         .section-content {
             padding: 15px;
             overflow-y: auto;
+            flex: 1 1 auto;
+            min-height: 0;
         }
         .collapsed + .section-content { display: none; }
         
@@ -279,8 +360,14 @@
         #toc-list a:hover { background: rgba(255,255,255,0.1); color: #fff; }
 
         /* Right Sidebar Tabs */
+        .rs-toolbar {
+            display: flex;
+            align-items: stretch;
+            flex-shrink: 0;
+        }
         .tabs-header {
             display: flex;
+            flex-grow: 1;
             border-bottom: 1px solid var(--border-color);
         }
         .tab-btn {
@@ -298,13 +385,54 @@
             background: rgba(255,255,255,0.05);
             border-bottom: 2px solid var(--accent-color);
         }
+        .rs-layout-toggle {
+            flex-shrink: 0;
+            width: 34px;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border-color);
+            border-left: 1px solid var(--border-color);
+            color: var(--text-color);
+            cursor: pointer;
+            opacity: 0.6;
+            font-size: 0.85rem;
+        }
+        .rs-layout-toggle:hover { opacity: 1; background: rgba(255,255,255,0.05); }
+
         .tab-content {
             display: none;
             flex-direction: column;
             flex-grow: 1;
             overflow: hidden;
+            min-height: 0;
         }
         .tab-content.active { display: flex; }
+
+        .rs-panel-header {
+            display: none;
+            padding: 8px 12px;
+            font-size: 0.72rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            opacity: 0.55;
+            background: rgba(0,0,0,0.15);
+            flex-shrink: 0;
+        }
+
+        /* Split layout: both Characters and Locations shown at once, stacked
+           and independently resizable, instead of switched via tabs. */
+        #right-sidebar.split-mode .tabs-header { display: none; }
+        #right-sidebar.split-mode .rs-panel-header { display: block; }
+        #right-sidebar.split-mode .v-resizer { display: block; }
+        #right-sidebar:not(.split-mode) .v-resizer { display: none; }
+        #right-sidebar.split-mode .tab-content { display: flex !important; }
+        /* flex-basis stays auto so the resizer's inline height (set on
+           #tab-characters) is what actually governs its size; #tab-locations
+           just absorbs whatever's left, same as the Navigator section does
+           in the left sidebar. */
+        #right-sidebar.split-mode #tab-characters { flex: 0 0 auto; height: 200px; min-height: 60px; }
+        #right-sidebar.split-mode #tab-locations { flex: 1 1 0; min-height: 60px; }
 
         .list-items {
             flex-grow: 1;
@@ -400,28 +528,6 @@
         }
         .nested-list-item .delete-btn:hover { color: #ff5555; }
 
-        .add-input-group {
-            padding: 15px;
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            gap: 5px;
-        }
-        .add-input-group input[type="text"] {
-            flex-grow: 1;
-            padding: 6px;
-            background: #333;
-            border: 1px solid #555;
-            color: white;
-            border-radius: 3px;
-        }
-        .add-input-group input[type="color"] {
-            width: 30px; height: 30px; padding: 0; border: none; background: transparent; cursor: pointer;
-        }
-        .add-input-group button {
-            background: var(--accent-color);
-            border: none; color: white; border-radius: 3px; cursor: pointer; padding: 0 10px; font-weight: bold;
-        }
-
         /* Editor Wrapper: the row that holds the document panes */
         #editor-wrapper {
             /* flex-basis 0, not auto: the base size must not depend on the content
@@ -515,8 +621,10 @@
 
         /* Editor root: a flex-wrap grid of page frames. Zooming out shrinks each
            frame, so more of them fit per row -- the grid emerges from layout,
-           no separate "grid view" mode needed. */
-        #editor-page {
+           no separate "grid view" mode needed. #script-render-page is Render
+           Mode's non-PDF occupant (see refreshScriptRender()) -- a read-only
+           mirror of these same page frames, so it shares the grid layout. */
+        #editor-page, #script-render-page {
             display: flex;
             flex-wrap: wrap;
             gap: 30px;
@@ -715,6 +823,20 @@
         .page > [data-stack-off][data-gutter-kind="stack"]::after {
             color: #0a3d6b; background: #cfe6ff; border-color: var(--accent-color);
             box-shadow: 2px 2px 0 -1px #cfe6ff, 2px 2px 0 0 var(--accent-color);
+        }
+
+        /* A Navigator scene highlight lands on the block itself (background +
+           box-shadow), but the stack band above is opaque and paints on top of
+           both -- see the note at the top of this section -- so on a stacked
+           block the highlight would otherwise vanish with no sign it ever
+           applied. Tinting the band blue, and adding a second stripe outside
+           its own amber stack-edge border, keeps it visible and gives it a
+           two-color left edge instead of silently doing nothing. Same
+           specificity as the .stack-hot/[data-stack-off] rules above, so it
+           has to come after them to win. */
+        .page > [data-stack].scene-nav-highlight::before {
+            background: #cfe6ff;
+            box-shadow: -3px 0 0 0 var(--accent-color);
         }
 
         /* The stacked-cards mark. Drawn rather than typed: the obvious Unicode
@@ -957,7 +1079,7 @@
             margin-bottom: 40pt;
         }
 
-        /* PDF Exact View */
+        /* Render Mode: PDF replica */
         #pdf-viewer {
             /* Visibility is owned by the enclosing .doc-pane, not by this element. */
             display: flex;
@@ -999,7 +1121,7 @@
         .pdf-text-layer ::selection { background: rgba(0,123,255,0.3); }
 
         .view-toggle {
-            display: none;
+            display: flex;
             margin-left: 20px;
             gap: 4px;
         }
@@ -1066,16 +1188,16 @@
                script when both are, so a side-by-side session doesn't print twice. */
             .doc-pane.hidden { display: none !important; }
             #editor-wrapper:not(.single-pane) #pane-exact { display: none !important; }
-            #editor-page, #pdf-viewer { display: block !important; }
+            #editor-page, #pdf-viewer, #script-render-page { display: block !important; }
             /* A printed script is the version that prints. The alternates are
                simply not in the page -- there is no sensible way to put four
                versions of a scene into one PDF and still have it read as a
                script -- so all the on-screen apparatus comes off: no tint, no
                rail, no leafed edges, no deck.
                What CAN survive is the numbering, and only when it has been asked
-               for: a label like S004.D002 in the left margin is exactly how a
+               for: a label like S004.V002 in the left margin is exactly how a
                shooting script carries its scene numbers, and it is what tells a
-               reader of the PDF which draft of that scene they are holding. */
+               reader of the PDF which variation of that scene they are holding. */
             #deck-bar, #compare-viewer { display: none !important; }
             .page > [data-stack] { background: none !important; box-shadow: none !important; }
             .page > [data-stack]::before { display: none !important; }
@@ -1217,6 +1339,33 @@
             <button onclick="undo()" style="margin-left: 20px;" title="Undo (Ctrl+Z)">↶</button>
             <button onclick="redo()" title="Redo (Ctrl+Y)">↷</button>
 
+            <!-- Highlighter: select text or click a block/scene while armed to
+                 paint it permanently (real markup, saved with the doc, undoable
+                 like any other edit) -- distinct from the click-to-highlight in
+                 Navigator/Characters/Locations, which is a session-only overlay. -->
+            <div class="hl-tool" id="hl-tool" style="margin-left: 20px;">
+                <button id="btn-highlighter" class="hl-tool-btn" onclick="toggleHighlighterTool()"
+                        title="Highlighter (Alt+H) — arm it, then select text or click a block or scene to color it permanently. Right-click any highlight, any time, to delete just that one. Click again, or Esc, to put the tool away.">🖍️ Highlight</button>
+                <div id="hl-popover" class="hl-popover hidden">
+                    <div class="hl-swatches">
+                        <button class="hl-swatch" style="background:#fff176" title="Yellow" onclick="setHighlighterColor('#fff176')"></button>
+                        <button class="hl-swatch" style="background:#a5d6a7" title="Green" onclick="setHighlighterColor('#a5d6a7')"></button>
+                        <button class="hl-swatch" style="background:#90caf9" title="Blue" onclick="setHighlighterColor('#90caf9')"></button>
+                        <button class="hl-swatch" style="background:#f48fb1" title="Pink" onclick="setHighlighterColor('#f48fb1')"></button>
+                        <button class="hl-swatch" style="background:#ffcc80" title="Orange" onclick="setHighlighterColor('#ffcc80')"></button>
+                        <button class="hl-swatch" style="background:#ce93d8" title="Purple" onclick="setHighlighterColor('#ce93d8')"></button>
+                        <input type="color" id="hl-custom-color" class="hl-custom" title="Custom color" value="#fff176" oninput="setHighlighterColor(this.value)">
+                        <button class="hl-swatch hl-eraser" title="Remove highlight" onclick="setHighlighterColor(null)">✕</button>
+                    </div>
+                </div>
+            </div>
+            <button id="btn-toggle-highlights" onclick="toggleHighlightsVisibility()" style="margin-left: 8px;"
+                    title="Hide all permanent highlights (doesn't delete them)">👁 Highlights</button>
+            <button id="btn-deselect-highlights" onclick="deselectAllHighlights()" style="margin-left: 8px;"
+                    title="Clear every Navigator highlight -- character/location word marks and open scenes (Ctrl+D)">Deselect All</button>
+            <button id="btn-toggle-stacks" onclick="toggleStacksVisibility()" style="margin-left: 8px;"
+                    title="Hide the variation tint/markers in the script (doesn't delete them)">👁 Variations</button>
+
             <!-- Variations. With text selected, stacks exactly that selection;
                  with only a caret, stacks the whole scene it sits in. -->
             <button id="btn-add-variation" onclick="addVariation()" style="margin-left: 20px;"
@@ -1225,8 +1374,8 @@
                     title="Fan out the stack the cursor is in"><span class="stack-glyph"></span><span id="btn-deck-count">0</span></button>
         </div>
         <div class="view-toggle" id="view-toggle">
-            <button id="view-btn-exact" onclick="togglePane('exact')" title="Show/hide the pixel-perfect replica of the source PDF">Exact View</button>
-            <button id="view-btn-editable" onclick="togglePane('editable')" title="Show/hide the reflowed, editable screenplay">Editable Script</button>
+            <button id="view-btn-exact" onclick="togglePane('exact')" title="Show/hide a read-only render of the script">Render Mode</button>
+            <button id="view-btn-editable" onclick="togglePane('editable')" title="Show/hide the editable screenplay">Edit Mode</button>
             <button id="view-btn-sync" onclick="syncPanes()" title="Highlight the matching line in both panes (Ctrl+M) — click again to re-match where you are now, click into a pane to clear it">Match ⇔</button>
             <button id="view-btn-swap" onclick="swapPanes()" title="Swap the left and right panes">⇄</button>
         </div>
@@ -1237,20 +1386,21 @@
     <div id="main-container">
         <!-- Left Sidebar -->
         <div id="sidebar">
-            <div class="sidebar-section">
+            <div class="sidebar-section" id="sidebar-section-view">
                 <h2 class="collapsible" onclick="toggleSection(this)">View Controls <span>▼</span></h2>
                 <div class="section-content">
                     <label style="font-size: 0.85rem; display:block; margin-bottom:5px;">Zoom: <span id="zoom-val">100</span>%</label>
                     <input type="range" id="zoom-slider" min="20" max="200" value="100" style="width:100%" oninput="updateZoom()">
-                    
+
                     <label style="font-size: 0.85rem; margin-top: 15px; display:flex; align-items:center; gap: 8px; cursor:pointer;">
                         <input type="checkbox" id="page-number-toggle" onchange="togglePageNumbers()"> Show Page Numbers
                     </label>
                 </div>
             </div>
-        
-            
-            <div class="sidebar-section">
+
+            <div class="v-resizer" id="v-resizer-view-stats"></div>
+
+            <div class="sidebar-section" id="sidebar-section-stats">
                 <h2 class="collapsible" onclick="toggleSection(this)">Document Statistics <span>▼</span></h2>
                 <div class="section-content" id="doc-stats" style="font-size: 0.85rem; color: #ccc;">
                     <div class="stat-row"><span>Pages:</span> <span class="stat-value" id="stat-pages">0</span></div>
@@ -1265,8 +1415,9 @@
                 </div>
             </div>
 
-            
-            <div class="sidebar-section" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden;">
+            <div class="v-resizer" id="v-resizer-stats-nav"></div>
+
+            <div class="sidebar-section" id="sidebar-section-nav" style="flex-grow: 1; display: flex; flex-direction: column; overflow: hidden;">
                 <h2 class="collapsible" onclick="toggleSection(this)">Navigator <span>▼</span></h2>
                 <div class="section-content" id="toc-content" style="flex-grow: 1;">
                     <ul id="toc-list">
@@ -1285,13 +1436,15 @@
         <div id="editor-wrapper" class="single-pane">
             <div class="doc-pane hidden" id="pane-exact">
                 <div class="pane-header">
-                    <span class="pane-title" id="pane-title-exact">Exact View</span>
+                    <span class="pane-title" id="pane-title-exact">Render Mode</span>
                     <button class="pane-close" id="pane-close-exact" onclick="closePane('exact')" title="Close this pane">✕</button>
                 </div>
-                <!-- This pane is a slot with two possible occupants: the rendered
-                     source PDF, or the side-by-side variation diff. `paneState.sideMode`
-                     decides which one is showing. -->
-                <div class="pane-body"><div id="pdf-viewer"></div><div id="compare-viewer">
+                <!-- This pane is a slot with three possible occupants: the rendered
+                     source PDF, a read-only render of the script itself (when there's
+                     no PDF -- see refreshScriptRender()), or the side-by-side variation
+                     diff. `paneState.sideMode` and `pdfLoaded` decide which is showing;
+                     see updateRenderPaneOccupant(). -->
+                <div class="pane-body"><div id="pdf-viewer"></div><div id="script-render-page"></div><div id="compare-viewer">
                     <div id="compare-head"></div>
                     <div id="compare-body"></div>
                 </div></div>
@@ -1299,7 +1452,7 @@
             <div class="pane-splitter hidden" id="pane-splitter"></div>
             <div class="doc-pane" id="pane-editable">
                 <div class="pane-header">
-                    <span class="pane-title">Editable Script</span>
+                    <span class="pane-title">Edit Mode</span>
                     <button class="pane-close" id="pane-close-editable" onclick="closePane('editable')" title="Close this pane">✕</button>
                 </div>
                 <div class="pane-body">
@@ -1313,29 +1466,27 @@
         
         <!-- Right Sidebar -->
         <div id="right-sidebar">
-            <div class="tabs-header">
-                <button class="tab-btn active" onclick="switchTab('characters')">Characters</button>
-                <button class="tab-btn" onclick="switchTab('locations')">Locations</button>
+            <div class="rs-toolbar">
+                <div class="tabs-header">
+                    <button class="tab-btn active" onclick="switchTab('characters')">Characters</button>
+                    <button class="tab-btn" onclick="switchTab('locations')">Locations</button>
+                </div>
+                <button class="rs-layout-toggle" id="rs-layout-toggle" onclick="toggleRightLayout()" title="Switch to split view">⬓</button>
             </div>
-            
-            <!-- Characters Tab -->
+
+            <!-- Characters: auto-populated from .character blocks in the script
+                 by extractEntities() -- there's no manual "add" control here. -->
             <div id="tab-characters" class="tab-content active">
+                <div class="rs-panel-header">Characters</div>
                 <ul class="list-items" id="characters-list"></ul>
-                <div class="add-input-group">
-                    <input type="text" id="new-char-name" placeholder="Name (e.g. ARTHUR)">
-                    <input type="color" id="new-char-color" value="#ff5555">
-                    <button onclick="addListItem('characters')">+</button>
-                </div>
             </div>
-            
-            <!-- Locations Tab -->
+
+            <div class="v-resizer" id="rs-v-resizer"></div>
+
+            <!-- Locations: auto-populated from .scene-heading blocks. -->
             <div id="tab-locations" class="tab-content">
+                <div class="rs-panel-header">Locations</div>
                 <ul class="list-items" id="locations-list"></ul>
-                <div class="add-input-group">
-                    <input type="text" id="new-loc-name" placeholder="Location (e.g. LAB)">
-                    <input type="color" id="new-loc-color" value="#5555ff">
-                    <button onclick="addListItem('locations')">+</button>
-                </div>
             </div>
         </div>
     </div>
@@ -1434,7 +1585,17 @@
             // null means "not dragged yet" -- positionDeck() then pins the bar
             // near the top of the pane instead of reading this. Once the user
             // drags it, {left, top} sticks across stacks, documents and reloads.
-            deckBarPos: null
+            deckBarPos: null,
+            // 'tabs' (Characters/Locations switched via tab buttons) or 'split'
+            // (both shown stacked, independently resizable).
+            rightSidebarLayout: 'tabs',
+            // Per-section pixel heights set by dragging a .v-resizer, keyed by
+            // the storageKey passed to setupVResizer.
+            sectionHeights: {},
+            // View-only declutter toggles -- neither one deletes anything, they
+            // just stop painting it (see body.fd-hl-hidden/fd-stacks-hidden).
+            highlightsVisible: true,
+            stacksVisible: true
         };
 
         function loadSettings() {
@@ -1467,6 +1628,7 @@
             document.getElementById('zoom-val-modal').innerText = settings.zoom + '%';
             document.getElementById('editor-page').style.zoom = settings.zoom / 100;
             document.getElementById('pdf-viewer').style.zoom = settings.zoom / 100;
+            document.getElementById('script-render-page').style.zoom = settings.zoom / 100;
 
             const sceneNumSel = document.getElementById('scene-number-mode');
             sceneNumSel.value = settings.sceneNumberMode;
@@ -1474,6 +1636,66 @@
 
             const reuseToggle = document.getElementById('reuse-last-insertion-toggle');
             if (reuseToggle) reuseToggle.checked = settings.reuseLastInsertion;
+
+            applyRightSidebarLayout(settings.rightSidebarLayout);
+
+            const heightTargets = {
+                'sidebar-view': 'sidebar-section-view',
+                'sidebar-stats': 'sidebar-section-stats',
+                'rs-characters': 'tab-characters'
+            };
+            Object.entries(settings.sectionHeights || {}).forEach(([key, h]) => {
+                const el = document.getElementById(heightTargets[key]);
+                if (el && h) el.style.height = h;
+            });
+
+            applyHighlightsVisibility();
+            applyStacksVisibility();
+        }
+
+        function toggleHighlightsVisibility() {
+            settings.highlightsVisible = !settings.highlightsVisible;
+            applyHighlightsVisibility();
+            saveSettings();
+        }
+        function applyHighlightsVisibility() {
+            document.body.classList.toggle('fd-hl-hidden', !settings.highlightsVisible);
+            const btn = document.getElementById('btn-toggle-highlights');
+            btn.textContent = (settings.highlightsVisible ? '👁 ' : '🙈 ') + 'Highlights';
+            btn.classList.toggle('toggled-off', !settings.highlightsVisible);
+            btn.title = settings.highlightsVisible
+                ? "Hide all permanent highlights (doesn't delete them)"
+                : 'Show highlights again';
+        }
+
+        function toggleStacksVisibility() {
+            settings.stacksVisible = !settings.stacksVisible;
+            applyStacksVisibility();
+            saveSettings();
+        }
+        function applyStacksVisibility() {
+            document.body.classList.toggle('fd-stacks-hidden', !settings.stacksVisible);
+            const btn = document.getElementById('btn-toggle-stacks');
+            btn.textContent = (settings.stacksVisible ? '👁 ' : '🙈 ') + 'Variations';
+            btn.classList.toggle('toggled-off', !settings.stacksVisible);
+            btn.title = settings.stacksVisible
+                ? "Hide the variation tint/markers in the script (doesn't delete them)"
+                : 'Show variation markers again';
+        }
+
+        function applyRightSidebarLayout(mode) {
+            const rs = document.getElementById('right-sidebar');
+            const btn = document.getElementById('rs-layout-toggle');
+            const split = mode === 'split';
+            rs.classList.toggle('split-mode', split);
+            btn.innerHTML = split ? '▤' : '⬓';
+            btn.title = split ? 'Switch to tabs view' : 'Switch to split view';
+        }
+
+        function toggleRightLayout() {
+            settings.rightSidebarLayout = settings.rightSidebarLayout === 'split' ? 'tabs' : 'split';
+            applyRightSidebarLayout(settings.rightSidebarLayout);
+            saveSettings();
         }
 
         function switchTab(tabName) {
@@ -1494,12 +1716,23 @@
             return `hsl(${hue}, 70%, 60%)`;
         }
 
+        // The solid item.color is right for the sidebar swatch/border, but far too
+        // heavy for a text overlay -- this thins it down to a tinted wash, the way
+        // a browser paints a text selection, rather than a block of solid ink.
+        function toHighlightColor(color, alpha) {
+            const m = /^hsl\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)$/i.exec(color);
+            return m ? `hsla(${m[1]}, ${m[2]}%, ${m[3]}%, ${alpha})` : color;
+        }
+
         function extractEntities() {
             dynamicCounts = { characters: {}, locations: {} };
             const entityNodes = { characters: {}, locations: {} };
-            
+
             let charIdx = 0;
-            document.querySelectorAll('.character').forEach(node => {
+            // Scoped to #editor-page: unscoped would also match the read-only
+            // clone in #script-render-page (see refreshScriptRender()), double
+            // counting every character/location and pushing duplicate nodes.
+            document.querySelectorAll('#editor-page .character').forEach(node => {
                 let name = node.innerText.replace(/\s*\(.*?\)/g, '').trim().toUpperCase();
                 if (!name) return;
                 dynamicCounts.characters[name] = (dynamicCounts.characters[name] || 0) + 1;
@@ -1514,7 +1747,7 @@
             });
             
             let locIdx = 0;
-            document.querySelectorAll('.scene-heading').forEach(node => {
+            document.querySelectorAll('#editor-page .scene-heading').forEach(node => {
                 let text = node.innerText.trim().toUpperCase();
                 let match = text.match(/^(?:INT\.|EXT\.|I\/E\.|INT\/EXT\.)\s+(.*?)(?:\s+-\s+.*)?$/);
                 let name = match ? match[1].trim() : text;
@@ -1725,26 +1958,6 @@
             saveState();
         }
 
-        function addListItem(type) {
-            const nameInput = type === 'characters' ? document.getElementById('new-char-name') : document.getElementById('new-loc-name');
-            const colorInput = type === 'characters' ? document.getElementById('new-char-color') : document.getElementById('new-loc-color');
-            
-            const name = nameInput.value.trim().toUpperCase();
-            if (!name) return;
-            
-            if (!appState[type].find(i => i.name === name)) {
-                appState[type].push({
-                    id: Date.now() + Math.random(),
-                    name: name,
-                    color: colorInput.value
-                });
-            }
-            
-            nameInput.value = '';
-            extractEntities(); 
-            saveState();
-        }
-
         // --- CSS Custom Highlight ---
         function toggleHighlight(item, liElement, forceOn) {
             if (!window.CSS || !CSS.highlights) return;
@@ -1767,7 +1980,7 @@
             if (!document.getElementById("style-" + hlName)) {
                 const style = document.createElement('style');
                 style.id = "style-" + hlName;
-                style.innerHTML = `::highlight(${hlName}) { background-color: ${item.color}; color: #fff; }`;
+                style.innerHTML = `::highlight(${hlName}) { background-color: ${toHighlightColor(item.color, 0.35)}; }`;
                 document.head.appendChild(style);
             }
             
@@ -1925,6 +2138,218 @@
             });
         }
 
+        // Clears every Navigator highlight at once -- character/location word
+        // marks and open scenes alike. Leaves the highlighter tool's permanent
+        // marks untouched, since those are real markup the user painted on
+        // purpose, not a session-only overlay.
+        function deselectAllHighlights() {
+            Array.from(activeHighlights).forEach(id => {
+                const item = appState.characters.find(c => c.id === id) || appState.locations.find(l => l.id === id);
+                if (!item) { activeHighlights.delete(id); return; }
+                const colorEl = document.querySelector(`.list-item-color[style*="${item.color}"]`);
+                const li = colorEl ? colorEl.closest('li') : null;
+                if (li) {
+                    toggleHighlight(item, li, false);
+                } else {
+                    const hlName = "hl-" + id.toString().replace('.', '-');
+                    if (window.CSS && CSS.highlights && CSS.highlights.has(hlName)) CSS.highlights.delete(hlName);
+                    activeHighlights.delete(id);
+                }
+            });
+
+            Array.from(activeSceneHighlights).forEach(id => {
+                const heading = document.getElementById(id);
+                if (heading) sceneRunBlocks(heading).forEach(b => b.classList.remove('scene-nav-highlight'));
+                activeSceneHighlights.delete(id);
+            });
+            document.querySelectorAll('.toc-scene-row a.active').forEach(a => a.classList.remove('active'));
+        }
+
+        // --- Highlighter tool ---
+        // Unlike toggleHighlight/toggleSceneHighlight above (session-only overlays
+        // via the CSS Custom Highlight API / a transient class), this paints real
+        // markup into the document: an inline background-color on a block, or a
+        // <mark class="fd-hl"> around a text selection. That markup is what
+        // scriptJSON()/openProject() round-trip (see hlColor/html below) and what
+        // saveState() already snapshots, so highlighter actions are undoable and
+        // survive Save/Open for free.
+        let highlighterMode = { active: false, color: '#fff176' };
+
+        function toggleHighlighterTool() {
+            if (highlighterMode.active) {
+                highlighterMode.active = false;
+                document.getElementById('hl-popover').classList.add('hidden');
+                updateHighlighterUI();
+            } else {
+                document.getElementById('hl-popover').classList.toggle('hidden');
+            }
+        }
+
+        function updateHighlighterUI() {
+            const btn = document.getElementById('btn-highlighter');
+            btn.classList.toggle('active', highlighterMode.active);
+            btn.style.setProperty('--hl-swatch', highlighterMode.color || '#999');
+        }
+
+        function isSelectionInEditor(sel) {
+            const editor = document.getElementById('editor-page');
+            return sel.rangeCount > 0 && editor.contains(sel.getRangeAt(0).commonAncestorContainer);
+        }
+
+        // Picking a color arms the tool with it; a color chosen while text is
+        // already selected applies immediately instead of making the user redo
+        // the selection. `color: null` arms the eraser.
+        function setHighlighterColor(color) {
+            highlighterMode.color = color;
+            highlighterMode.active = true;
+            updateHighlighterUI();
+            document.getElementById('hl-popover').classList.add('hidden');
+
+            const sel = window.getSelection();
+            if (sel && !sel.isCollapsed && sel.rangeCount && isSelectionInEditor(sel)) {
+                applySelectionHighlight(sel, color);
+                sel.removeAllRanges();
+                saveState();
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#hl-tool')) document.getElementById('hl-popover').classList.add('hidden');
+        });
+
+        function applySelectionHighlight(sel, color) {
+            const range = sel.getRangeAt(0);
+            const startBlock = findBlockNode(range.startContainer);
+            const endBlock = findBlockNode(range.endContainer);
+            if (startBlock && startBlock === endBlock) {
+                wrapRangeInMark(range, color);
+            } else {
+                // Spans more than one block -- "highlight this section" reduces
+                // to painting every block the selection touches.
+                getBlocks().forEach(b => {
+                    if (range.intersectsNode(b)) applyBlockHighlight(b, color, true);
+                });
+            }
+        }
+
+        // Wraps (or, for color:null, unwraps) a single-block Range in a <mark>.
+        // Always unwraps first so re-highlighting a partially-marked selection
+        // can't nest marks inside marks -- the cost is that a prior mark only
+        // partly covered by the new selection loses its un-selected portion too,
+        // which is an acceptable simplification for how small these spans are.
+        function wrapRangeInMark(range, color) {
+            unwrapMarksInRange(range);
+            if (color === null) return;
+            const mark = document.createElement('mark');
+            mark.className = 'fd-hl';
+            mark.style.backgroundColor = color;
+            try {
+                range.surroundContents(mark);
+            } catch (e) {
+                // Boundary lands inside an existing inline element -- extract+wrap
+                // handles that by moving the actual nodes instead of the range.
+                const frag = range.extractContents();
+                mark.appendChild(frag);
+                range.insertNode(mark);
+            }
+        }
+
+        function unwrapMarksInRange(range) {
+            const root = range.commonAncestorContainer.nodeType === 1
+                ? range.commonAncestorContainer
+                : range.commonAncestorContainer.parentElement;
+            if (!root || !root.querySelectorAll) return;
+            Array.from(root.querySelectorAll('mark.fd-hl'))
+                .filter(m => range.intersectsNode(m))
+                .forEach(m => {
+                    const parent = m.parentNode;
+                    while (m.firstChild) parent.insertBefore(m.firstChild, m);
+                    parent.removeChild(m);
+                    parent.normalize();
+                });
+        }
+
+        // `skipToggle` (used for the multi-block "section" case above) always
+        // sets the color rather than toggling it off on a second application,
+        // since intent there is "paint the whole span this color", not per-block.
+        function applyBlockHighlight(block, color, skipToggle) {
+            if (color === null) {
+                block.style.backgroundColor = '';
+                delete block.dataset.hlColor;
+                return;
+            }
+            if (!skipToggle && block.dataset.hlColor === color) {
+                block.style.backgroundColor = '';
+                delete block.dataset.hlColor;
+            } else {
+                block.style.backgroundColor = color;
+                block.dataset.hlColor = color;
+            }
+        }
+
+        // Whole-scene version used by the Navigator click (see buildToc()) --
+        // on/off is decided from the heading's own state so a scene with mixed
+        // per-block colors (from an earlier partial edit) still turns fully on.
+        function applySceneHighlight(heading, color) {
+            const run = sceneRunBlocks(heading);
+            if (color === null) {
+                run.forEach(b => applyBlockHighlight(b, null));
+                return;
+            }
+            const turnOff = heading.dataset.hlColor === color;
+            run.forEach(b => applyBlockHighlight(b, color, true));
+            if (turnOff) run.forEach(b => applyBlockHighlight(b, null));
+        }
+
+        // A plain click (collapsed selection) on a block paints that block --
+        // the whole scene if it's a scene heading; a drag-selection paints the
+        // exact text (or, spanning blocks, every block it touches).
+        document.getElementById('editor-page').addEventListener('mouseup', (e) => {
+            if (!highlighterMode.active) return;
+            const sel = window.getSelection();
+            if (sel && !sel.isCollapsed && sel.rangeCount) {
+                applySelectionHighlight(sel, highlighterMode.color);
+                sel.removeAllRanges();
+                saveState();
+                return;
+            }
+            const block = findBlockNode(e.target);
+            if (!block) return;
+            if (block.classList.contains('scene-heading')) {
+                applySceneHighlight(block, highlighterMode.color);
+            } else {
+                applyBlockHighlight(block, highlighterMode.color);
+            }
+            saveState();
+        });
+
+        // Right-click a highlight, any time (the tool doesn't need to be armed),
+        // to delete just that one -- the quick path, vs. arming the eraser and
+        // clicking it. A mark deletes just that span; a scene heading's own
+        // highlight clears the whole scene (matching what painting it did); any
+        // other highlighted block clears only itself.
+        document.getElementById('editor-page').addEventListener('contextmenu', (e) => {
+            const mark = e.target.closest ? e.target.closest('mark.fd-hl') : null;
+            if (mark) {
+                e.preventDefault();
+                const parent = mark.parentNode;
+                while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+                parent.removeChild(mark);
+                parent.normalize();
+                saveState();
+                return;
+            }
+            const block = findBlockNode(e.target);
+            if (!block || !block.dataset.hlColor) return;
+            e.preventDefault();
+            if (block.classList.contains('scene-heading')) {
+                applySceneHighlight(block, null);
+            } else {
+                applyBlockHighlight(block, null);
+            }
+            saveState();
+        });
+
         // --- Settings Modal ---
         function openSettings() {
             document.getElementById('settings-modal').style.display = 'flex';
@@ -2057,6 +2482,7 @@
             document.getElementById('zoom-val').innerText = val;
             document.getElementById('editor-page').style.zoom = val / 100;
             document.getElementById('pdf-viewer').style.zoom = val / 100;
+            document.getElementById('script-render-page').style.zoom = val / 100;
             settings.zoom = Number(val);
             saveSettings();
         }
@@ -2103,6 +2529,40 @@
         setupResizer('left-resizer', 'sidebar', false);
         setupResizer('right-resizer', 'right-sidebar', true);
 
+        // Drags the height of `aboveEl` (the section/panel sitting above the
+        // resizer bar); whatever sits below just gets whatever space is left,
+        // same relationship the horizontal resizers have with left/right.
+        function setupVResizer(resizerId, aboveId, storageKey) {
+            const resizer = document.getElementById(resizerId);
+            const aboveEl = document.getElementById(aboveId);
+            let resizing = false, startY = 0, startH = 0;
+            resizer.addEventListener('mousedown', (e) => {
+                resizing = true;
+                startY = e.clientY;
+                startH = aboveEl.getBoundingClientRect().height;
+                document.body.classList.add('resizing-v');
+                e.preventDefault();
+            });
+            document.addEventListener('mousemove', (e) => {
+                if (!resizing) return;
+                let newHeight = startH + (e.clientY - startY);
+                newHeight = Math.max(40, Math.min(newHeight, window.innerHeight - 150));
+                aboveEl.style.height = newHeight + 'px';
+                e.preventDefault();
+            });
+            document.addEventListener('mouseup', () => {
+                if (!resizing) return;
+                resizing = false;
+                document.body.classList.remove('resizing-v');
+                settings.sectionHeights = settings.sectionHeights || {};
+                settings.sectionHeights[storageKey] = aboveEl.style.height;
+                saveSettings();
+            });
+        }
+        setupVResizer('v-resizer-view-stats', 'sidebar-section-view', 'sidebar-view');
+        setupVResizer('v-resizer-stats-nav', 'sidebar-section-stats', 'sidebar-stats');
+        setupVResizer('rs-v-resizer', 'tab-characters', 'rs-characters');
+
         function toggleSidebar(side) {
             const targetId = side === 'left' ? 'sidebar' : 'right-sidebar';
             const btnId = side === 'left' ? 'left-collapse-toggle' : 'right-collapse-toggle';
@@ -2120,7 +2580,19 @@
             }
         }
 
-        function toggleSection(headerEl) { headerEl.classList.toggle('collapsed'); }
+        function toggleSection(headerEl) {
+            headerEl.classList.toggle('collapsed');
+            // A resized section has an explicit inline height; collapsing must
+            // clear it (so the section shrinks to just the header) and restore
+            // it on expand, or the header would sit above a blank gap.
+            const section = headerEl.parentElement;
+            if (headerEl.classList.contains('collapsed')) {
+                if (section.style.height) section.dataset.savedHeight = section.style.height;
+                section.style.height = '';
+            } else if (section.dataset.savedHeight) {
+                section.style.height = section.dataset.savedHeight;
+            }
+        }
 
         // --- Formatting & TOC ---
         // --- Formatting toolbar ---
@@ -2720,6 +3192,10 @@
             // than being stored anywhere.
             if (Object.keys(stacks).length) { healStacks(); decorateStacks(); }
             positionDeck();
+            // Render Mode's non-PDF occupant mirrors these same pages -- keep it
+            // current even while it isn't the one on screen, so opening it (or
+            // running Match into it) never shows stale content.
+            if (!pdfLoaded) refreshScriptRender();
         }
 
         let debounceTimer;
@@ -2896,11 +3372,21 @@
 
                 const a = document.createElement('a');
                 a.innerText = heading.innerText || "EMPTY SCENE";
-                a.title = "Click to jump to this scene and highlight it in the script; click again to clear the highlight";
+                a.title = highlighterMode.active
+                    ? "Click to jump to this scene and paint it permanently with the highlighter"
+                    : "Click to jump to this scene and highlight it in the script; click again to clear the highlight. Arm the highlighter tool first to make this permanent instead.";
                 if (activeSceneHighlights.has(heading.id)) a.classList.add('active');
                 a.onclick = () => {
                     scrollToBlock(heading, 'start');
-                    toggleSceneHighlight(heading, a);
+                    // With the highlighter tool armed, a Navigator click paints
+                    // the scene for real (saved, undoable) instead of the
+                    // ordinary session-only jump-and-highlight toggle.
+                    if (highlighterMode.active) {
+                        applySceneHighlight(heading, highlighterMode.color);
+                        saveState();
+                    } else {
+                        toggleSceneHighlight(heading, a);
+                    }
                 };
                 row.appendChild(a);
 
@@ -3204,7 +3690,7 @@
         // send out, so labelling it there is opt-in.
         //   'off'    nothing in the margin (the stack chip still shows a count)
         //   'scene'  S004 beside every scene heading, like a shooting script
-        //   'draft'  S004.D002 -- which scene, and which draft of it is standing
+        //   'draft'  S004.V002 -- which scene, and which variation of it is standing
         let sceneNumberMode = 'off';
 
         function pad3(n) { return String(n).padStart(3, '0'); }
@@ -3367,9 +3853,9 @@
         // A card's number is its identity, handed out once at creation and never
         // reused or reshuffled. Rank is a separate thing entirely -- it is the
         // position in `order`, and the star marks whichever card is currently
-        // first. Keeping them apart is the whole point: if D002 were "the second
+        // first. Keeping them apart is the whole point: if V002 were "the second
         // one down" it would name a different piece of writing every time
-        // somebody re-ranked the stack, and "go back to S004.D002" in a note or
+        // somebody re-ranked the stack, and "go back to S004.V002" in a note or
         // an email would mean nothing a week later.
         function nextCardNum(st) {
             st.seq = (st.seq || 0) + 1;
@@ -3388,7 +3874,7 @@
         }
 
         function draftLabel(card) {
-            return 'D' + String(card && card.num ? card.num : 1).padStart(3, '0');
+            return 'V' + String(card && card.num ? card.num : 1).padStart(3, '0');
         }
 
         function addCardTo(stackId) {
@@ -3825,22 +4311,23 @@
             renderDeck();
         }
 
-        // The side pane is a slot: it holds the rendered source PDF or the
-        // comparison, never both. A project loaded from JSON has no PDF, so the
-        // slot is free and comparison simply takes it.
+        // The side pane is a slot: it holds the rendered source PDF (or, without
+        // one, a read-only render of the script -- see updateRenderPaneOccupant())
+        // or the comparison, never both. Leaving compare restores whichever of
+        // those the slot would otherwise be showing.
         function setSideMode(mode) {
             paneState.sideMode = mode;
             const isCompare = mode === 'compare';
             document.getElementById('compare-viewer').classList.toggle('active', isCompare);
-            document.getElementById('pdf-viewer').style.display = isCompare ? 'none' : '';
-            document.getElementById('pane-title-exact').innerText = isCompare ? 'Compare Versions' : 'Exact View';
             if (isCompare) {
+                document.getElementById('pdf-viewer').style.display = 'none';
+                document.getElementById('script-render-page').style.display = 'none';
+                document.getElementById('pane-title-exact').innerText = 'Compare Versions';
                 paneState.exact = true;
                 paneState.editable = true;
                 applyPaneLayout();
-            } else if (!pdfLoaded) {
-                paneState.exact = false;
-                paneState.editable = true;
+            } else {
+                updateRenderPaneOccupant();
                 applyPaneLayout();
             }
         }
@@ -4394,9 +4881,9 @@
             return blocks;
         }
 
-        // --- PDF Import: Exact View rendering + text extraction ---
+        // --- PDF Import: Render Mode's PDF replica + text extraction ---
         // Converts PDF points (1/72in) to the CSS px scale the rest of the app assumes
-        // (96dpi, matching the 8.5in = 816px editable page), so the exact-view replica
+        // (96dpi, matching the 8.5in = 816px editable page), so the PDF replica
         // sits at the same visual size as the editable script view.
         const PDF_CSS_SCALE = 96 / 72;
         const PDF_RENDER_SCALE = 2; // supersample the canvas for crisp text at 100% zoom
@@ -4405,12 +4892,13 @@
 
         function setPdfLoaded(loaded) {
             pdfLoaded = loaded;
-            document.getElementById('view-toggle').style.display = loaded ? 'flex' : 'none';
+            // Render Mode is available for every project now, PDF or not -- see
+            // updateRenderPaneOccupant() -- so the toggle row (display:flex by
+            // default in CSS) no longer needs to be shown/hidden from here.
             if (!loaded) {
                 document.getElementById('pdf-viewer').innerHTML = '';
                 // Old pageDiv/span references are gone with it.
                 if (typeof clearExactCursorLine === 'function') clearExactCursorLine();
-                // Without a source PDF there is no exact render to show.
                 paneState.exact = false;
                 paneState.editable = true;
             } else {
@@ -4419,7 +4907,51 @@
             }
             paneState.swapped = false;
             paneState.ratio = 0.5;
+            updateRenderPaneOccupant();
             applyPaneLayout();
+        }
+
+        // The exact/render pane's slot picks its occupant from `pdfLoaded`: the
+        // rendered source PDF, or (now that Render Mode isn't PDF-only) a
+        // read-only mirror of the editable pane's own paginated pages. Leaves
+        // the slot alone while a comparison owns it (see setSideMode) --
+        // callers that might run mid-compare are responsible for re-calling
+        // this once the comparison ends.
+        function updateRenderPaneOccupant() {
+            if (paneState.sideMode === 'compare') return;
+            document.getElementById('pdf-viewer').style.display = pdfLoaded ? '' : 'none';
+            document.getElementById('script-render-page').style.display = pdfLoaded ? 'none' : '';
+            if (!pdfLoaded) refreshScriptRender();
+            const btnExact = document.getElementById('view-btn-exact');
+            if (btnExact) {
+                btnExact.title = pdfLoaded
+                    ? 'Show/hide the pixel-perfect replica of the source PDF'
+                    : 'Show/hide a read-only render of the script';
+            }
+            const title = document.getElementById('pane-title-exact');
+            if (title) title.innerText = 'Render Mode';
+        }
+
+        // Render Mode's non-PDF occupant: a plain, read-only mirror of the
+        // editable pane's own paginated pages -- same page-frame/furniture
+        // structure as #editor-page, just without contenteditable, so a script
+        // can be reviewed (or Ctrl+M-matched against the editable pane, see
+        // syncEditableToExactRender/syncExactToEditableRender) without its
+        // editing chrome even when it was never imported from a PDF. A plain
+        // innerHTML clone is safe here: blocks carry no listeners of their own
+        // (editor-page's are delegated at the container), just classes and text.
+        // Called after every reflow, and whenever the occupant changes.
+        function refreshScriptRender() {
+            const dst = document.getElementById('script-render-page');
+            if (!dst) return;
+            dst.innerHTML = document.getElementById('editor-page').innerHTML;
+            // Character/location/scene-heading ids exist for the live editor's
+            // own lookups (extractEntities, refreshSceneHighlights, ...) --
+            // cloning them here would leave two elements sharing an id, and
+            // document.getElementById() would be free to resolve to this
+            // read-only copy (it sits earlier in the DOM) instead of the real
+            // one. This copy never needs to be found by id, so just drop them.
+            dst.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
         }
 
         // --- Document Panes ---
@@ -4480,16 +5012,15 @@
         }
 
         function setPaneVisible(which, visible) {
-            // The side pane is a slot with two possible occupants: the rendered
-            // source PDF, or the version comparison. It can open for either.
-            if (which === 'exact' && visible && !pdfLoaded && paneState.sideMode !== 'compare') return;
+            // The side pane is a slot with three possible occupants -- the rendered
+            // source PDF, a read-only render of the script itself, or the version
+            // comparison -- so it can always open, PDF or not.
             // Closing the slot while it holds a comparison ends the comparison.
             if (which === 'exact' && !visible && paneState.sideMode === 'compare') {
                 compareWith = null;
                 paneState.sideMode = 'exact';
                 document.getElementById('compare-viewer').classList.remove('active');
-                document.getElementById('pdf-viewer').style.display = '';
-                document.getElementById('pane-title-exact').innerText = 'Exact View';
+                updateRenderPaneOccupant();
                 if (typeof renderDeck === 'function') renderDeck();
             }
             const other = which === 'exact' ? 'editable' : 'exact';
@@ -4571,12 +5102,20 @@
         // Called from both sync directions below with whichever side is source
         // and which is destination; `spans` is empty when only a whole page
         // could be pinned down, in which case `fallbackPageDiv` rings the page.
-        function applyMatchHighlight(block, spans, fallbackPageDiv) {
+        // `renderBlock` is the non-PDF Render Mode equivalent of `spans`/
+        // `fallbackPageDiv`: since it's a real block (not a PDF text span), it
+        // just gets a second Range in the same Highlight as `block`.
+        function applyMatchHighlight(block, spans, fallbackPageDiv, renderBlock) {
             clearMatchHighlight();
-            if (block && window.CSS && CSS.highlights) {
-                const range = document.createRange();
-                range.selectNodeContents(block);
-                CSS.highlights.set(MATCH_HL_NAME, new Highlight(range));
+            if (window.CSS && CSS.highlights) {
+                const ranges = [];
+                [block, renderBlock].forEach(b => {
+                    if (!b) return;
+                    const r = document.createRange();
+                    r.selectNodeContents(b);
+                    ranges.push(r);
+                });
+                if (ranges.length) CSS.highlights.set(MATCH_HL_NAME, new Highlight(...ranges));
             }
             if (spans && spans.length) {
                 spans.forEach(s => s.classList.add('match-line-active'));
@@ -4801,7 +5340,65 @@
             return map;
         }
 
+        // Dispatches on `pdfLoaded`: the PDF-backed match logic (page/line
+        // geometry reconciliation) and the Render Mode one (see below, a plain
+        // shared-index lookup into the structural clone) both need to answer
+        // "what does the exact/render pane show right now", just from very
+        // different sources.
         function syncExactToEditable() {
+            return pdfLoaded ? syncExactToEditablePdf() : syncExactToEditableRender();
+        }
+        function syncEditableToExact() {
+            return pdfLoaded ? syncEditableToExactPdf() : syncEditableToExactRender();
+        }
+
+        // Render Mode's non-PDF occupant is a literal structural clone of the
+        // editable pane (see refreshScriptRender()), so unlike the PDF case
+        // there's no separate page/line geometry to reconcile -- block N in one
+        // pane is block N in the other, and matching is just finding that shared
+        // index. No click-to-anchor tracking either (unlike exactCursorLine):
+        // absent a caret, "whichever block is at the top of the pane" is a good
+        // enough guess for a plain read-only mirror.
+        function renderCloneBlocks() {
+            return Array.from(document.querySelectorAll('#script-render-page > .page-frame > ' + NON_FURNITURE_SELECTOR));
+        }
+
+        // dest = exact/render pane, driven by the editable pane's caret --
+        // mirrors syncExactToEditablePdf.
+        function syncExactToEditableRender() {
+            const blocks = getBlocks();
+            const anchor = editableAnchorBlock(blocks);
+            if (!anchor) return false;
+            const dest = renderCloneBlocks()[blocks.indexOf(anchor)];
+            if (!dest) return false;
+            const exactBody = paneBody('exact');
+            const screenOffset = clampScreenOffset(
+                editableAnchorScreenTop(anchor) - paneBody('editable').getBoundingClientRect().top, exactBody);
+            scrollPaneTo(exactBody, dest, 0, screenOffset);
+            applyMatchHighlight(anchor, [], null, dest);
+            return true;
+        }
+
+        // dest = editable pane, driven by whatever block sits at the top of the
+        // exact/render pane -- mirrors syncEditableToExactPdf.
+        function syncEditableToExactRender() {
+            const renderBlocks = renderCloneBlocks();
+            if (!renderBlocks.length) return false;
+            const exactBody = paneBody('exact');
+            const top = exactBody.getBoundingClientRect().top;
+            const source = renderBlocks.find(b => b.getBoundingClientRect().bottom > top + 4)
+                || renderBlocks[renderBlocks.length - 1];
+            const dest = getBlocks()[renderBlocks.indexOf(source)];
+            if (!dest) return false;
+            const editableBody = paneBody('editable');
+            const screenOffset = clampScreenOffset(
+                source.getBoundingClientRect().top - exactBody.getBoundingClientRect().top, editableBody);
+            scrollPaneTo(editableBody, dest, 0, screenOffset);
+            applyMatchHighlight(dest, [], null, source);
+            return true;
+        }
+
+        function syncExactToEditablePdf() {
             const { blocks, pages } = resolveBlockPages();
             const anchor = editableAnchorBlock(blocks);
             const i = blocks.indexOf(anchor);
@@ -4925,7 +5522,7 @@
         }
         setupExactCursorTracking();
 
-        function syncEditableToExact() {
+        function syncEditableToExactPdf() {
             const { blocks, pages } = resolveBlockPages();
             const exactBody = paneBody('exact');
 
@@ -5012,6 +5609,7 @@
 
         function syncPanes() {
             if (!(paneState.exact && paneState.editable)) return false;
+            if (paneState.sideMode === 'compare') return false; // nothing to match against a diff view
             return lastActivePane === 'exact' ? syncEditableToExact() : syncExactToEditable();
         }
 
@@ -5388,6 +5986,13 @@
                         entry.stack = child.dataset.stack;
                         entry.variant = child.dataset.variant;
                     }
+                    // Highlighter markup: a whole-block color (inline style, so
+                    // it isn't part of `type`/className) and/or inline <mark>
+                    // spans (which `text` -- plain innerText -- would flatten
+                    // away). Both are optional and additive, so older readers
+                    // that only look at `text`/`type` still load the file fine.
+                    if (child.dataset.hlColor) entry.hlColor = child.dataset.hlColor;
+                    if (child.querySelector('mark.fd-hl')) entry.html = child.innerHTML;
                     data.push(entry);
                 }
             }
@@ -5498,6 +6103,9 @@
             activeHighlights.clear();
             activeSceneHighlights.clear();
             if (typeof clearMatchHighlight === 'function') clearMatchHighlight();
+            highlighterMode.active = false;
+            document.getElementById('hl-popover').classList.add('hidden');
+            updateHighlighterUI();
             historyStack = [];
             historyIndex = -1;
             lastSavedName = '';
@@ -5598,7 +6206,15 @@
                     scriptData.forEach(item => {
                         const div = document.createElement('div');
                         div.className = item.type;
-                        div.innerText = item.text;
+                        // `html` (present only when the block has inline highlight
+                        // marks) carries the marks along; plain blocks fall back
+                        // to the old text-only path.
+                        if (item.html) div.innerHTML = item.html;
+                        else div.innerText = item.text;
+                        if (item.hlColor) {
+                            div.style.backgroundColor = item.hlColor;
+                            div.dataset.hlColor = item.hlColor;
+                        }
                         if (item.stack && stacks[item.stack]) {
                             div.dataset.stack = item.stack;
                             div.dataset.variant = item.variant || stacks[item.stack].order[0];
@@ -5722,7 +6338,7 @@
                             if (allLines.length === 0) {
                                 setEditableNotice(
                                     'This PDF has no selectable text',
-                                    'Every page rendered in Exact View, but the file carries no text layer — it is almost ' +
+                                    'Every page rendered in Render Mode, but the file carries no text layer — it is almost ' +
                                     'certainly a scan or an image-only export. There is nothing to reflow into an editable ' +
                                     'script, which is why this pane, the Navigator and the character and location lists are ' +
                                     'all empty. Run the file through OCR, or export a text-based PDF from whatever produced ' +
@@ -5731,7 +6347,7 @@
                                 setEditableNotice(
                                     'Could not read this PDF as a screenplay',
                                     'Text was extracted from the file (' + allLines.length + ' lines), but none of it matched ' +
-                                    'a recognisable screenplay layout, so no blocks were created. Exact View still shows the ' +
+                                    'a recognisable screenplay layout, so no blocks were created. Render Mode still shows the ' +
                                     'document exactly as it is.');
                             }
                             // Don't leave the explanation hidden behind a pane the user
@@ -5743,7 +6359,7 @@
                         extractEntities();
                         updateStatistics();
                         // The reflow-based page estimate needs editor-page to be laid out
-                        // (display:none while Exact View is active reads as 0 height), and
+                        // (display:none while Render Mode is active reads as 0 height), and
                         // in any case the PDF's own page count is more meaningful here.
                         document.getElementById('stat-pages').innerText = pdf.numPages;
                         saveState();
@@ -5807,7 +6423,10 @@
             // Otherwise Ctrl+S saves the app's own HTML, which is never what was meant.
             else if (e.ctrlKey && (e.key === 's' || e.key === 'S')) { e.preventDefault(); saveJSON(); }
             else if (e.ctrlKey && e.shiftKey && (e.key === 'v' || e.key === 'V')) { e.preventDefault(); addVariation(); }
+            else if (e.altKey && (e.key === 'h' || e.key === 'H')) { e.preventDefault(); toggleHighlighterTool(); }
+            else if (e.ctrlKey && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); deselectAllHighlights(); }
             else if (e.key === 'Escape' && openStackId) { e.preventDefault(); closeDeck(); }
+            else if (e.key === 'Escape' && highlighterMode.active) { e.preventDefault(); toggleHighlighterTool(); }
             // Plain arrows still have to move the caret inside the script, so
             // flipping through the deck is on Alt+Arrow.
             else if (e.altKey && openStackId && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
@@ -5919,6 +6538,11 @@
             setupFormatButtons();
             applySettings(); // Restores zoom, scene-number mode, reuse-insertion from last session
             applyPageNumberUI(); // Pushes the (default, until a project loads) furniture/page-number state
+            // The page ships with a sample script already in #editor-page's markup,
+            // with no New/Open/Import action to trigger setPdfLoaded() first -- call
+            // it directly so Render Mode's script-render-page starts populated
+            // instead of empty until the first edit or reflow.
+            setPdfLoaded(false);
             extractEntities();
             saveState();
             buildToc();
@@ -5968,13 +6592,13 @@
                     <input type="range" id="zoom-slider-modal" min="20" max="200" value="100" style="width:100%" oninput="updateZoomModal()">
 
                     <label style="font-size: 0.85rem; margin-top: 15px; display:flex; align-items:center; gap: 8px;"
-                           title="Prints into the left margin, e.g. S004.D002. Off by default — a script you send out usually shouldn't carry them.">
+                           title="Prints into the left margin, e.g. S004.V002. Off by default — a script you send out usually shouldn't carry them.">
                         Scene numbers in script
                         <select id="scene-number-mode" onchange="setSceneNumberMode(this.value)"
                                 style="margin-left:auto; background:#333; color:#eee; border:1px solid #444; border-radius:4px; padding:3px 6px;">
                             <option value="off">Off</option>
                             <option value="scene">Scene — S004</option>
-                            <option value="draft">Scene + draft — S004.D002</option>
+                            <option value="draft">Scene + variation — S004.V002</option>
                         </select>
                     </label>
 
@@ -6072,7 +6696,7 @@
                 <div class="section-content" style="font-size: 0.85rem; color: #bbb; line-height: 1.4; padding: 10px 0 0;">
                     <p>File menu: <b>New</b> starts an empty script. <b>Save As...</b> opens your system's save dialog so you can choose the folder, and reopens in that same folder next time. <b>Save</b> writes straight back to the file you last saved to, and only asks where if there isn't one yet. The filename is suggested from the script's title page, or from the file it was loaded from. <b>Ctrl+S</b> saves.</p>
                     <p>Use <b>Ctrl+Z</b> and <b>Ctrl+Y</b> to undo and redo changes.</p>
-                    <p>With a PDF open, use the <b>Exact View</b> and <b>Editable Script</b> buttons to show either or both side by side, <b>⇄</b> to swap sides, and <b>Match ⇔</b> (or <b>Ctrl+M</b>) to scroll the other pane to the spot you're working in.</p>
+                    <p>Use the <b>Render Mode</b> and <b>Edit Mode</b> buttons to show either or both side by side, <b>⇄</b> to swap sides, and <b>Match ⇔</b> (or <b>Ctrl+M</b>) to scroll the other pane to the spot you're working in. Render Mode shows the exact source PDF when one was imported, or a read-only paginated render of the script itself otherwise.</p>
                     <p>Click anywhere in the script to edit.</p>
                     <p>Formatting toolbar: <b>click</b> a button to insert a filled-in example of that element at the cursor (the example text is pre-selected, so just start typing over it). <b>Select</b> script text first and the button converts every line you selected instead. <b>Right-click</b> a button for a menu of that element's entries already used in the script, most frequent first.</p>
                     <p><b>Variations.</b> A passage can exist in several versions at once, like alternate pages stapled over a printed script. Press <b>+ Variation</b> (or <b>Ctrl+Shift+V</b>): with nothing selected it varies the whole scene the cursor is in, and with text selected it varies exactly that passage. The passage picks up a tinted band, a rule down the margin and a card count in the gutter, with the edges of the pages behind it showing at the foot.</p>
@@ -6080,7 +6704,7 @@
                     <p><b>⇄ Compare</b> opens two versions side by side with the changed words marked. Both sides are dropdowns — "Comparing" on the left is whichever version you're holding it up against, "against" on the right (marked <b>live · editable</b>) is the version open in the script, so picking a different one there actually flips the script to it. The <b>⇄</b> button between them swaps which side is which. Removed words are shown with a red highlight (not crossed out, so the old wording stays easy to read), added words with a green one, and <b>take →</b> on any line pulls it across into the version you're editing.</p>
                     <p><b>Ranking.</b> A stack is an ordered pile and the top of it is the version that stands — the one on the page, in the export, in the PDF. Drag a draft to the top of the list, in the Navigator or on the deck tabs, and it becomes that version immediately; <b>↑ Move to top</b> does the same thing for whichever one you're reading. The star marks the top.</p>
                     <p><b>Splitting a version out.</b> Sometimes a "variation" turns out to be its own scene rather than a replacement for the one it was riffing on. Flip to it and press <b>⏎ Insert as scene</b>: it leaves the stack, lands in the script as ordinary text right after the run it was compared against, and prints and exports like any other scene from then on. The stack stays behind with whatever versions are left; if only one remains, the stack dissolves and that one becomes plain script too.</p>
-                    <p><b>Numbering.</b> Scenes are numbered down the script — <b>S001</b>, <b>S002</b> — and every draft carries its own number, so <b>S004.D002</b> names one specific piece of writing. Draft numbers are handed out once, when the draft is created, and never change: re-ranking a stack moves the star, not the numbers, so <b>S004.D002</b> still means the same pages next week. That makes the label safe to quote in a note or an email. (Scene numbers do follow the script, so they shift if you reorder scenes.)</p>
+                    <p><b>Numbering.</b> Scenes are numbered down the script — <b>S001</b>, <b>S002</b> — and every variation carries its own number, so <b>S004.V002</b> names one specific piece of writing. Variation numbers are handed out once, when the variation is created, and never change: re-ranking a stack moves the star, not the numbers, so <b>S004.V002</b> still means the same pages next week. That makes the label safe to quote in a note or an email. (Scene numbers do follow the script, so they shift if you reorder scenes.)</p>
                     <p>The Navigator numbers every scene and nests that scene's drafts beneath it, shut by default — the count on the right says how many are in there, and clicking it opens the list. <b>Has variations</b> narrows the list to just the scenes that carry any. Only the top-ranked draft is ever exported, printed or written out as the script; the rest ride along in the .json.</p>
                     <p>Scripts that mark their alternates by hand, with lines like <b>* ALT DRAFT -- "THE SCULLERY EXCHANGE" *</b>, can be converted in one step: <b>File ▸ Fold Alternates into Stacks…</b> lifts each one out of the appendix and staples it onto the scene it rewrites.</p>
                     <p>Press <b>Enter</b> to create a new line. The editor will automatically maintain formatting blocks.</p>
