@@ -4,169 +4,306 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Final Drafter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&family=Nunito:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = ''; // Disabled to run locally without CORS issues
     </script>
-    <style>
+        <style>
         :root {
-            --bg-color: #1a1a1a;
-            --topbar-bg: rgba(40, 40, 40, 0.85);
-            --sidebar-bg: #222;
-            --text-color: #eee;
-            --border-color: #444;
-            --accent-color: #007bff;
+            /* Typography tokens matching Booklit */
+            --font-display: "Nunito", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-body: "Nunito", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: "Space Grotesk", "SF Mono", Consolas, "Courier New", monospace;
+            --font-script: 'Courier Prime', 'Courier New', Courier, monospace;
+
+            /* Forest Design Tokens (Booklit Design System) */
+            --color-bg: #14260d;
+            --color-bg-elevated: #1a2f11;
+            --color-bg-surface: #1e3614;
+            --color-bg-sunken: #0e1c08;
+
+            /* Chrome — dark-forest sidebar + topbar band */
+            --color-chrome: #0a1606;
+            --color-chrome-elevated: #1a2f11;
+            --color-chrome-active: rgba(122, 184, 74, 0.22);
+            --color-on-chrome-active: #a2d474;
+
+            /* Text tokens */
+            --color-text: #d8e8c8;
+            --color-text-dim: #a8c890;
+            --color-text-muted: #84a471;
+
+            /* Chrome text tokens */
+            --color-on-chrome: #c8e6b0;
+            --color-on-chrome-dim: rgba(200, 230, 160, 0.7);
+            --color-on-chrome-muted: rgba(200, 230, 160, 0.5);
+
+            /* Accents */
+            --color-accent: #7ab84a;
+            --color-accent-vivid: #8ee055;
+            --color-accent-warm: #d08a50;
+            --color-on-accent: #0a1606;
+
+            --color-border: rgba(200, 230, 160, 0.12);
+            --color-border-hover: rgba(200, 230, 160, 0.26);
+            --color-scrim: rgba(0, 0, 0, 0.65);
+
+            /* Compatibility mappings for existing variables */
+            --bg-color: var(--color-bg);
+            --topbar-bg: rgba(10, 22, 6, 0.90);
+            --sidebar-bg: var(--color-chrome);
+            --text-color: var(--color-text);
+            --border-color: var(--color-border);
+            --accent-color: var(--color-accent);
             --page-bg: #ffffff;
             --page-text: #000000;
-            /* Variation stacks: a warm "photocopied onion-skin" tint over the
-               page, with a slightly stronger tone for the rail and the leafed
-               page edges peeking out from behind a stacked passage. */
-            /* Opaque, not translucent: the bands behind consecutive blocks
-               overlap to close the gaps between them, and translucency would
-               turn every overlap into a visible seam. */
+
+            /* Variation stacks: warm photocopied onion-skin tint & leafing */
             --stack-tint: #fbf3e1;
             --stack-tint-hot: #f6e8c8;
             --stack-tint-off: #eaf2fd;
             --stack-edge: #c9973a;
             --stack-leaf: #d9c9a3;
-            --diff-add: rgba(46, 160, 67, 0.28);
+            --diff-add: rgba(78, 186, 111, 0.28);
             --diff-del: rgba(248, 81, 73, 0.28);
         }
 
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            background-color: var(--color-chrome);
+            color: var(--color-text);
             margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: var(--font-body);
+            font-size: 13px;
+            line-height: 1.5;
             height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
+
+        /* Sleek 6px scrollbars matching Booklit */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(200, 230, 160, 0.18); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--color-accent); }
 
         /* Top Bar */
         #top-bar {
-            height: 50px;
+            height: 54px;
             background: var(--topbar-bg);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid var(--color-border);
             display: flex;
             align-items: center;
-            padding: 0 20px;
+            padding: 0 16px;
             z-index: 100;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            gap: 12px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
         }
 
         .menu-item {
             position: relative;
             cursor: pointer;
-            padding: 10px 15px;
+            padding: 6px 14px;
             font-weight: 600;
+            font-size: 0.85rem;
             user-select: none;
-            border-radius: 4px;
-            transition: background 0.2s;
+            border-radius: 9999px;
+            background: rgba(200, 230, 160, 0.08);
+            border: 1px solid var(--color-border);
+            color: var(--color-on-chrome);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
         .menu-item:hover, .menu-item:focus-within {
-            background: rgba(255,255,255,0.1);
+            background: var(--color-chrome-active);
+            border-color: var(--color-border-hover);
+            color: var(--color-on-chrome-active);
         }
 
         .dropdown {
             position: absolute;
-            top: 100%;
+            top: calc(100% + 6px);
             left: 0;
-            background: var(--sidebar-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            background: #14260d;
+            border: 1px solid var(--color-border-hover);
+            border-radius: 12px;
+            box-shadow: 0 16px 36px rgba(0,0,0,0.65);
             display: none;
             flex-direction: column;
-            min-width: 150px;
+            min-width: 220px;
             overflow: hidden;
+            padding: 6px;
+            z-index: 500;
+            backdrop-filter: blur(12px);
         }
         .menu-item:focus-within .dropdown, .menu-item:hover .dropdown {
             display: flex;
         }
         .dropdown div {
-            padding: 10px 15px;
-            font-size: 0.9rem;
+            padding: 8px 12px;
+            font-size: 0.84rem;
+            font-weight: 500;
+            color: var(--color-text);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
         }
         .dropdown div:hover {
-            background: var(--accent-color);
+            background: var(--color-chrome-active);
+            color: var(--color-on-chrome-active);
         }
 
         .toolbar {
-            margin-left: 30px;
             display: flex;
-            gap: 10px;
+            align-items: center;
+            gap: 6px;
+            margin-left: 6px;
+        }
+        #format-toolbar {
+            background: rgba(200, 230, 160, 0.04);
+            border: 1px solid var(--color-border);
+            border-radius: 9999px;
+            padding: 3px 6px;
+            display: flex;
+            align-items: center;
+            gap: 3px;
         }
         .toolbar button {
-            background: rgba(255,255,255,0.1);
+            background: transparent;
             border: 1px solid transparent;
-            color: var(--text-color);
-            padding: 6px 12px;
-            border-radius: 4px;
+            color: var(--color-text-dim);
+            padding: 5px 11px;
+            border-radius: 9999px;
             cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.85rem;
+            transition: all 0.18s ease;
+            font-size: 0.8rem;
+            font-weight: 500;
+            font-family: var(--font-body);
+            white-space: nowrap;
         }
         .toolbar button:hover {
-            background: rgba(255,255,255,0.2);
-            border-color: var(--border-color);
+            background: rgba(200, 230, 160, 0.12);
+            color: var(--color-text);
+            border-color: var(--color-border);
+        }
+        .toolbar button:active {
+            transform: scale(0.97);
         }
 
-        /* Highlighter tool: a small color popover hanging off its toolbar button. */
-        .hl-tool { position: relative; }
+        /* Standalone toolbar buttons outside the format pill rack */
+        #top-bar > .toolbar > button,
+        #top-bar > button,
+        .hl-tool-btn,
+        #btn-toggle-highlights,
+        #btn-deselect-highlights,
+        #btn-toggle-stacks,
+        #btn-add-variation,
+        #btn-open-deck {
+            background: rgba(200, 230, 160, 0.06);
+            border: 1px solid var(--color-border);
+            border-radius: 9999px;
+            color: var(--color-text-dim);
+            padding: 5px 12px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+            font-family: var(--font-body);
+            transition: all 0.18s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #top-bar > .toolbar > button:hover,
+        .hl-tool-btn:hover,
+        #btn-toggle-highlights:hover,
+        #btn-deselect-highlights:hover,
+        #btn-toggle-stacks:hover,
+        #btn-add-variation:hover,
+        #btn-open-deck:hover:not(:disabled) {
+            background: rgba(200, 230, 160, 0.14);
+            border-color: var(--color-border-hover);
+            color: var(--color-text);
+        }
+        #btn-add-variation {
+            background: rgba(122, 184, 74, 0.16);
+            border-color: rgba(122, 184, 74, 0.35);
+            color: var(--color-on-chrome-active);
+            font-weight: 600;
+        }
+        #btn-add-variation:hover {
+            background: rgba(122, 184, 74, 0.28);
+            border-color: var(--color-accent);
+            color: #bbf28f;
+        }
+
+        /* Highlighter tool: modern swatch popover */
+        .hl-tool { position: relative; display: inline-flex; }
         .hl-tool-btn.active {
-            border-color: var(--hl-swatch, var(--accent-color));
-            box-shadow: inset 0 -3px 0 var(--hl-swatch, var(--accent-color));
+            border-color: var(--hl-swatch, var(--color-accent)) !important;
+            background: rgba(122, 184, 74, 0.2) !important;
+            color: var(--color-on-chrome-active) !important;
+            box-shadow: 0 0 10px rgba(122, 184, 74, 0.3);
         }
         .hl-popover {
             position: absolute;
-            top: calc(100% + 6px);
+            top: calc(100% + 8px);
             left: 0;
-            background: var(--sidebar-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 8px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            background: #14260d;
+            border: 1px solid var(--color-border-hover);
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.65);
             z-index: 500;
+            backdrop-filter: blur(12px);
         }
         .hl-popover.hidden { display: none; }
-        .hl-swatches { display: flex; align-items: center; gap: 6px; }
+        .hl-swatches { display: flex; align-items: center; gap: 8px; }
         .hl-swatch {
-            width: 22px; height: 22px;
+            width: 24px; height: 24px;
             border-radius: 50%;
             border: 2px solid rgba(255,255,255,0.25);
             cursor: pointer;
             padding: 0;
+            transition: transform 0.18s ease, border-color 0.18s ease;
         }
-        .hl-swatch:hover { border-color: #fff; transform: scale(1.1); }
+        .hl-swatch:hover { border-color: #fff; transform: scale(1.15); }
         .hl-swatch.hl-eraser {
             background: transparent;
-            color: var(--text-color);
-            font-size: 0.75rem;
+            color: var(--color-text-dim);
+            font-size: 0.8rem;
             display: flex; align-items: center; justify-content: center;
-            border-style: dashed;
+            border: 1.5px dashed var(--color-border-hover);
         }
+        .hl-swatch.hl-eraser:hover { color: #f85149; border-color: #f85149; }
         input.hl-custom {
-            width: 22px; height: 22px;
+            width: 24px; height: 24px;
             padding: 0;
             border: 2px solid rgba(255,255,255,0.25);
             border-radius: 50%;
             background: transparent;
             cursor: pointer;
             overflow: hidden;
+            transition: transform 0.18s ease;
         }
+        input.hl-custom:hover { transform: scale(1.15); border-color: #fff; }
 
-        /* Permanent highlight marks left inside block text by the highlighter
-           tool (as opposed to the transient character/location/scene highlights,
-           which are CSS Custom Highlight API overlays and never touch markup). */
-        mark.fd-hl { padding: 0 1px; border-radius: 2px; color: inherit; }
+        /* Permanent highlight marks */
+        mark.fd-hl { padding: 0 2px; border-radius: 3px; color: inherit; }
 
-        /* Show/hide toggles: the underlying color/markup stays put, this only
-           suppresses how it paints on screen, so turning it back on needs no
-           rebuild -- and screen-only means these never fight the print
-           stylesheet's own (already deliberate) rules for the same elements. */
         @media screen {
             body.fd-hl-hidden mark.fd-hl { background-color: transparent !important; }
             body.fd-hl-hidden [data-hl-color] { background-color: transparent !important; }
@@ -176,44 +313,47 @@
             body.fd-stacks-hidden .page > [data-gutter]::after { display: none !important; }
         }
 
-        .toolbar button.toggled-off { opacity: 0.5; }
+        .toolbar button.toggled-off { opacity: 0.45; }
 
-        /* Right-click suggestion menu for the formatting buttons. Lists the
-           entries of that type already used in the script (most frequent first)
-           plus a few generic examples. */
+        /* Suggest Menu */
         .suggest-menu {
             position: fixed;
             display: none;
             z-index: 500;
-            background: var(--sidebar-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            background: #14260d;
+            border: 1px solid var(--color-border-hover);
+            border-radius: 12px;
+            box-shadow: 0 16px 36px rgba(0,0,0,0.65);
             min-width: 240px;
             max-width: 420px;
             max-height: 60vh;
             overflow-y: auto;
-            padding: 4px 0;
+            padding: 6px;
             font-size: 0.85rem;
             user-select: none;
+            backdrop-filter: blur(12px);
         }
         .suggest-section {
-            padding: 6px 12px 4px;
-            font-size: 0.7rem;
-            letter-spacing: 0.08em;
+            padding: 6px 10px 4px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
             text-transform: uppercase;
-            color: #888;
+            color: var(--color-on-chrome-muted);
         }
         .suggest-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            padding: 6px 12px;
+            padding: 6px 10px;
+            border-radius: 8px;
             cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
         }
         .suggest-row:hover {
-            background: var(--accent-color);
+            background: var(--color-chrome-active);
+            color: var(--color-on-chrome-active);
         }
         .suggest-text {
             overflow: hidden;
@@ -222,8 +362,68 @@
         }
         .suggest-count {
             flex-shrink: 0;
-            opacity: 0.45;
-            font-size: 0.75rem;
+            opacity: 0.6;
+            font-size: 0.72rem;
+            font-family: var(--font-mono);
+        }
+
+        /* View Toggle: Segmented switcher in a sunken capsule track */
+        .view-toggle {
+            display: flex;
+            margin-left: auto;
+            gap: 3px;
+            background: #0e1c08;
+            border: 1px solid var(--color-border);
+            border-radius: 9999px;
+            padding: 3px;
+            align-items: center;
+        }
+        .view-toggle button {
+            background: transparent;
+            border: none;
+            color: var(--color-text-muted);
+            padding: 5px 12px;
+            border-radius: 9999px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: var(--font-body);
+            transition: all 0.18s ease;
+            white-space: nowrap;
+        }
+        .view-toggle button:hover:not(:disabled) {
+            color: var(--color-text);
+            background: rgba(200, 230, 160, 0.08);
+        }
+        .view-toggle button.active {
+            background: var(--color-accent);
+            color: var(--color-on-accent);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .view-toggle button:disabled { opacity: 0.4; cursor: default; }
+        #view-btn-swap { font-size: 0.95rem; line-height: 1; padding: 4px 8px; }
+
+        .settings-btn {
+            background: rgba(200, 230, 160, 0.06);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-dim);
+            cursor: pointer;
+            font-size: 1rem;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            margin-right: 0;
+        }
+        .settings-btn:hover {
+            background: var(--color-chrome-active);
+            color: var(--color-accent);
+            border-color: var(--color-border-hover);
+            transform: rotate(30deg);
         }
 
         /* Main Area */
@@ -235,21 +435,17 @@
 
         /* Sidebars */
         #sidebar, #right-sidebar {
-            width: 250px;
-            min-width: 150px;
+            width: 260px;
+            min-width: 160px;
             max-width: 500px;
-            /* Never let the flex algorithm claw width back off a panel. The editor's
-               max-content width is enormous once a document is loaded (a wrapping
-               grid of 8.5in pages), so with the default flex-shrink:1 the panels get
-               crushed to min-width and any width set by the resizer is undone. */
             flex: 0 0 auto;
-            background-color: var(--sidebar-bg);
+            background-color: var(--color-chrome);
             display: flex;
             flex-direction: column;
             z-index: 10;
         }
-        #sidebar { border-right: 1px solid var(--border-color); }
-        #right-sidebar { border-left: 1px solid var(--border-color); }
+        #sidebar { border-right: 1px solid var(--color-border); }
+        #right-sidebar { border-left: 1px solid var(--color-border); }
         #sidebar.collapsed, #right-sidebar.collapsed {
             width: 0 !important;
             min-width: 0;
@@ -261,7 +457,7 @@
         }
 
         .resizer {
-            width: 5px;
+            width: 6px;
             background-color: transparent;
             cursor: ew-resize;
             z-index: 10;
@@ -270,32 +466,36 @@
             flex-shrink: 0;
         }
         .resizer:hover {
-            background-color: var(--accent-color);
+            background-color: var(--color-accent);
         }
         .collapse-toggle {
             position: absolute;
             top: 50%;
-            left: -9px;
+            left: -10px;
             transform: translateY(-50%);
-            width: 18px;
-            height: 40px;
-            background: var(--sidebar-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            color: var(--text-color);
+            width: 20px;
+            height: 38px;
+            background: #14260d;
+            border: 1px solid var(--color-border);
+            border-radius: 9999px;
+            color: var(--color-text-dim);
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             line-height: 1;
             z-index: 20;
             user-select: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            transition: all 0.18s ease;
         }
-        .collapse-toggle:hover { background: var(--accent-color); }
+        .collapse-toggle:hover {
+            background: var(--color-accent);
+            border-color: var(--color-accent);
+            color: var(--color-on-accent);
+        }
 
-        /* Vertical resizer: drags the height of the section/panel above it.
-           Same drag mechanics as .resizer, just on the other axis. */
         .v-resizer {
             height: 5px;
             background-color: transparent;
@@ -305,10 +505,8 @@
             position: relative;
             z-index: 5;
         }
-        .v-resizer:hover { background-color: var(--accent-color); }
+        .v-resizer:hover { background-color: var(--color-accent); }
 
-        /* While a panel is being dragged, nothing else on the page should be
-           selectable or claim the pointer. */
         body.resizing, body.resizing *, body.resizing-v, body.resizing-v * {
             user-select: none !important;
         }
@@ -321,83 +519,251 @@
             overflow: hidden;
         }
         .sidebar-section:not(:last-child) {
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--color-border);
         }
+
+        /* Collapsible Headers matching Booklit Group micro-typography */
         .collapsible {
             margin: 0;
-            padding: 12px 15px;
-            font-size: 1rem;
+            padding: 11px 14px;
+            font-size: 10.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--color-on-chrome-muted);
             cursor: pointer;
-            background: rgba(0,0,0,0.2);
+            background: transparent;
             display: flex;
             justify-content: space-between;
             align-items: center;
             user-select: none;
+            transition: all 0.18s ease;
         }
-        .collapsible:hover { background: rgba(0,0,0,0.4); }
+        .collapsible:hover {
+            color: var(--color-on-chrome);
+            background: rgba(200, 230, 160, 0.03);
+        }
         .collapsible span {
-            font-size: 0.7rem;
-            transition: transform 0.2s;
+            font-size: 8.5px;
+            transition: transform 0.2s ease;
+            color: var(--color-on-chrome-muted);
         }
         .collapsible.collapsed span { transform: rotate(-90deg); }
         .section-content {
-            padding: 15px;
+            padding: 12px 14px;
             overflow-y: auto;
             flex: 1 1 auto;
             min-height: 0;
         }
         .collapsed + .section-content { display: none; }
-        
+
+        /* Form elements inside sidebar */
+        input[type="range"] {
+            accent-color: var(--color-accent);
+            height: 5px;
+            border-radius: 3px;
+            background: rgba(200, 230, 160, 0.12);
+        }
+        input[type="checkbox"] {
+            accent-color: var(--color-accent);
+            width: 14px; height: 14px;
+            cursor: pointer;
+        }
+
+        /* Document Statistics Card */
+        #doc-stats {
+            background: rgba(200, 230, 160, 0.03);
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px dashed rgba(200, 230, 160, 0.08);
+            font-size: 0.82rem;
+            color: var(--color-text-dim);
+        }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-value {
+            font-weight: 700;
+            font-family: var(--font-mono);
+            color: var(--color-accent);
+        }
+
+        /* Navigator (TOC) */
         #toc-list {
             list-style: none;
             padding: 0;
             margin: 0;
         }
-        #toc-list li { margin-bottom: 8px; }
+        #toc-list li { margin-bottom: 4px; }
         #toc-list a {
-            color: #ccc; text-decoration: none; font-size: 0.85rem; cursor: pointer; display: block; padding: 4px; border-radius: 3px;
+            color: var(--color-text);
+            text-decoration: none;
+            font-size: 0.83rem;
+            cursor: pointer;
+            display: block;
+            padding: 5px 8px;
+            border-radius: 8px;
+            border-left: 3px solid transparent;
+            transition: all 0.15s ease;
         }
-        #toc-list a:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        #toc-list a:hover {
+            background: var(--color-chrome-active);
+            color: var(--color-on-chrome-active);
+        }
+        #toc-list a.active {
+            background: var(--color-chrome-active);
+            color: var(--color-on-chrome-active);
+            border-left-color: var(--color-accent);
+            font-weight: 600;
+        }
 
-        /* Right Sidebar Tabs */
+        #toc-filter {
+            display: flex;
+            margin: 0 0 10px;
+            background: #0e1c08;
+            border: 1px solid var(--color-border);
+            border-radius: 9999px;
+            padding: 2px;
+            overflow: hidden;
+        }
+        #toc-filter button {
+            flex: 1;
+            background: transparent;
+            color: var(--color-text-muted);
+            border: none;
+            border-radius: 9999px;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            font-family: var(--font-body);
+            transition: all 0.18s ease;
+        }
+        #toc-filter button.active {
+            background: var(--color-accent);
+            color: var(--color-on-accent);
+        }
+
+        .toc-scene-row { display: flex; align-items: center; gap: 4px; }
+        .toc-twisty {
+            width: 14px; flex: 0 0 14px; text-align: center; cursor: pointer;
+            color: var(--color-on-chrome-muted); font-size: 0.65rem; user-select: none;
+            transition: color 0.15s ease;
+        }
+        .toc-twisty:hover { color: var(--color-on-chrome); }
+        .toc-twisty.leaf { visibility: hidden; }
+
+        .toc-num, .deck-num {
+            flex: 0 0 auto;
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            letter-spacing: 0.02em;
+            color: var(--color-text-muted);
+            font-variant-numeric: tabular-nums;
+        }
+        ul.toc-cards li.top .toc-num.draft { color: var(--stack-edge); font-weight: 600; }
+        .deck-num { color: #aaa; font-size: 0.66rem; }
+        .deck-card.viewing .deck-num { color: #7a5a12; }
+
+        .toc-chip {
+            flex: 0 0 auto;
+            margin-left: auto;
+            padding: 2px 7px;
+            border-radius: 9999px;
+            background: rgba(201, 151, 58, 0.2);
+            color: #e6b95d;
+            border: 1px solid rgba(201, 151, 58, 0.45);
+            font-size: 0.68rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .toc-chip:hover {
+            background: rgba(201, 151, 58, 0.35);
+            color: #fff;
+        }
+
+        ul.toc-cards { list-style: none; margin: 3px 0 6px; padding: 0 0 0 18px; }
+        ul.toc-cards li {
+            display: flex; align-items: center; gap: 6px; padding: 3px 8px;
+            font-size: 0.76rem; color: var(--color-text-dim); cursor: pointer; border-radius: 6px;
+            border-left: 2px solid var(--color-border);
+            transition: all 0.15s ease;
+        }
+        ul.toc-cards li:hover {
+            background: rgba(200, 230, 160, 0.08);
+            color: var(--color-text);
+        }
+        ul.toc-cards li.top { color: #f0d69a; border-left-color: var(--stack-edge); font-weight: 600; }
+        ul.toc-cards li.viewing {
+            background: var(--color-chrome-active);
+            color: var(--color-on-chrome-active);
+        }
+        ul.toc-cards li .star { flex: 0 0 9px; font-size: 0.72rem; }
+        ul.toc-cards li .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        ul.toc-cards li.drop-target { border-top: 2px solid var(--color-accent); }
+
+        /* Right Sidebar Tabs & List Items */
         .rs-toolbar {
             display: flex;
-            align-items: stretch;
+            align-items: center;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--color-border);
+            gap: 8px;
             flex-shrink: 0;
         }
         .tabs-header {
             display: flex;
             flex-grow: 1;
-            border-bottom: 1px solid var(--border-color);
+            background: #0e1c08;
+            border: 1px solid var(--color-border);
+            border-radius: 9999px;
+            padding: 2px;
+            gap: 2px;
         }
         .tab-btn {
             flex: 1;
             background: transparent;
             border: none;
-            color: var(--text-color);
-            padding: 12px;
+            color: var(--color-text-muted);
+            padding: 5px 10px;
+            border-radius: 9999px;
             cursor: pointer;
-            font-weight: bold;
-            opacity: 0.6;
+            font-weight: 600;
+            font-size: 0.78rem;
+            font-family: var(--font-body);
+            transition: all 0.18s ease;
         }
         .tab-btn.active {
-            opacity: 1;
-            background: rgba(255,255,255,0.05);
-            border-bottom: 2px solid var(--accent-color);
+            background: var(--color-accent);
+            color: var(--color-on-accent);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
         }
         .rs-layout-toggle {
             flex-shrink: 0;
-            width: 34px;
-            background: transparent;
-            border: none;
-            border-bottom: 1px solid var(--border-color);
-            border-left: 1px solid var(--border-color);
-            color: var(--text-color);
+            width: 32px; height: 32px;
+            background: rgba(200, 230, 160, 0.06);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            color: var(--color-text-dim);
             cursor: pointer;
-            opacity: 0.6;
-            font-size: 0.85rem;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.9rem;
+            transition: all 0.18s ease;
         }
-        .rs-layout-toggle:hover { opacity: 1; background: rgba(255,255,255,0.05); }
+        .rs-layout-toggle:hover {
+            background: var(--color-chrome-active);
+            color: var(--color-accent);
+            border-color: var(--color-border-hover);
+        }
 
         .tab-content {
             display: none;
@@ -410,58 +776,58 @@
 
         .rs-panel-header {
             display: none;
-            padding: 8px 12px;
-            font-size: 0.72rem;
-            font-weight: bold;
+            padding: 9px 14px;
+            font-size: 10.5px;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
-            opacity: 0.55;
-            background: rgba(0,0,0,0.15);
+            letter-spacing: 0.14em;
+            color: var(--color-on-chrome-muted);
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid var(--color-border);
             flex-shrink: 0;
         }
 
-        /* Split layout: both Characters and Locations shown at once, stacked
-           and independently resizable, instead of switched via tabs. */
         #right-sidebar.split-mode .tabs-header { display: none; }
         #right-sidebar.split-mode .rs-panel-header { display: block; }
         #right-sidebar.split-mode .v-resizer { display: block; }
         #right-sidebar:not(.split-mode) .v-resizer { display: none; }
         #right-sidebar.split-mode .tab-content { display: flex !important; }
-        /* flex-basis stays auto so the resizer's inline height (set on
-           #tab-characters) is what actually governs its size; #tab-locations
-           just absorbs whatever's left, same as the Navigator section does
-           in the left sidebar. */
-        #right-sidebar.split-mode #tab-characters { flex: 0 0 auto; height: 200px; min-height: 60px; }
+        #right-sidebar.split-mode #tab-characters { flex: 0 0 auto; height: 220px; min-height: 60px; }
         #right-sidebar.split-mode #tab-locations { flex: 1 1 0; min-height: 60px; }
 
         .list-items {
             flex-grow: 1;
             overflow-y: auto;
-            padding: 0;
+            padding: 6px;
             list-style: none;
             margin: 0;
         }
-        
         .list-item-container {
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 4px;
         }
-        
         .list-item.main-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 12px;
-            background: rgba(255,255,255,0.05);
+            padding: 7px 10px;
+            background: rgba(200, 230, 160, 0.03);
+            border: 1px solid var(--color-border);
+            border-left: 3px solid transparent;
+            border-radius: 8px;
             cursor: pointer;
-            border-left: 4px solid transparent;
-            font-size: 0.9rem;
+            font-size: 0.86rem;
             user-select: none;
+            transition: all 0.18s ease;
         }
-        .list-item.main-item:hover { background: rgba(255,255,255,0.1); }
+        .list-item.main-item:hover {
+            background: rgba(200, 230, 160, 0.08);
+            border-color: var(--color-border-hover);
+            transform: translateX(2px);
+        }
         .list-item.main-item.highlighted {
-            background: rgba(255,255,255,0.15);
+            background: var(--color-chrome-active);
+            border-color: rgba(122, 184, 74, 0.4);
         }
-        
         .list-item-left {
             display: flex;
             align-items: center;
@@ -472,72 +838,85 @@
         .toggle-arrow {
             font-size: 0.6rem;
             margin-right: 6px;
-            color: #888;
+            color: var(--color-on-chrome-muted);
             width: 10px;
+            transition: transform 0.15s ease;
         }
-        
         .list-item-color {
             width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px;
-            box-shadow: 0 0 2px rgba(0,0,0,0.5);
+            box-shadow: 0 0 0 2px rgba(0,0,0,0.5);
             flex-shrink: 0;
         }
-        
         .item-name {
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            color: var(--color-text);
+            font-weight: 500;
         }
-        
         .item-count {
-            background: rgba(255,255,255,0.1);
-            color: #ccc;
-            font-size: 0.75rem;
-            padding: 2px 6px;
-            border-radius: 10px;
+            background: rgba(200, 230, 160, 0.12);
+            color: var(--color-on-chrome);
+            font-size: 0.72rem;
+            font-weight: 700;
+            font-family: var(--font-mono);
+            padding: 2px 7px;
+            border-radius: 9999px;
             margin-left: 8px;
         }
-        
         .item-actions button {
-            background: transparent; border: none; color: #999; cursor: pointer; font-size: 1.2rem; margin-left: 5px;
-            font-weight: bold;
+            background: rgba(200, 230, 160, 0.08);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-dim);
+            cursor: pointer;
+            font-size: 0.95rem;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s ease;
         }
-        .item-actions button:hover { color: #fff; }
-        
+        .item-actions button:hover {
+            background: var(--color-accent);
+            border-color: var(--color-accent);
+            color: var(--color-on-accent);
+        }
+
         .nested-list {
             list-style: none;
-            padding: 0;
-            margin: 0;
-            background: rgba(0,0,0,0.2);
+            padding: 2px 0 2px 14px;
+            margin: 2px 0 0 0;
+            border-left: 2px solid var(--color-border);
         }
         .nested-list-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 6px 12px 6px 25px;
-            font-size: 0.8rem;
-            color: #bbb;
+            padding: 4px 8px;
+            font-size: 0.78rem;
+            color: var(--color-text-dim);
+            border-radius: 6px;
             cursor: pointer;
-            border-bottom: 1px solid rgba(255,255,255,0.02);
+            margin-bottom: 2px;
+            transition: background 0.15s ease;
         }
         .nested-list-item:hover {
-            background: rgba(255,255,255,0.05);
-            color: #fff;
+            background: rgba(200, 230, 160, 0.08);
+            color: var(--color-text);
         }
         .nested-list-item .delete-btn {
-            background: transparent; border: none; color: #666; cursor: pointer; font-size: 1rem;
+            background: transparent; border: none; color: #777; cursor: pointer; font-size: 1rem;
+            line-height: 1; padding: 0 4px; border-radius: 4px;
         }
-        .nested-list-item .delete-btn:hover { color: #ff5555; }
+        .nested-list-item .delete-btn:hover { color: #f85149; background: rgba(248, 81, 73, 0.15); }
 
-        /* Editor Wrapper: the row that holds the document panes */
+        /* Editor Wrapper: Sunken dark neutral backdrop */
         #editor-wrapper {
-            /* flex-basis 0, not auto: the base size must not depend on the content
-               width, or the page grid dictates how much room the sidebars get. */
             flex: 1 1 0;
             min-width: 0;
             display: flex;
             flex-direction: row;
-            overflow: hidden; /* each pane scrolls on its own */
-            background-color: #2b2b2b;
+            overflow: hidden;
+            background-color: #101b13;
             position: relative;
         }
 
@@ -557,32 +936,32 @@
             align-items: center;
             justify-content: space-between;
             gap: 8px;
-            padding: 5px 10px;
-            background: rgba(0,0,0,0.3);
-            border-bottom: 1px solid var(--border-color);
-            font-size: 0.7rem;
-            letter-spacing: 0.06em;
+            padding: 6px 14px;
+            background: #0a1606;
+            border-bottom: 1px solid var(--color-border);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
             text-transform: uppercase;
-            color: #999;
+            color: var(--color-on-chrome-muted);
             user-select: none;
         }
-        /* With a single pane open the header is pure chrome -- hide it so the
-           no-PDF case looks exactly as it did before panes existed. */
         #editor-wrapper.single-pane .pane-header { display: none; }
 
         .pane-close {
-            background: transparent;
-            border: none;
-            color: #999;
+            background: rgba(200, 230, 160, 0.08);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-dim);
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             line-height: 1;
-            padding: 3px 6px;
-            border-radius: 3px;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s ease;
         }
-        .pane-close:hover { background: rgba(255,255,255,0.15); color: #fff; }
+        .pane-close:hover { background: rgba(248, 81, 73, 0.2); color: #f85149; border-color: rgba(248, 81, 73, 0.4); }
         .pane-close:disabled { opacity: 0.3; cursor: default; }
-        .pane-close:disabled:hover { background: transparent; color: #999; }
 
         .pane-body {
             flex: 1 1 auto;
@@ -592,46 +971,38 @@
             scroll-behavior: smooth;
         }
 
-        /* Explains an empty editable pane. Lives outside #editor-page so it is never
-           mistaken for a screenplay block by getBlocks(). */
         .pane-notice {
             display: none;
             max-width: 40em;
             margin: 0 auto 30px auto;
             padding: 16px 20px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid var(--border-color);
-            border-left: 3px solid var(--accent-color);
-            border-radius: 4px;
-            color: #ccc;
-            font-size: 0.85rem;
+            background: #14260d;
+            border: 1px solid var(--color-border);
+            border-left: 3px solid var(--color-accent);
+            border-radius: 10px;
+            color: var(--color-text-dim);
+            font-size: 0.86rem;
             line-height: 1.5;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.3);
         }
-        .pane-notice strong { display: block; margin-bottom: 6px; color: #fff; font-size: 0.95rem; }
+        .pane-notice strong { display: block; margin-bottom: 6px; color: var(--color-text); font-size: 0.96rem; }
         .pane-notice p { margin: 0; }
 
         .pane-splitter {
-            flex: 0 0 5px;
+            flex: 0 0 6px;
             cursor: ew-resize;
-            background-color: var(--border-color);
+            background-color: var(--color-chrome);
+            border-left: 1px solid var(--color-border);
+            border-right: 1px solid var(--color-border);
             transition: background 0.2s;
         }
-        .pane-splitter:hover { background-color: var(--accent-color); }
+        .pane-splitter:hover { background-color: var(--color-accent); }
         .pane-splitter.hidden { display: none; }
 
-        /* Editor root: a flex-wrap grid of page frames. Zooming out shrinks each
-           frame, so more of them fit per row -- the grid emerges from layout,
-           no separate "grid view" mode needed. #script-render-page is Render
-           Mode's non-PDF occupant (see refreshScriptRender()) -- a read-only
-           mirror of these same page frames, so it shares the grid layout. */
         #editor-page, #script-render-page {
             display: flex;
             flex-wrap: wrap;
             gap: 30px;
-            /* "safe" centering: when a page is wider than the viewport, fall back to
-               start-alignment instead of overflowing equally in both directions --
-               plain `center` pushes content past the left edge, where the scrollbar
-               cannot reach it and it reads as permanently cut off. */
             justify-content: center;
             justify-content: safe center;
             align-content: flex-start;
@@ -639,7 +1010,7 @@
             transition: zoom 0.1s;
         }
 
-        /* Script Page */
+        /* Script Page with realistic paper cast shadows */
         .page {
             background-color: var(--page-bg);
             color: var(--page-text);
@@ -648,29 +1019,19 @@
             overflow: hidden;
             padding: 1in 1in 1in 1.5in;
             box-sizing: border-box;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            font-family: 'Courier Prime', 'Courier New', Courier, monospace;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
+            border-radius: 2px;
+            font-family: var(--font-script);
             font-size: 12pt;
             line-height: 1.1;
             position: relative;
             flex: 0 0 auto;
         }
 
-        /* Page furniture (F2): six addressable header/footer slots per page --
-           header/footer x left/center/right -- rendered by renderFurniture()
-           from a token template (see resolveFurnitureTokens()). Layout-
-           neutral by construction: position:absolute inside the frame's
-           existing 1in top/bottom padding, contentEditable=false, zero flow
-           height. Never add a border, margin or padding to this rule --
-           reflowPages() measures block heights/margins to place page breaks,
-           and any of those would silently repaginate the script (same rule
-           as the variation-stack warning just below).
-           Visibility is per-slot, not gated by a document-wide checkbox: an
-           empty slot renders nothing, a filled one always shows -- including
-           in print, which is the one place a page number matters most. */
+        /* Page furniture */
         .page-furniture, .page > .page-furniture {
             position: absolute !important;
-            font-family: 'Courier Prime', 'Courier New', Courier, monospace;
+            font-family: var(--font-script);
             font-size: 12pt;
             line-height: 1;
             color: var(--page-text, #000000);
@@ -690,41 +1051,12 @@
         .page-furniture[data-slot="footer-right"]  { bottom: 0.3in; right: 0.3in; text-align: right; }
         .page-furniture.furniture-bold { font-weight: bold; }
 
-        /* Marks the block that was just inserted (or converted), so "what did
-           I just do?" has an answer. outline only -- never border or padding,
-           both of which would add flow height and silently re-paginate the
-           script (reflowPages() measures block height/margins to place page
-           breaks; see the variation-stack warning just below). */
         .insertion-focus {
-            outline: 2px solid var(--accent-color);
+            outline: 2px solid var(--color-accent);
             outline-offset: 2px;
         }
 
-        /* ------------------------------------------------------------------
-           Variation stacks
-
-           EVERY rule in this section must be layout-neutral. reflowPages()
-           decides where each page break falls by measuring block heights and
-           margins, so a border, padding or margin added here would silently
-           re-paginate the script. Only backgrounds, box-shadows, outlines and
-           absolutely-positioned pseudo-elements are safe.
-           ------------------------------------------------------------------ */
-
-        /* Each block in the run gets one uniform band behind it, spanning the
-           full 6in text column no matter how the element itself is indented --
-           the alternative, tinting each block's own box, leaves a ragged right
-           edge that reads as highlighter rather than as an inserted page.
-           Blocks are indented differently per type, so each declares how far
-           back its band has to reach.
-
-           The band is opaque, and it only ever grows DOWNWARD, by the exact gap
-           to the next block of the run (measured in decorateStacks and handed
-           over as --stack-gap). Both halves of that matter: translucent bands
-           would darken into seams wherever they meet, and a band that grew
-           upward would paint over the preceding block's text -- blocks paint in
-           document order, so a later band covers an earlier block but never the
-           other way round. Growing downward means any overshoot is harmlessly
-           repainted by the next block instead of swallowing a character cue. */
+        /* Variation stacks */
         .page > [data-stack]            { --stack-indent: 0in; }
         .page > .character[data-stack]     { --stack-indent: 2.2in; }
         .page > .dialogue[data-stack]      { --stack-indent: 1in; }
@@ -744,16 +1076,8 @@
             transition: background-color .12s ease;
         }
         .page > [data-stack].stack-hot::before { background: var(--stack-tint-hot); }
-        /* The head of the run reaches a little into the blank space above it, so
-           the sheet doesn't start flush against its own first line. The foot is
-           handled by --stack-gap, which decorateStacks sets to a short tail on
-           the last block. */
         .page > [data-stack-first]::before { top: -3pt; }
 
-        /* The gutter mark. One attribute drives one pseudo-element on purpose:
-           a scene heading that also heads a stack needs a single label in the
-           margin, not a scene number and a stack chip fighting for the same
-           corner. applyGutterLabels() decides what the string says. */
         .page > [data-gutter]::after {
             content: attr(data-gutter);
             position: absolute;
@@ -762,7 +1086,7 @@
             transform: translateX(calc(-100% - 5px));
             min-width: 11px;
             padding: 1px 4px 2px;
-            font-family: 'Segoe UI', Tahoma, sans-serif;
+            font-family: var(--font-body);
             font-size: 9px;
             font-weight: 700;
             line-height: 1.25;
@@ -771,15 +1095,12 @@
             background: #f5e4bd;
             border: 1px solid var(--stack-edge);
             border-radius: 2px;
-            /* Clipped corner + the hint of a second sheet behind it. */
             clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 0 100%);
             box-shadow: 2px 2px 0 -1px #f5e4bd, 2px 2px 0 0 var(--stack-edge);
             cursor: pointer;
             pointer-events: auto;
             z-index: 20;
         }
-        /* A plain scene number is a reference mark, not a stack of paper: no
-           card styling, no folded corner, nothing to click. */
         .page > [data-gutter-kind="scene"]::after {
             color: #8a8a8a;
             background: none;
@@ -793,11 +1114,6 @@
             pointer-events: none;
         }
 
-        /* The leafing: two sheets peeking out from behind the foot of the run,
-           so the passage reads as a stack of paper stapled onto the page rather
-           than as a highlighted one. It hangs off the band, not off the block,
-           so it lines up with the passage rather than with the last line's
-           ragged right edge. */
         .page > [data-stack-last]::before {
             box-shadow:
                 4px 4px 0 -1px var(--page-bg), 4px 4px 0 0 var(--stack-leaf),
@@ -809,11 +1125,9 @@
                 9px 9px 0 -1px var(--page-bg), 9px 9px 0 0 var(--stack-edge);
         }
 
-        /* While a card other than the top one is on screen, the whole passage
-           cools to blue: at a glance, this is not what will print. */
         .page > [data-stack][data-stack-off]::before {
             background: var(--stack-tint-off);
-            border-left-color: var(--accent-color);
+            border-left-color: var(--color-accent);
         }
         .page > [data-stack-last][data-stack-off]::before {
             box-shadow:
@@ -821,27 +1135,15 @@
                 8px 8px 0 -1px var(--page-bg), 8px 8px 0 0 #a9c9ea;
         }
         .page > [data-stack-off][data-gutter-kind="stack"]::after {
-            color: #0a3d6b; background: #cfe6ff; border-color: var(--accent-color);
-            box-shadow: 2px 2px 0 -1px #cfe6ff, 2px 2px 0 0 var(--accent-color);
+            color: #0a3d6b; background: #cfe6ff; border-color: var(--color-accent);
+            box-shadow: 2px 2px 0 -1px #cfe6ff, 2px 2px 0 0 var(--color-accent);
         }
 
-        /* A Navigator scene highlight lands on the block itself (background +
-           box-shadow), but the stack band above is opaque and paints on top of
-           both -- see the note at the top of this section -- so on a stacked
-           block the highlight would otherwise vanish with no sign it ever
-           applied. Tinting the band blue, and adding a second stripe outside
-           its own amber stack-edge border, keeps it visible and gives it a
-           two-color left edge instead of silently doing nothing. Same
-           specificity as the .stack-hot/[data-stack-off] rules above, so it
-           has to come after them to win. */
         .page > [data-stack].scene-nav-highlight::before {
             background: #cfe6ff;
-            box-shadow: -3px 0 0 0 var(--accent-color);
+            box-shadow: -3px 0 0 0 var(--color-accent);
         }
 
-        /* The stacked-cards mark. Drawn rather than typed: the obvious Unicode
-           candidates (❐ ❏ ⧉) have no glyph in the default Windows UI font and
-           render as tofu. */
         .stack-glyph {
             display: inline-block;
             width: 7px; height: 9px;
@@ -852,7 +1154,7 @@
             box-shadow: 2px -2px 0 -1px var(--topbar-bg), 2px -2px 0 0 currentColor;
         }
 
-        /* ---- The deck bar: the stack fanned out ---- */
+        /* Deck Bar: Floating Dock */
         #deck-bar {
             position: fixed;
             z-index: 300;
@@ -860,32 +1162,35 @@
             align-items: center;
             gap: 6px;
             max-width: 92vw;
-            padding: 6px 8px;
-            background: #2b2b2b;
-            border: 1px solid var(--border-color);
-            border-radius: 8px 8px 4px 4px;
-            box-shadow: 0 8px 24px rgba(0,0,0,.55);
+            padding: 7px 12px;
+            background: rgba(10, 22, 6, 0.94);
+            border: 1px solid var(--color-border-hover);
+            border-radius: 14px;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.65);
             font-size: .82rem;
+            backdrop-filter: blur(16px);
         }
         #deck-bar.open { display: flex; }
         #deck-grip {
-            cursor: move; color: #888; font-size: .95rem; letter-spacing: -1px;
-            padding: 0 2px; user-select: none;
+            cursor: move; color: var(--color-on-chrome-muted); font-size: .95rem; letter-spacing: -1px;
+            padding: 0 4px; user-select: none; transition: color 0.15s;
         }
-        #deck-grip:hover { color: #ddd; }
+        #deck-grip:hover { color: var(--color-on-chrome); }
         #deck-bar .deck-count {
-            color: #aaa; font-size: .72rem; white-space: nowrap;
-            padding-right: 6px; border-right: 1px solid var(--border-color);
+            color: var(--color-text-dim); font-size: .74rem; white-space: nowrap;
+            padding-right: 8px; border-right: 1px solid var(--color-border);
+            font-family: var(--font-mono); font-weight: 600;
         }
         #deck-cards { display: flex; gap: 4px; overflow-x: auto; max-width: 46vw; padding: 1px; }
         .deck-card {
             display: flex; align-items: center; gap: 5px;
-            padding: 4px 9px; white-space: nowrap; cursor: pointer;
-            background: #3a3a3a; border: 1px solid #4d4d4d; border-radius: 4px 4px 2px 2px;
-            color: #ddd; font-size: .78rem;
+            padding: 5px 10px; white-space: nowrap; cursor: pointer;
+            background: rgba(200, 230, 160, 0.06); border: 1px solid var(--color-border); border-radius: 8px;
+            color: var(--color-text); font-size: .78rem; font-family: var(--font-body);
+            transition: all 0.15s ease;
         }
-        .deck-card:hover { background: #474747; }
-        .deck-card.viewing { background: #f5e4bd; border-color: var(--stack-edge); color: #4a340c; font-weight: 600; }
+        .deck-card:hover { background: rgba(200, 230, 160, 0.14); border-color: var(--color-border-hover); }
+        .deck-card.viewing { background: #f5e4bd; border-color: var(--stack-edge); color: #4a340c; font-weight: 700; }
         .deck-card .star { color: var(--stack-edge); font-size: .8rem; min-width: 8px; }
         .deck-card.viewing .star { color: #8a6410; }
         .deck-card input {
@@ -893,146 +1198,86 @@
             width: 11ch; outline: none; padding: 0;
         }
         #deck-bar button {
-            background: #3a3a3a; color: #ddd; border: 1px solid #4d4d4d;
-            border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: .76rem;
-            white-space: nowrap;
+            background: rgba(200, 230, 160, 0.08); color: var(--color-text); border: 1px solid var(--color-border);
+            border-radius: 8px; padding: 5px 10px; cursor: pointer; font-size: .76rem; font-weight: 500;
+            white-space: nowrap; transition: all 0.18s ease;
         }
-        #deck-bar button:hover:not(:disabled) { background: #474747; }
-        #deck-bar button:disabled { opacity: .4; cursor: default; }
-        #deck-bar button.primary { background: var(--stack-edge); border-color: var(--stack-edge); color: #2b1e04; font-weight: 600; }
-        #deck-bar .deck-sep { width: 1px; align-self: stretch; background: var(--border-color); margin: 0 2px; }
+        #deck-bar button:hover:not(:disabled) { background: rgba(200, 230, 160, 0.18); border-color: var(--color-border-hover); }
+        #deck-bar button:disabled { opacity: .35; cursor: default; }
+        #deck-bar button.primary { background: var(--stack-edge); border-color: var(--stack-edge); color: #2b1e04; font-weight: 700; }
+        #deck-bar .deck-sep { width: 1px; align-self: stretch; background: var(--color-border); margin: 0 3px; }
 
-        /* ---- Compare view (hosted in the side pane) ---- */
-        #compare-viewer { display: none; height: 100%; flex-direction: column; overflow: hidden; }
+        /* Compare View */
+        #compare-viewer { display: none; height: 100%; flex-direction: column; overflow: hidden; background: #101b13; }
         #compare-viewer.active { display: flex; }
         #compare-head {
             display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-            padding: 8px 10px; border-bottom: 1px solid var(--border-color); background: #262626;
-            font-size: .78rem;
+            padding: 10px 14px; border-bottom: 1px solid var(--color-border); background: #14260d;
+            font-size: .8rem;
         }
         #compare-head select {
-            background: #333; color: #eee; border: 1px solid var(--border-color);
-            border-radius: 4px; padding: 3px 6px; font-size: .78rem; max-width: 17ch;
+            background: #1e3614; color: var(--color-text); border: 1px solid var(--color-border);
+            border-radius: 6px; padding: 4px 8px; font-size: .8rem; max-width: 18ch; outline: none;
         }
-        .compare-side-label { color: #888; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
+        .compare-side-label { color: var(--color-text-muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
         .compare-swap {
-            background: #333; color: #ccc; border: 1px solid var(--border-color);
-            border-radius: 4px; padding: 3px 7px; cursor: pointer; font-size: .82rem; line-height: 1;
+            background: #1e3614; color: var(--color-text-dim); border: 1px solid var(--color-border);
+            border-radius: 6px; padding: 4px 9px; cursor: pointer; font-size: .85rem; line-height: 1;
+            transition: all 0.18s ease;
         }
-        .compare-swap:hover { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
-        #compare-head select.compare-live { border-color: var(--accent-color); }
+        .compare-swap:hover { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
+        #compare-head select.compare-live { border-color: var(--color-accent); }
         .compare-live-tag {
-            color: var(--accent-color); font-size: .68rem; font-weight: 600;
-            text-transform: uppercase; letter-spacing: .03em;
+            color: var(--color-on-chrome-active); font-size: .7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .04em;
         }
-        #compare-head .swatch { display: inline-flex; align-items: center; gap: 4px; color: #999; }
-        #compare-body { flex: 1; overflow: auto; padding: 10px; }
-        .diff-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 3px; }
+        #compare-head .swatch { display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-muted); }
+        #compare-body { flex: 1; overflow: auto; padding: 12px; }
+        .diff-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
         .diff-cell {
-            font-family: 'Courier Prime', 'Courier New', monospace;
+            font-family: var(--font-script);
             font-size: 11px; line-height: 1.35; white-space: pre-wrap;
-            padding: 3px 6px; border-radius: 3px; background: #262626; color: #ddd;
+            padding: 5px 8px; border-radius: 6px; background: #162a0e; color: #ddd;
             border-left: 3px solid transparent; overflow-wrap: anywhere;
         }
-        .diff-cell.empty { background: repeating-linear-gradient(45deg, #232323, #232323 5px, #1e1e1e 5px, #1e1e1e 10px); }
+        .diff-cell.empty { background: repeating-linear-gradient(45deg, #13220c, #13220c 5px, #0e1a08 5px, #0e1a08 10px); }
         .diff-cell.same { opacity: .55; }
-        /* Nothing has changed yet: the whole passage is "unchanged", so dimming
-           it would render a freshly duplicated version as a wall of grey. */
         #compare-body.diff-clean .diff-cell.same { opacity: .9; }
         .compare-status {
-            padding: 1px 7px; border-radius: 10px; font-size: .72rem; font-weight: 600;
+            padding: 2px 9px; border-radius: 9999px; font-size: .72rem; font-weight: 700;
             background: rgba(248, 81, 73, .18); color: #ffb3ae;
         }
-        .compare-status.clean { background: rgba(255,255,255,.08); color: #9a9a9a; font-weight: 500; }
+        .compare-status.clean { background: rgba(122, 184, 74, .2); color: var(--color-on-chrome-active); font-weight: 600; }
         .compare-hint {
-            margin: 0 0 10px; padding: 7px 9px; border-radius: 4px;
-            background: rgba(0, 123, 255, .10); border-left: 3px solid var(--accent-color);
-            color: #b9c9db; font-size: .74rem; line-height: 1.45;
+            margin: 0 0 12px; padding: 9px 12px; border-radius: 8px;
+            background: rgba(122, 184, 74, 0.12); border-left: 3px solid var(--color-accent);
+            color: var(--color-text-dim); font-size: .78rem; line-height: 1.45;
         }
-        .compare-hint b { color: #e6eef7; }
+        .compare-hint b { color: var(--color-text); }
         .diff-cell.del { border-left-color: #f85149; }
         .diff-cell.add { border-left-color: #3fb950; }
-        .diff-cell .kind { display: block; font-family: 'Segoe UI', sans-serif; font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: #888; }
+        .diff-cell .kind { display: block; font-family: var(--font-body); font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--color-text-muted); font-weight: 700; }
         .diff-cell ins { background: var(--diff-add); text-decoration: none; border-radius: 2px; }
         .diff-cell del { background: var(--diff-del); text-decoration: none; border-radius: 2px; }
-        .diff-gap { text-align: center; color: #666; font-size: 10px; padding: 4px 0; letter-spacing: .2em; }
+        .diff-gap { text-align: center; color: var(--color-text-muted); font-size: 10px; padding: 4px 0; letter-spacing: .2em; }
         .diff-take {
-            float: right; margin-left: 6px; cursor: pointer; border: 1px solid #4d4d4d;
-            background: #3a3a3a; color: #ccc; border-radius: 3px; font-size: 9px;
-            padding: 0 5px; font-family: 'Segoe UI', sans-serif;
+            float: right; margin-left: 6px; cursor: pointer; border: 1px solid rgba(122, 184, 74, 0.4);
+            background: rgba(122, 184, 74, 0.16); color: var(--color-on-chrome-active); border-radius: 9999px; font-size: 9px;
+            padding: 1px 7px; font-family: var(--font-body); font-weight: 600; transition: all 0.15s ease;
         }
-        .diff-take:hover { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
-        #compare-empty { padding: 24px 16px; color: #888; font-size: .82rem; line-height: 1.5; }
-
-        /* ---- Navigator: scenes with their variation cards nested beneath ---- */
-        #toc-filter {
-            display: flex; gap: 0; margin: 0 0 8px; border: 1px solid var(--border-color);
-            border-radius: 4px; overflow: hidden;
-        }
-        #toc-filter button {
-            flex: 1; background: #2a2a2a; color: #aaa; border: none; cursor: pointer;
-            padding: 4px 6px; font-size: .7rem; font-family: inherit;
-        }
-        #toc-filter button.active { background: var(--accent-color); color: #fff; }
-        .toc-scene-row { display: flex; align-items: center; gap: 4px; }
-        /* A scene clicked open in the Navigator stays marked here, in step with
-           the highlight it drops on the scene's own blocks in the script pane,
-           until the same link is clicked again. */
-        #toc-list a.active { background: var(--accent-color); color: #fff; }
-        .toc-twisty {
-            width: 14px; flex: 0 0 14px; text-align: center; cursor: pointer;
-            color: #888; font-size: .65rem; user-select: none;
-        }
-        .toc-twisty.leaf { visibility: hidden; }
-        /* Reference numbers, in the Navigator and on the deck tabs. Tabular
-           figures and a fixed width so the column of them lines up. */
-        .toc-num, .deck-num {
-            flex: 0 0 auto;
-            font-family: 'Consolas', 'Courier New', monospace;
-            font-size: .64rem;
-            letter-spacing: .01em;
-            color: #7d7d7d;
-            font-variant-numeric: tabular-nums;
-        }
-        ul.toc-cards li.top .toc-num.draft { color: var(--stack-edge); }
-        .deck-num { color: #9a9a9a; font-size: .62rem; }
-        .deck-card.viewing .deck-num { color: #7a5a12; }
-
-        .toc-chip {
-            flex: 0 0 auto; margin-left: auto; padding: 0 4px; border-radius: 2px;
-            background: #f5e4bd; color: #6b4c12; border: 1px solid var(--stack-edge);
-            font-size: .62rem; font-weight: 700; cursor: pointer;
-            clip-path: polygon(0 0, calc(100% - 4px) 0, 100% 4px, 100% 100%, 0 100%);
-        }
-        ul.toc-cards { list-style: none; margin: 2px 0 6px; padding: 0 0 0 18px; }
-        ul.toc-cards li {
-            display: flex; align-items: center; gap: 5px; padding: 2px 4px;
-            font-size: .74rem; color: #bbb; cursor: pointer; border-radius: 3px;
-            border-left: 2px solid #444;
-        }
-        ul.toc-cards li:hover { background: rgba(255,255,255,.07); color: #eee; }
-        ul.toc-cards li.top { color: #f0d69a; border-left-color: var(--stack-edge); }
-        ul.toc-cards li.viewing { background: rgba(0,123,255,.18); }
-        /* Reserve the star's width whether or not it is there, so the draft
-           numbers below the top one still line up under it. */
-        ul.toc-cards li .star { flex: 0 0 9px; font-size: .7rem; }
-        ul.toc-cards li .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        ul.toc-cards li.drop-target { border-top: 2px solid var(--accent-color); }
+        .diff-take:hover { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-on-accent); }
+        #compare-empty { padding: 24px 16px; color: var(--color-text-muted); font-size: .84rem; line-height: 1.5; }
 
         /* Script Elements */
         .page > div:not(.page-furniture) {
             white-space: pre-wrap;
-            min-height: 1em; /* Allow empty lines */
+            min-height: 1em;
             position: relative;
             z-index: 10;
         }
-        /* The scene a Navigator click opened -- every block from its heading up
-           to (not including) the next one. Distinct from the character/location
-           word highlight, which uses the CSS Custom Highlight API instead of a
-           class, since this marks whole blocks rather than text matches. */
         .scene-nav-highlight {
-            background-color: rgba(0, 123, 255, 0.14);
-            box-shadow: -3px 0 0 0 var(--accent-color);
+            background-color: rgba(122, 184, 74, 0.2);
+            box-shadow: -3px 0 0 0 var(--color-accent);
         }
         .scene-heading {
             text-transform: uppercase;
@@ -1081,7 +1326,6 @@
 
         /* Render Mode: PDF replica */
         #pdf-viewer {
-            /* Visibility is owned by the enclosing .doc-pane, not by this element. */
             display: flex;
             flex-direction: row;
             flex-wrap: wrap;
@@ -1090,13 +1334,12 @@
             justify-content: safe center;
             gap: 20px;
         }
-        /* A PDF page is a fixed-size box; without this it is shrunk to fit a narrow
-           editor pane and the canvas/text layer no longer line up. */
         .pdf-page { flex: 0 0 auto; }
         .pdf-page {
             position: relative;
             background: #fff;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
+            border-radius: 2px;
             overflow: hidden;
         }
         .pdf-page canvas {
@@ -1118,59 +1361,22 @@
             cursor: text;
             transform-origin: 0% 0%;
         }
-        .pdf-text-layer ::selection { background: rgba(0,123,255,0.3); }
+        .pdf-text-layer ::selection { background: rgba(122, 184, 74, 0.35); }
 
-        .view-toggle {
-            display: flex;
-            margin-left: 20px;
-            gap: 4px;
-        }
-        .view-toggle button {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid transparent;
-            color: var(--text-color);
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.85rem;
-        }
-        .view-toggle button.active {
-            background: var(--accent-color);
-        }
-        .view-toggle button:disabled { opacity: 0.45; cursor: default; }
-        #view-btn-swap { font-size: 1rem; line-height: 1; padding: 5px 10px; }
-
-        /* Match ⇔ marks both sides of the match and leaves it up, rather than the
-           brief flash this used to be -- it's meant to be read side by side, not
-           just caught on the way past. Cleared by clicking into either pane, or
-           replaced outright by the next Match click. The editable side uses the
-           same CSS Custom Highlight technique as the character/location
-           highlights (see toggleHighlight): the browser boxes it per wrapped
-           visual line on its own, at that line's own height, the same as a real
-           text selection would -- no manual line-splitting needed. */
-        ::highlight(match) { background-color: rgba(0, 123, 255, 0.28); }
-        /* The exact view can't take a caret or a Custom Highlight range, so its
-           side is painted directly on the matched text-layer spans instead. */
+        ::highlight(match) { background-color: rgba(122, 184, 74, 0.32); }
         .pdf-text-layer span.match-line-active {
-            background: rgba(0, 123, 255, 0.32);
+            background: rgba(122, 184, 74, 0.35);
             border-radius: 2px;
         }
-        /* Fallback when no specific line could be matched to a page -- rings the
-           page as a whole instead of leaving that side unmarked. */
-        .match-page-active { box-shadow: inset 0 0 0 3px var(--accent-color); }
+        .match-page-active { box-shadow: inset 0 0 0 3px var(--color-accent); }
 
-        /* The exact view has no real caret -- clicking or selecting text there
-           used to leave no trace, so there was no way to tell what a Match would
-           anchor on. This marks the line that landed on, in a different color
-           from the match highlight itself so "where I clicked" stays visually
-           distinct from "what matched". */
         .pdf-text-layer span.pdf-cursor-line {
             background: rgba(201, 151, 58, 0.30);
             box-shadow: -3px 0 0 0 var(--stack-edge);
         }
         .pdf-text-layer span.pdf-cursor-line.match-line-active {
-            background: rgba(0, 123, 255, 0.32);
-            box-shadow: -3px 0 0 0 var(--accent-color);
+            background: rgba(122, 184, 74, 0.35);
+            box-shadow: -3px 0 0 0 var(--color-accent);
         }
 
         /* Print Media */
@@ -1180,24 +1386,10 @@
             }
             #top-bar, #sidebar, #right-sidebar, .resizer, .view-toggle,
             .pane-header, .pane-splitter { display: none; }
-            /* Page furniture (headers, footers, page numbers) is the one
-               thing in this list that SHOULD print -- it's deliberately
-               absent here. */
             .insertion-focus { outline: none; }
-            /* Print exactly one document: the pane that is open, and the editable
-               script when both are, so a side-by-side session doesn't print twice. */
             .doc-pane.hidden { display: none !important; }
             #editor-wrapper:not(.single-pane) #pane-exact { display: none !important; }
             #editor-page, #pdf-viewer, #script-render-page { display: block !important; }
-            /* A printed script is the version that prints. The alternates are
-               simply not in the page -- there is no sensible way to put four
-               versions of a scene into one PDF and still have it read as a
-               script -- so all the on-screen apparatus comes off: no tint, no
-               rail, no leafed edges, no deck.
-               What CAN survive is the numbering, and only when it has been asked
-               for: a label like S004.V002 in the left margin is exactly how a
-               shooting script carries its scene numbers, and it is what tells a
-               reader of the PDF which variation of that scene they are holding. */
             #deck-bar, #compare-viewer { display: none !important; }
             .page > [data-stack] { background: none !important; box-shadow: none !important; }
             .page > [data-stack]::before { display: none !important; }
@@ -1208,7 +1400,7 @@
                 border: none !important;
                 box-shadow: none !important;
                 clip-path: none !important;
-                font-family: 'Courier Prime', 'Courier New', Courier, monospace !important;
+                font-family: var(--font-script) !important;
                 font-size: 9pt !important;
                 font-weight: 400 !important;
             }
@@ -1221,7 +1413,6 @@
             .page:last-child { break-after: auto; }
             .pdf-page { box-shadow: none; margin: 0 auto; }
 
-            /* Add print page numbers using CSS counters */
             @page {
                 margin: 1in;
                 @top-right {
@@ -1231,8 +1422,6 @@
                 }
             }
 
-            /* Re-adjust margins because padding is removed for print and @page margin
-               (1in) is 0.5in narrower than the screen page's left padding (1.5in) */
             .scene-heading, .action, .center-title { margin-left: 0.5in; }
             .character { margin-left: 2.7in; }
             .dialogue { margin-left: 1.5in; }
@@ -1244,60 +1433,96 @@
             .page-furniture.furniture-bold { font-weight: bold !important; }
         }
 
-        /* Settings Modal */
+        /* Modals: Scrim and Elevated Card containers */
         .modal-overlay {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
+            background: rgba(0,0,0,0.68);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             z-index: 1000;
             justify-content: center;
             align-items: center;
         }
         .modal-content {
-            background: var(--sidebar-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            width: 400px;
+            background: #14260d;
+            border: 1px solid var(--color-border-hover);
+            border-radius: 18px;
+            width: 440px;
             max-width: 90%;
-            /* The modal used to have no height limit at all, so on anything
-               shorter than its content it ran off both the top and bottom of
-               the screen with no way to scroll to the rest -- including the
-               close button. */
-            max-height: 85vh;
+            max-height: 88vh;
             overflow-y: auto;
-            padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            color: var(--text-color);
+            padding: 24px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.75);
+            color: var(--color-text);
+            font-family: var(--font-body);
         }
         .modal-header {
             position: sticky;
-            top: 0;
-            background: var(--sidebar-bg);
+            top: -24px;
+            background: #14260d;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
-            margin-bottom: 15px;
+            border-bottom: 1px solid var(--color-border);
+            padding-bottom: 14px;
+            margin: -4px 0 18px;
             z-index: 1;
         }
-        .modal-header h2 { margin: 0; font-size: 1.2rem; }
-        .close-btn { background: transparent; border: none; color: #ccc; cursor: pointer; font-size: 1.2rem; }
-        .close-btn:hover { color: #fff; }
-        .stat-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed rgba(255,255,255,0.1); }
-        .stat-value { font-weight: bold; color: var(--accent-color); }
-        
-        .settings-btn {
-            background: transparent;
-            border: none;
-            color: #aaa;
+        .modal-header h2 { margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--color-text); }
+        .close-btn {
+            background: rgba(200, 230, 160, 0.08);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-dim);
             cursor: pointer;
-            font-size: 1.2rem;
-            margin-left: auto;
-            margin-right: 15px;
+            font-size: 0.85rem;
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s ease;
         }
-        .settings-btn:hover { color: #fff; }
+        .close-btn:hover { background: rgba(248, 81, 73, 0.2); color: #f85149; border-color: rgba(248, 81, 73, 0.4); }
+
+        .modal-content select, .modal-content input[type="text"], .modal-content input[type="number"] {
+            background: #1e3614;
+            color: var(--color-text);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 6px 10px;
+            outline: none;
+            font-family: var(--font-body);
+            font-size: 0.85rem;
+            transition: border-color 0.15s ease;
+        }
+        .modal-content select:focus, .modal-content input:focus {
+            border-color: var(--color-accent);
+        }
+        .modal-content h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--color-on-chrome);
+            border-bottom: 1px solid var(--color-border);
+            padding-bottom: 6px;
+        }
+        #import-modal button {
+            background: #1a2f11;
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: var(--color-text);
+            font-weight: 600;
+            font-family: var(--font-body);
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+        #import-modal button:hover {
+            background: var(--color-chrome-active);
+            border-color: var(--color-accent);
+            color: var(--color-on-chrome-active);
+            transform: translateY(-1px);
+        }
     </style>
 
 </head>
