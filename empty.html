@@ -2102,6 +2102,74 @@
             applyStacksVisibility();
         }
 
+        function toggleHighlightsVisibility() {
+            settings.highlightsVisible = !settings.highlightsVisible;
+            applyHighlightsVisibility();
+            saveSettings();
+        }
+        function applyHighlightsVisibility() {
+            document.body.classList.toggle('fd-hl-hidden', !settings.highlightsVisible);
+            const btn = document.getElementById('btn-toggle-highlights');
+            if (btn) {
+                btn.textContent = (settings.highlightsVisible ? '👁 ' : '🙈 ') + 'Highlights';
+                btn.classList.toggle('toggled-off', !settings.highlightsVisible);
+                btn.title = settings.highlightsVisible
+                    ? "Hide all permanent highlights (doesn't delete them)"
+                    : 'Show highlights again';
+            }
+        }
+
+        function toggleStacksVisibility() {
+            settings.stacksVisible = !settings.stacksVisible;
+            applyStacksVisibility();
+            saveSettings();
+        }
+        function applyStacksVisibility() {
+            document.body.classList.toggle('fd-stacks-hidden', !settings.stacksVisible);
+            const btn = document.getElementById('btn-toggle-stacks');
+            if (btn) {
+                btn.textContent = (settings.stacksVisible ? '👁 ' : '🙈 ') + 'Variations';
+                btn.classList.toggle('toggled-off', !settings.stacksVisible);
+                btn.title = settings.stacksVisible
+                    ? "Hide the variation tint/markers in the script (doesn't delete them)"
+                    : 'Show variation markers again';
+            }
+        }
+
+        function applyRightSidebarLayout(mode) {
+            const rs = document.getElementById('right-sidebar');
+            const btn = document.getElementById('rs-layout-toggle');
+            const split = mode === 'split';
+            if (rs) rs.classList.toggle('split-mode', split);
+            if (btn) {
+                btn.innerHTML = split ? '▤' : '⬓';
+                btn.title = split ? 'Switch to tabs view' : 'Switch to split view';
+            }
+        }
+
+        function toggleRightLayout() {
+            settings.rightSidebarLayout = settings.rightSidebarLayout === 'split' ? 'tabs' : 'split';
+            applyRightSidebarLayout(settings.rightSidebarLayout);
+            saveSettings();
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            if (tabName === 'characters') {
+                const b = document.querySelector('.tab-btn:nth-child(1)');
+                if (b) b.classList.add('active');
+                const tc = document.getElementById('tab-characters');
+                if (tc) tc.classList.add('active');
+            } else {
+                const b = document.querySelector('.tab-btn:nth-child(2)');
+                if (b) b.classList.add('active');
+                const tl = document.getElementById('tab-locations');
+                if (tl) tl.classList.add('active');
+            }
+        }
+
         function getRandomColor() {
             const hue = Math.floor(Math.random() * 360);
             return `hsl(${hue}, 70%, 60%)`;
