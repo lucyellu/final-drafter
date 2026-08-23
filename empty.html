@@ -1305,10 +1305,30 @@
         }
         .doc-pane.hidden { display: none !important; }
 
-        /* Clean Panel View: Hides panel headers/menu buttons for an unimpeded view of content */
-        #editor-wrapper.clean-panel-view .pane-header {
+        /* Clean Panel View: Hides panel headers & all internal toolbars/control strips for pure content viewing */
+        #editor-wrapper.clean-panel-view .pane-header,
+        #editor-wrapper.clean-panel-view .storyboard-toolbar,
+        #editor-wrapper.clean-panel-view .media-source-bar,
+        #editor-wrapper.clean-panel-view .media-controls-bar,
+        #editor-wrapper.clean-panel-view .media-bookmarks-bar,
+        #editor-wrapper.clean-panel-view .ref-category-bar,
+        #editor-wrapper.clean-panel-view .hub-sub-header {
             display: none !important;
         }
+
+        #editor-wrapper.clean-panel-view .media-player-container,
+        #editor-wrapper.clean-panel-view .storyboard-container,
+        #editor-wrapper.clean-panel-view .ref-board-container {
+            padding: 4px !important;
+            gap: 0 !important;
+        }
+
+        #editor-wrapper.clean-panel-view .media-video-wrapper {
+            height: 100% !important;
+            max-height: 100% !important;
+            flex: 1 1 auto !important;
+        }
+
         #view-btn-clean-panels.active {
             background: var(--color-accent) !important;
             color: var(--color-on-accent) !important;
