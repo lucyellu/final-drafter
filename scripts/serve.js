@@ -381,6 +381,130 @@ function proxyImage(req, res, targetUrl) {
         });
 }
 
+function generateAiImage(req, res) {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+        try {
+            const data = JSON.parse(body || '{}');
+            const prompt = (data.prompt || 'Cinematic film frame, highly detailed').trim();
+            const aspectRatio = data.aspectRatio || '16:9';
+            const provider = data.provider || 'pollinations';
+            const model = data.model || 'flux';
+            const seed = data.seed || Math.floor(Math.random() * 1000000);
+
+            let width = 1024;
+            let height = 576; // 16:9
+            if (aspectRatio === '2.39:1') { width = 1024; height = 430; }
+            else if (aspectRatio === '4:3') { width = 1024; height = 768; }
+            else if (aspectRatio === '9:16') { width = 576; height = 1024; }
+            else if (aspectRatio === '1:1') { width = 1024; height = 1024; }
+
+            if (provider === 'pollinations') {
+                const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&model=${encodeURIComponent(model)}&seed=${seed}&nologo=true`;
+                if (data.returnBase64) {
+                    try {
+                        const r = await fetch(pollUrl, { signal: AbortSignal.timeout(15000) });
+                        if (r.ok) {
+                            const buf = Buffer.from(await r.arrayBuffer());
+                            const b64 = 'data:image/jpeg;base64,' + buf.toString('base64');
+                            sendJson(res, 200, { ok: true, imageUrl: b64, provider: 'pollinations' });
+                            return;
+                        }
+                    } catch (e) {
+                        // Fall back to direct URL
+                    }
+                }
+                sendJson(res, 200, { ok: true, imageUrl: pollUrl, provider: 'pollinations' });
+                return;
+            }
+
+            if (provider === 'gemini' && data.geminiKey) {
+                const geminiModel = data.geminiModel || 'imagen-3.0-generate-002';
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:predict?key=${data.geminiKey}`;
+                const r = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        instances: [{ prompt: prompt }],
+                        parameters: { sampleCount: 1, aspectRatio: aspectRatio === '2.39:1' ? '16:9' : aspectRatio }
+                    }),
+                    signal: AbortSignal.timeout(35000)
+                });
+                const resp = await r.json();
+                if (resp.predictions && resp.predictions[0] && resp.predictions[0].bytesBase64Encoded) {
+                    const b64 = 'data:image/jpeg;base64,' + resp.predictions[0].bytesBase64Encoded;
+                    sendJson(res, 200, { ok: true, imageUrl: b64, provider: 'gemini' });
+                    return;
+                }
+                throw new Error(resp.error?.message || 'Google Gemini / Imagen generation failed');
+            }
+
+            if (provider === 'openai' && (data.openaiKey || data.customKey)) {
+                const key = data.openaiKey || data.customKey;
+                const r = await fetch('https://api.openai.com/v1/images/generations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': key.startsWith('Bearer ') ? key : 'Bearer ' + key
+                    },
+                    body: JSON.stringify({
+                        model: data.openaiModel || 'dall-e-3',
+                        prompt: prompt,
+                        n: 1,
+                        size: aspectRatio === '9:16' ? '1024x1792' : '1792x1024',
+                        response_format: 'b64_json'
+                    }),
+                    signal: AbortSignal.timeout(45000)
+                });
+                const resp = await r.json();
+                if (resp.data && resp.data[0]) {
+                    const img = resp.data[0].b64_json ? 'data:image/png;base64,' + resp.data[0].b64_json : resp.data[0].url;
+                    sendJson(res, 200, { ok: true, imageUrl: img, provider: 'openai' });
+                    return;
+                }
+                throw new Error(resp.error?.message || 'OpenAI DALL-E generation failed');
+            }
+
+            if (provider === 'custom' && data.customUrl) {
+                const headers = { 'Content-Type': 'application/json' };
+                if (data.customKey) headers['Authorization'] = data.customKey;
+                const r = await fetch(data.customUrl, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ prompt, n: 1, size: `${width}x${height}` }),
+                    signal: AbortSignal.timeout(45000)
+                });
+                const resp = await r.json();
+                const img = resp.data?.[0]?.b64_json ? 'data:image/png;base64,' + resp.data[0].b64_json : (resp.data?.[0]?.url || resp.imageUrl || resp.url);
+                if (img) {
+                    sendJson(res, 200, { ok: true, imageUrl: img, provider: 'custom' });
+                    return;
+                }
+                throw new Error('Custom endpoint did not return an image');
+            }
+
+            if (provider === 'comfyui' && data.comfyUrl) {
+                const comfyUrl = data.comfyUrl.replace(/\/$/, '');
+                const r = await fetch(`${comfyUrl}/prompt`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: { prompt } }),
+                    signal: AbortSignal.timeout(30000)
+                });
+                if (!r.ok) throw new Error('ComfyUI server returned ' + r.status);
+                const resp = await r.json();
+                sendJson(res, 200, { ok: true, comfyResponse: resp, provider: 'comfyui' });
+                return;
+            }
+
+            sendJson(res, 400, { error: 'Unknown or unconfigured AI provider: ' + provider });
+        } catch (e) {
+            sendJson(res, 500, { error: e.message });
+        }
+    });
+}
+
 const server = http.createServer((req, res) => {
     resetIdleTimer();
 
@@ -394,6 +518,7 @@ const server = http.createServer((req, res) => {
     if (urlPath === '/api/open-external-url') { openExternalUrl(res, query.get('url')); return; }
     if (urlPath === '/api/fetch-meta') { fetchUrlMetadata(res, query.get('url')); return; }
     if (urlPath === '/api/proxy-image') { proxyImage(req, res, query.get('url')); return; }
+    if (urlPath === '/api/generate-image') { generateAiImage(req, res); return; }
 
     if (urlPath === '/') urlPath = '/hub.html';
     const filePath = path.normalize(path.join(ROOT, urlPath));

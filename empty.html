@@ -3672,7 +3672,7 @@
                             <button class="media-btn" onclick="FDStoryboard.addNewShot()" title="Add a new custom shot card">
                                 + Add Shot
                             </button>
-                            <button class="media-btn" onclick="FDStoryboard.generateAllMissing()" title="Generate AI storyboard frames for all empty shot cards">
+                            <button class="media-btn" id="sb-batch-gen-btn" onclick="FDStoryboard.generateAllMissing()" title="Generate AI storyboard frames for shots">
                                 ✨ Batch Generate
                             </button>
                         </div>
@@ -3971,9 +3971,12 @@
             highlightsVisible: true,
             stacksVisible: true,
             aiGen: {
-                provider: 'offline',
+                provider: 'pollinations',
+                pollinationsModel: 'flux',
                 geminiKey: '',
                 geminiModel: 'imagen-3.0-generate-002',
+                openaiKey: '',
+                openaiModel: 'dall-e-3',
                 comfyUrl: 'http://127.0.0.1:8188',
                 customUrl: '',
                 customKey: '',
@@ -4766,6 +4769,9 @@
         // --- Settings Modal ---
         function openSettings() {
             document.getElementById('settings-modal').style.display = 'flex';
+            if (typeof FDVisualGen !== 'undefined' && FDVisualGen.updateSettingsUI) {
+                FDVisualGen.updateSettingsUI();
+            }
         }
         function closeSettings() {
             document.getElementById('settings-modal').style.display = 'none';
@@ -9072,73 +9078,151 @@
         // =====================================================================
         const FDVisualGen = {
             setProvider(val) {
+                if (!settings.aiGen) settings.aiGen = {};
                 settings.aiGen.provider = val;
                 this.updateSettingsUI();
                 saveSettings();
             },
-            setGeminiKey(val) { settings.aiGen.geminiKey = val; saveSettings(); },
-            setGeminiModel(val) { settings.aiGen.geminiModel = val; saveSettings(); },
-            setComfyUrl(val) { settings.aiGen.comfyUrl = val; saveSettings(); },
-            setCustomUrl(val) { settings.aiGen.customUrl = val; saveSettings(); },
-            setCustomKey(val) { settings.aiGen.customKey = val; saveSettings(); },
-            setNegativePrompt(val) { settings.aiGen.negativePrompt = val; saveSettings(); },
+            setPollinationsModel(val) {
+                if (!settings.aiGen) settings.aiGen = {};
+                settings.aiGen.pollinationsModel = val;
+                saveSettings();
+            },
+            setGeminiKey(val) {
+                if (!settings.aiGen) settings.aiGen = {};
+                settings.aiGen.geminiKey = val;
+                saveSettings();
+            },
+            setGeminiModel(val) {
+                if (!settings.aiGen) settings.aiGen = {};
+                settings.aiGen.geminiModel = val;
+                saveSettings();
+            },
+            setOpenaiKey(val) {
+                if (!settings.aiGen) settings.aiGen = {};
+                settings.aiGen.openaiKey = val;
+                saveSettings();
+            },
+            setOpenaiModel(val) {
+                if (!settings.aiGen) settings.aiGen = {};
+                settings.aiGen.openaiModel = val;
+                saveSettings();
+            },
+            setComfyUrl(val) {
+                if (!settings.aiGen) settings.aiGen = {};
+                settings.aiGen.comfyUrl = val;
+                saveSettings();
+            },
+            setCustomUrl(val) {
+                if (!settings.aiGen) settings.aiGen = {};
+                settings.aiGen.customUrl = val;
+                saveSettings();
+            },
+            setCustomKey(val) {
+                if (!settings.aiGen) settings.aiGen = {};
+                settings.aiGen.customKey = val;
+                saveSettings();
+            },
+            setNegativePrompt(val) {
+                if (!settings.aiGen) settings.aiGen = {};
+                settings.aiGen.negativePrompt = val;
+                saveSettings();
+            },
 
             updateSettingsUI() {
-                const prov = (settings.aiGen && settings.aiGen.provider) || 'offline';
+                const cfg = settings.aiGen || {};
+                const prov = cfg.provider || 'pollinations';
                 const sel = document.getElementById('ai-provider-select');
                 if (sel) sel.value = prov;
+
+                const pFields = document.getElementById('ai-pollinations-fields');
                 const gFields = document.getElementById('ai-gemini-fields');
+                const oFields = document.getElementById('ai-openai-fields');
                 const cFields = document.getElementById('ai-comfy-fields');
                 const uFields = document.getElementById('ai-custom-fields');
+
+                if (pFields) pFields.style.display = prov === 'pollinations' ? 'flex' : 'none';
                 if (gFields) gFields.style.display = prov === 'gemini' ? 'flex' : 'none';
+                if (oFields) oFields.style.display = prov === 'openai' ? 'flex' : 'none';
                 if (cFields) cFields.style.display = prov === 'comfyui' ? 'flex' : 'none';
                 if (uFields) uFields.style.display = prov === 'custom' ? 'flex' : 'none';
+
+                const pModel = document.getElementById('ai-pollinations-model');
+                if (pModel && cfg.pollinationsModel) pModel.value = cfg.pollinationsModel;
+                const gKey = document.getElementById('ai-gemini-key');
+                if (gKey && cfg.geminiKey) gKey.value = cfg.geminiKey;
+                const gModel = document.getElementById('ai-gemini-model');
+                if (gModel && cfg.geminiModel) gModel.value = cfg.geminiModel;
+                const oKey = document.getElementById('ai-openai-key');
+                if (oKey && cfg.openaiKey) oKey.value = cfg.openaiKey;
+                const oModel = document.getElementById('ai-openai-model');
+                if (oModel && cfg.openaiModel) oModel.value = cfg.openaiModel;
+                const cUrl = document.getElementById('ai-comfy-url');
+                if (cUrl && cfg.comfyUrl) cUrl.value = cfg.comfyUrl;
+                const uUrl = document.getElementById('ai-custom-url');
+                if (uUrl && cfg.customUrl) uUrl.value = cfg.customUrl;
+                const uKey = document.getElementById('ai-custom-key');
+                if (uKey && cfg.customKey) uKey.value = cfg.customKey;
+                const neg = document.getElementById('ai-negative-prompt');
+                if (neg && cfg.negativePrompt) neg.value = cfg.negativePrompt;
             },
 
             async generateImage(prompt, options = {}) {
-                const prov = (settings.aiGen && settings.aiGen.provider) || 'offline';
-                if (prov === 'gemini' && settings.aiGen.geminiKey) {
-                    try {
-                        const url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.aiGen.geminiModel || 'imagen-3.0-generate-002'}:predict?key=${settings.aiGen.geminiKey}`;
-                        const res = await fetch(url, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                instances: [{ prompt: prompt }],
-                                parameters: { sampleCount: 1, aspectRatio: options.aspectRatio === '2.39:1' ? '16:9' : (options.aspectRatio || '16:9') }
-                            })
-                        });
-                        const data = await res.json();
-                        if (data.predictions && data.predictions[0] && data.predictions[0].bytesBase64Encoded) {
-                            return 'data:image/jpeg;base64,' + data.predictions[0].bytesBase64Encoded;
-                        }
-                    } catch (e) {
-                        console.warn('Gemini Imagen API call failed, falling back to offline sketcher', e);
-                    }
-                } else if (prov === 'custom' && settings.aiGen.customUrl) {
-                    try {
-                        const res = await fetch(settings.aiGen.customUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                ...(settings.aiGen.customKey ? { 'Authorization': settings.aiGen.customKey } : {})
-                            },
-                            body: JSON.stringify({ prompt: prompt, n: 1, size: '1024x1024' })
-                        });
-                        const data = await res.json();
-                        if (data.data && data.data[0] && data.data[0].b64_json) {
-                            return 'data:image/png;base64,' + data.data[0].b64_json;
-                        }
-                        if (data.data && data.data[0] && data.data[0].url) {
-                            return data.data[0].url;
-                        }
-                    } catch (e) {
-                        console.warn('Custom AI endpoint failed, falling back to sketcher', e);
-                    }
+                const cfg = settings.aiGen || {};
+                const prov = cfg.provider || 'pollinations';
+
+                if (prov === 'offline') {
+                    await new Promise(r => setTimeout(r, 250));
+                    return this.generateOfflineConceptFrame(prompt, options);
                 }
 
-                // Default Built-in High-Contrast Concept Art Sketcher (Offline)
-                await new Promise(r => setTimeout(r, 450));
+                // 1. Primary: backend API proxy route
+                try {
+                    const payload = {
+                        prompt: prompt,
+                        aspectRatio: options.aspectRatio || storyboardState.aspectRatio || '16:9',
+                        stylePreset: options.stylePreset || storyboardState.stylePreset || 'cinematic',
+                        provider: prov,
+                        model: (prov === 'pollinations' ? (cfg.pollinationsModel || 'flux') : (prov === 'gemini' ? cfg.geminiModel : cfg.openaiModel)),
+                        geminiKey: cfg.geminiKey,
+                        geminiModel: cfg.geminiModel,
+                        openaiKey: cfg.openaiKey,
+                        openaiModel: cfg.openaiModel,
+                        comfyUrl: cfg.comfyUrl,
+                        customUrl: cfg.customUrl,
+                        customKey: cfg.customKey,
+                        seed: Math.floor(Math.random() * 1000000)
+                    };
+
+                    const res = await fetch('/api/generate-image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.ok && data.imageUrl) {
+                            return data.imageUrl;
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Backend generate-image error, attempting client-side fallback:', err);
+                }
+
+                // 2. Client-side fallback for Pollinations (direct image URL)
+                if (prov === 'pollinations') {
+                    const ar = options.aspectRatio || storyboardState.aspectRatio || '16:9';
+                    let w = 1024, h = 576;
+                    if (ar === '2.39:1') { w = 1024; h = 430; }
+                    else if (ar === '4:3') { w = 1024; h = 768; }
+                    else if (ar === '9:16') { w = 576; h = 1024; }
+                    else if (ar === '1:1') { w = 1024; h = 1024; }
+                    const seed = Math.floor(Math.random() * 1000000);
+                    return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&model=${encodeURIComponent(cfg.pollinationsModel || 'flux')}&seed=${seed}&nologo=true`;
+                }
+
+                // 3. Built-in Offline SVG Concept Art Sketcher
                 return this.generateOfflineConceptFrame(prompt, options);
             },
 
@@ -9418,6 +9502,8 @@
                     const currentTake = shot.takes[shot.viewing] || shot.takes[shot.order[0]];
                     if (currentTake) {
                         currentTake.image = imgResult;
+                        currentTake.isAi = true;
+                        currentTake.isOfflineConcept = false;
                     }
                 } catch (err) {
                     console.error('Frame generation failed', err);
@@ -9429,10 +9515,30 @@
             },
 
             async generateAllMissing() {
-                for (const shot of storyboardState.shots) {
-                    const take = shot.takes[shot.viewing];
-                    if (!take || !take.image) {
+                const total = storyboardState.shots.length;
+                if (!total) {
+                    alert('No shots in storyboard. Add a shot or click Auto-Populate from Script first!');
+                    return;
+                }
+
+                const btn = document.getElementById('sb-batch-gen-btn');
+                const origHtml = btn ? btn.innerHTML : '✨ Batch Generate';
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = `⏳ Generating (0/${total})...`;
+                }
+
+                try {
+                    let done = 0;
+                    for (const shot of storyboardState.shots) {
+                        if (btn) btn.innerHTML = `⏳ Generating (${done + 1}/${total})...`;
                         await this.generateShotFrame(shot.id);
+                        done++;
+                    }
+                } finally {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = origHtml;
                     }
                 }
             },
@@ -12681,17 +12787,29 @@
                         Model Provider
                         <select id="ai-provider-select" onchange="FDVisualGen.setProvider(this.value)"
                                 style="background:var(--color-bg); color:var(--color-text); border:1px solid var(--color-border); border-radius:6px; padding:4px 8px; font-size:0.8rem;">
-                            <option value="offline" selected>Built-in Concept Sketcher (Offline / No Key)</option>
+                            <option value="pollinations" selected>✨ Free AI Generator (Flux / SDXL — No Key Required)</option>
                             <option value="gemini">Google Gemini / Imagen 3 API</option>
+                            <option value="openai">OpenAI DALL-E 3 API</option>
                             <option value="comfyui">Local ComfyUI Server (127.0.0.1:8188)</option>
                             <option value="custom">Custom Webhook / OpenAI API</option>
+                            <option value="offline">Built-in Concept Sketcher (Offline SVG)</option>
                         </select>
                     </label>
+
+                    <div id="ai-pollinations-fields" style="display:flex; flex-direction:column; gap:8px; background:var(--color-bg-sunken); padding:10px; border-radius:8px; border:1px solid var(--color-border);">
+                        <label style="font-size:0.8rem; color:var(--color-text-dim);">AI Architecture</label>
+                        <select id="ai-pollinations-model" onchange="FDVisualGen.setPollinationsModel(this.value)"
+                                style="background:var(--color-bg); color:var(--color-text); border:1px solid var(--color-border); border-radius:6px; padding:4px 8px; font-size:0.8rem;">
+                            <option value="flux" selected>Flux.1 (Ultra-detailed cinematic)</option>
+                            <option value="turbo">SDXL Turbo (High-speed generation)</option>
+                        </select>
+                        <span style="font-size:0.72rem; color:var(--color-text-dim);">Zero configuration required. Free high-resolution visual generations for all shot cards.</span>
+                    </div>
 
                     <div id="ai-gemini-fields" style="display:none; flex-direction:column; gap:8px; background:var(--color-bg-sunken); padding:10px; border-radius:8px; border:1px solid var(--color-border);">
                         <label style="font-size:0.8rem; color:var(--color-text-dim);">Gemini / Imagen API Key</label>
                         <input type="password" id="ai-gemini-key" placeholder="AIzaSy..." oninput="FDVisualGen.setGeminiKey(this.value)"
-                               style="width:100%; box-sizing:border-box; background:var(--color-bg); color:var(--color-text); border:1px solid var(--color-border); border-radius:6px; padding:5px 8px; font-size:0.8rem;">
+                                style="width:100%; box-sizing:border-box; background:var(--color-bg); color:var(--color-text); border:1px solid var(--color-border); border-radius:6px; padding:5px 8px; font-size:0.8rem;">
                         <label style="font-size:0.8rem; color:var(--color-text-dim); margin-top:4px;">Model Name</label>
                         <select id="ai-gemini-model" onchange="FDVisualGen.setGeminiModel(this.value)"
                                 style="background:var(--color-bg); color:var(--color-text); border:1px solid var(--color-border); border-radius:6px; padding:4px 8px; font-size:0.8rem;">
@@ -12700,19 +12818,31 @@
                         </select>
                     </div>
 
+                    <div id="ai-openai-fields" style="display:none; flex-direction:column; gap:8px; background:var(--color-bg-sunken); padding:10px; border-radius:8px; border:1px solid var(--color-border);">
+                        <label style="font-size:0.8rem; color:var(--color-text-dim);">OpenAI API Key</label>
+                        <input type="password" id="ai-openai-key" placeholder="sk-..." oninput="FDVisualGen.setOpenaiKey(this.value)"
+                                style="width:100%; box-sizing:border-box; background:var(--color-bg); color:var(--color-text); border:1px solid var(--color-border); border-radius:6px; padding:5px 8px; font-size:0.8rem;">
+                        <label style="font-size:0.8rem; color:var(--color-text-dim); margin-top:4px;">Model Name</label>
+                        <select id="ai-openai-model" onchange="FDVisualGen.setOpenaiModel(this.value)"
+                                style="background:var(--color-bg); color:var(--color-text); border:1px solid var(--color-border); border-radius:6px; padding:4px 8px; font-size:0.8rem;">
+                            <option value="dall-e-3" selected>DALL-E 3 (HD Quality)</option>
+                            <option value="dall-e-2">DALL-E 2</option>
+                        </select>
+                    </div>
+
                     <div id="ai-comfy-fields" style="display:none; flex-direction:column; gap:8px; background:var(--color-bg-sunken); padding:10px; border-radius:8px; border:1px solid var(--color-border);">
                         <label style="font-size:0.8rem; color:var(--color-text-dim);">ComfyUI URL</label>
                         <input type="text" id="ai-comfy-url" value="http://127.0.0.1:8188" oninput="FDVisualGen.setComfyUrl(this.value)"
-                               style="width:100%; box-sizing:border-box; background:var(--color-bg); color:var(--color-text); border:1px solid var(--color-border); border-radius:6px; padding:5px 8px; font-size:0.8rem;">
+                                style="width:100%; box-sizing:border-box; background:var(--color-bg); color:var(--color-text); border:1px solid var(--color-border); border-radius:6px; padding:5px 8px; font-size:0.8rem;">
                     </div>
 
                     <div id="ai-custom-fields" style="display:none; flex-direction:column; gap:8px; background:var(--color-bg-sunken); padding:10px; border-radius:8px; border:1px solid var(--color-border);">
                         <label style="font-size:0.8rem; color:var(--color-text-dim);">Custom Endpoint URL</label>
                         <input type="text" id="ai-custom-url" placeholder="https://api.openai.com/v1/images/generations" oninput="FDVisualGen.setCustomUrl(this.value)"
-                               style="width:100%; box-sizing:border-box; background:var(--color-bg); color:var(--color-text); border:1px solid var(--color-border); border-radius:6px; padding:5px 8px; font-size:0.8rem;">
+                                style="width:100%; box-sizing:border-box; background:var(--color-bg); color:var(--color-text); border:1px solid var(--color-border); border-radius:6px; padding:5px 8px; font-size:0.8rem;">
                         <label style="font-size:0.8rem; color:var(--color-text-dim);">API Key</label>
                         <input type="password" id="ai-custom-key" placeholder="Bearer sk-..." oninput="FDVisualGen.setCustomKey(this.value)"
-                               style="width:100%; box-sizing:border-box; background:var(--color-bg); color:var(--color-text); border:1px solid var(--color-border); border-radius:6px; padding:5px 8px; font-size:0.8rem;">
+                                style="width:100%; box-sizing:border-box; background:var(--color-bg); color:var(--color-text); border:1px solid var(--color-border); border-radius:6px; padding:5px 8px; font-size:0.8rem;">
                     </div>
 
                     <label style="font-size:0.8rem; color:var(--color-text-dim); margin-top:2px;">Default Negative Prompt</label>
