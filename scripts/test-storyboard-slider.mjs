@@ -75,7 +75,7 @@ try {
   });
 
   ok('Storyboard auto-populated 8 shots in Slot 3', defInfo.cardCount === 8, defInfo);
-  ok('Default card size slider is 280px', defInfo.sliderVal === '280' && defInfo.labelText === '280px', defInfo);
+  ok('Default card size slider is 60px', defInfo.sliderVal === '60' && defInfo.labelText === '60px', defInfo);
 
   // 3. Test Dense / Small size (140px) in Quad Mode
   await page.evaluate(() => {

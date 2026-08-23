@@ -195,7 +195,55 @@ function openExternalUrl(res, targetUrl) {
     }
 }
 
-function fetchUrlMetadata(res, targetUrl) {
+async function scrapePinterestImagesWithPuppeteer(targetUrl) {
+    try {
+        const puppeteerModule = await import('puppeteer').catch(() => null);
+        if (!puppeteerModule) return [];
+        const puppeteer = puppeteerModule.default || puppeteerModule;
+        const vendored = path.join(__dirname, '../chrome/win64-152.0.7977.42/chrome-win64/chrome.exe');
+        const executablePath = fs.existsSync(vendored) ? vendored : undefined;
+
+        const browser = await puppeteer.launch({
+            executablePath,
+            headless: 'new',
+            args: ['--disable-web-security', '--no-sandbox', '--disable-setuid-sandbox']
+        });
+        const page = await browser.newPage();
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+        
+        const capturedImages = new Set();
+        page.on('response', res => {
+            const u = res.url();
+            if (u.includes('i.pinimg.com') && /\.(jpg|png|webp|jpeg)/i.test(u)) {
+                if (!u.includes('/75x75') && !u.includes('/30x30') && !u.includes('/avatars/')) {
+                    capturedImages.add(u.replace(/\/(?:236x|474x|564x|200x150|75x75_RS)\//, '/736x/'));
+                }
+            }
+        });
+
+        await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 8000 }).catch(() => {});
+        await new Promise(r => setTimeout(r, 1200));
+
+        const domImgs = await page.evaluate(() => {
+            const list = Array.from(document.querySelectorAll('img')).map(i => i.src || i.srcset).filter(Boolean);
+            return list.filter(s => s.includes('i.pinimg.com'));
+        }).catch(() => []);
+
+        domImgs.forEach(u => {
+            if (/\.(jpg|png|webp|jpeg)/i.test(u) && !u.includes('/75x75') && !u.includes('/30x30') && !u.includes('/avatars/')) {
+                capturedImages.add(u.replace(/\/(?:236x|474x|564x|200x150|75x75_RS)\//, '/736x/'));
+            }
+        });
+
+        await browser.close().catch(() => {});
+        return Array.from(capturedImages);
+    } catch (e) {
+        console.error('Puppeteer board scrape error:', e.message);
+        return [];
+    }
+}
+
+async function fetchUrlMetadata(res, targetUrl) {
     if (!targetUrl) { sendJson(res, 400, { error: 'Missing url query parameter' }); return; }
     try {
         const u = new URL(targetUrl);
@@ -215,64 +263,121 @@ function fetchUrlMetadata(res, targetUrl) {
         'Accept-Language': 'en-US,en;q=0.9'
     };
 
-    fetch(targetUrl, { headers, redirect: 'follow', signal: AbortSignal.timeout(8000) })
+    try {
+        const r = await fetch(targetUrl, { headers, redirect: 'follow', signal: AbortSignal.timeout(8000) });
+        const finalUrl = r.url || targetUrl;
+        const html = await r.text();
+
+        let ogImg = (html.match(/property=["']og:image["']\s+content=["']([^"']+)["']/i) ||
+                     html.match(/content=["']([^"']+)["']\s+property=["']og:image["']/i) ||
+                     html.match(/name=["']twitter:image["']\s+content=["']([^"']+)["']/i) ||
+                     html.match(/name=["']twitter:image:src["']\s+content=["']([^"']+)["']/i))?.[1];
+
+        if (ogImg && isPin) {
+            ogImg = ogImg.replace(/\/(?:200x150|236x|474x|564x)\//, '/736x/');
+        }
+
+        // Direct regex matches from HTML
+        const pinimgMatches = html.match(/https?:\/\/[a-zA-Z0-9_\-\.\/\\]*i\.pinimg\.com[a-zA-Z0-9_\-\.\/\\]*\.(?:jpg|png|webp|jpeg)/gi) || [];
+        const unescaped = pinimgMatches.map(m => m.replace(/\\u002F/g, '/').replace(/\\/g, ''));
+        let boardImages = [...new Set(unescaped.map(img => img.replace(/\/(?:236x|474x|564x|200x150|75x75_RS)\//, '/736x/')))]
+            .filter(img => !img.includes('/75x75') && !img.includes('/30x30') && !img.includes('/avatars/'));
+
+        if (!ogImg && boardImages.length > 0) {
+            ogImg = boardImages[0];
+        }
+
+        // If Pinterest board or few images from static HTML, scrape with Puppeteer
+        const isBoardUrl = isPin && !finalUrl.includes('/pin/');
+        if (isPin && (isBoardUrl || boardImages.length <= 1)) {
+            const pupImages = await scrapePinterestImagesWithPuppeteer(finalUrl);
+            if (pupImages.length > 0) {
+                boardImages = [...new Set([...boardImages, ...pupImages])];
+                if (!ogImg && boardImages.length > 0) ogImg = boardImages[0];
+            }
+        }
+
+        let ogTitle = (html.match(/property=["']og:title["']\s+content=["']([^"']+)["']/i) ||
+                       html.match(/content=["']([^"']+)["']\s+property=["']og:title["']/i) ||
+                       html.match(/name=["']twitter:title["']\s+content=["']([^"']+)["']/i) ||
+                       html.match(/<title>([^<]+)<\/title>/i))?.[1];
+
+        let ogDesc = (html.match(/property=["']og:description["']\s+content=["']([^"']+)["']/i) ||
+                      html.match(/content=["']([^"']+)["']\s+property=["']og:description["']/i) ||
+                      html.match(/name=["']twitter:description["']\s+content=["']([^"']+)["']/i) ||
+                      html.match(/name=["']description["']\s+content=["']([^"']+)["']/i))?.[1];
+
+        let siteName = (html.match(/property=["']og:site_name["']\s+content=["']([^"']+)["']/i) ||
+                        html.match(/content=["']([^"']+)["']\s+property=["']og:site_name["']/i))?.[1];
+
+        const unescapeHtml = (s) => (s || '').replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+
+        let domain = 'Web';
+        try { domain = new URL(finalUrl).hostname.replace(/^www\./, ''); } catch (_) {}
+
+        sendJson(res, 200, {
+            ok: true,
+            url: finalUrl,
+            title: unescapeHtml(ogTitle) || (isPin ? 'Pinterest Board' : 'Web Reference'),
+            image: ogImg || null,
+            images: boardImages,
+            isBoard: isBoardUrl || boardImages.length > 1,
+            description: unescapeHtml(ogDesc) || '',
+            siteName: siteName || (isPin ? 'Pinterest' : domain),
+            isPinterest: isPin
+        });
+    } catch (err) {
+        let domain = 'Web';
+        try { domain = new URL(targetUrl).hostname.replace(/^www\./, ''); } catch (_) {}
+        sendJson(res, 200, {
+            ok: false,
+            url: targetUrl,
+            title: isPin ? 'Pinterest Board' : 'Web Link',
+            image: null,
+            images: [],
+            description: 'Failed to fetch preview: ' + err.message,
+            siteName: isPin ? 'Pinterest' : domain,
+        });
+    }
+}
+
+function proxyImage(req, res, targetUrl) {
+    if (!targetUrl) { sendJson(res, 400, { error: 'Missing url query parameter' }); return; }
+    try {
+        const u = new URL(targetUrl);
+        if (!['http:', 'https:'].includes(u.protocol)) {
+            sendJson(res, 400, { error: 'Invalid URL protocol' });
+            return;
+        }
+    } catch (e) {
+        sendJson(res, 400, { error: 'Invalid URL: ' + e.message });
+        return;
+    }
+
+    const headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+    };
+
+    fetch(targetUrl, { headers, signal: AbortSignal.timeout(10000) })
         .then(async r => {
-            const finalUrl = r.url || targetUrl;
-            const html = await r.text();
-
-            let ogImg = (html.match(/property=["']og:image["']\s+content=["']([^"']+)["']/i) ||
-                         html.match(/content=["']([^"']+)["']\s+property=["']og:image["']/i) ||
-                         html.match(/name=["']twitter:image["']\s+content=["']([^"']+)["']/i) ||
-                         html.match(/name=["']twitter:image:src["']\s+content=["']([^"']+)["']/i))?.[1];
-
-            if (ogImg && isPin) {
-                ogImg = ogImg.replace(/\/(?:200x150|236x|474x)\//, '/736x/');
+            if (!r.ok) {
+                res.writeHead(r.status, { 'Content-Type': 'text/plain' });
+                res.end('Failed to fetch image: ' + r.statusText);
+                return;
             }
-            if (!ogImg && isPin) {
-                const pinImgMatch = html.match(/https:\/\/i\.pinimg\.com\/(?:736x|originals|564x|474x|236x)\/[a-f0-9\/]+\.(?:jpg|png|webp|jpeg)/i);
-                if (pinImgMatch) ogImg = pinImgMatch[0].replace(/\/(?:236x|474x)\//, '/736x/');
-            }
-
-            let ogTitle = (html.match(/property=["']og:title["']\s+content=["']([^"']+)["']/i) ||
-                           html.match(/content=["']([^"']+)["']\s+property=["']og:title["']/i) ||
-                           html.match(/name=["']twitter:title["']\s+content=["']([^"']+)["']/i) ||
-                           html.match(/<title>([^<]+)<\/title>/i))?.[1];
-
-            let ogDesc = (html.match(/property=["']og:description["']\s+content=["']([^"']+)["']/i) ||
-                          html.match(/content=["']([^"']+)["']\s+property=["']og:description["']/i) ||
-                          html.match(/name=["']twitter:description["']\s+content=["']([^"']+)["']/i) ||
-                          html.match(/name=["']description["']\s+content=["']([^"']+)["']/i))?.[1];
-
-            let siteName = (html.match(/property=["']og:site_name["']\s+content=["']([^"']+)["']/i) ||
-                            html.match(/content=["']([^"']+)["']\s+property=["']og:site_name["']/i))?.[1];
-
-            const unescapeHtml = (s) => (s || '').replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
-
-            let domain = 'Web';
-            try { domain = new URL(finalUrl).hostname.replace(/^www\./, ''); } catch (_) {}
-
-            sendJson(res, 200, {
-                ok: true,
-                url: finalUrl,
-                title: unescapeHtml(ogTitle) || (isPin ? 'Pinterest Board' : 'Web Reference'),
-                image: ogImg || null,
-                description: unescapeHtml(ogDesc) || '',
-                siteName: siteName || (isPin ? 'Pinterest' : domain),
-                isPinterest: isPin
+            const contentType = r.headers.get('content-type') || 'image/jpeg';
+            const buf = Buffer.from(await r.arrayBuffer());
+            res.writeHead(200, {
+                'Content-Type': contentType,
+                'Cache-Control': 'public, max-age=86400',
+                'Access-Control-Allow-Origin': '*'
             });
+            res.end(buf);
         })
         .catch(err => {
-            let domain = 'Web';
-            try { domain = new URL(targetUrl).hostname.replace(/^www\./, ''); } catch (_) {}
-            sendJson(res, 200, {
-                ok: false,
-                url: targetUrl,
-                title: isPin ? 'Pinterest Board' : 'Web Link',
-                image: null,
-                description: 'Failed to fetch preview: ' + err.message,
-                siteName: isPin ? 'Pinterest' : domain,
-                isPinterest: isPin
-            });
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end('Proxy error: ' + err.message);
         });
 }
 
@@ -288,6 +393,7 @@ const server = http.createServer((req, res) => {
     if (urlPath === '/api/open-external') { openExternally(res, query.get('p')); return; }
     if (urlPath === '/api/open-external-url') { openExternalUrl(res, query.get('url')); return; }
     if (urlPath === '/api/fetch-meta') { fetchUrlMetadata(res, query.get('url')); return; }
+    if (urlPath === '/api/proxy-image') { proxyImage(req, res, query.get('url')); return; }
 
     if (urlPath === '/') urlPath = '/hub.html';
     const filePath = path.normalize(path.join(ROOT, urlPath));
