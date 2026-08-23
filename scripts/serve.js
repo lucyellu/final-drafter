@@ -195,13 +195,28 @@ function openExternalUrl(res, targetUrl) {
     }
 }
 
+function findChromeExecutable() {
+    const user = process.env.USERPROFILE || 'C:\\Users\\lucyl';
+    const candidates = [
+        path.join(user, '.cache/puppeteer/chrome/win64-152.0.7977.42/chrome-win64/chrome.exe'),
+        path.join(__dirname, '../chrome/win64-152.0.7977.42/chrome-win64/chrome.exe'),
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
+    ];
+    for (const c of candidates) {
+        if (fs.existsSync(c)) return c;
+    }
+    return undefined;
+}
+
 async function scrapePinterestImagesWithPuppeteer(targetUrl) {
     try {
         const puppeteerModule = await import('puppeteer').catch(() => null);
         if (!puppeteerModule) return [];
         const puppeteer = puppeteerModule.default || puppeteerModule;
-        const vendored = path.join(__dirname, '../chrome/win64-152.0.7977.42/chrome-win64/chrome.exe');
-        const executablePath = fs.existsSync(vendored) ? vendored : undefined;
+        const executablePath = findChromeExecutable();
 
         const browser = await puppeteer.launch({
             executablePath,
@@ -221,8 +236,8 @@ async function scrapePinterestImagesWithPuppeteer(targetUrl) {
             }
         });
 
-        await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 8000 }).catch(() => {});
-        await new Promise(r => setTimeout(r, 1200));
+        await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 12000 }).catch(() => {});
+        await new Promise(r => setTimeout(r, 1500));
 
         const domImgs = await page.evaluate(() => {
             const list = Array.from(document.querySelectorAll('img')).map(i => i.src || i.srcset).filter(Boolean);
