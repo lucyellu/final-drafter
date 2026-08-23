@@ -1802,11 +1802,18 @@
             overflow-y: auto;
             overflow-x: hidden;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(var(--storyboard-card-size, 280px), 1fr));
             grid-auto-rows: max-content;
-            gap: 16px;
+            gap: 12px;
             align-content: flex-start;
             padding: 4px 4px 20px 4px;
+        }
+        .sb-card-size-slider {
+            width: 70px;
+            height: 4px;
+            accent-color: var(--color-accent);
+            cursor: pointer;
+            vertical-align: middle;
         }
         .storyboard-filmstrip {
             flex: 1 1 auto;
@@ -1834,6 +1841,7 @@
             display: flex;
             flex-direction: column;
             min-height: fit-content;
+            min-width: 0;
             height: auto;
             box-sizing: border-box;
             transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
@@ -1848,28 +1856,35 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 6px 10px;
+            padding: 5px 8px;
             background: var(--color-chrome);
             border-bottom: 1px solid var(--color-border);
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             font-weight: 700;
+            gap: 4px;
+            min-width: 0;
         }
         .shot-badge {
             background: var(--color-accent-warm);
             color: #121215;
-            padding: 1px 6px;
+            padding: 1px 5px;
             border-radius: 4px;
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             font-weight: 800;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
         .shot-spec-select {
             background: var(--color-bg);
             color: var(--color-text);
             border: 1px solid var(--color-border);
             border-radius: 4px;
-            padding: 2px 4px;
-            font-size: 0.7rem;
+            padding: 2px 3px;
+            font-size: 0.68rem;
             outline: none;
+            min-width: 0;
+            max-width: 92px;
+            text-overflow: ellipsis;
         }
         .shot-frame-wrapper {
             flex: 0 0 auto;
@@ -3573,6 +3588,11 @@
                                 <option value="comic">Graphic Novel Noir</option>
                                 <option value="anime">Anime / Animation</option>
                             </select>
+                            <div class="storyboard-toolbar-group" id="sb-card-size-group" style="display:inline-flex; align-items:center; gap:4px;" title="Adjust card size / density (how many shots fit on screen)">
+                                <span style="font-size:0.72rem; color:var(--color-text-dim);">Size:</span>
+                                <input type="range" id="sb-card-size-slider" class="sb-card-size-slider" min="140" max="480" step="10" value="280" oninput="FDStoryboard.setCardSize(this.value)">
+                                <span id="sb-card-size-label" style="font-size:0.7rem; color:var(--color-text-dim); min-width:32px;">280px</span>
+                            </div>
                             <button class="media-btn" id="sb-view-mode-btn" onclick="FDStoryboard.toggleViewMode()" title="Toggle between Grid and Filmstrip view">
                                 ▤ Filmstrip
                             </button>
@@ -3799,6 +3819,7 @@
                 aspectRatio: '16:9',
                 stylePreset: 'cinematic',
                 viewMode: 'grid',
+                cardSize: 280,
                 shots: []
             };
         }
@@ -9065,6 +9086,20 @@
                 saveState();
             },
 
+            setCardSize(val) {
+                const size = Math.max(120, Math.min(600, parseInt(val, 10) || 280));
+                storyboardState.cardSize = size;
+                const container = document.getElementById('storyboard-card-container');
+                if (container) {
+                    container.style.setProperty('--storyboard-card-size', size + 'px');
+                }
+                const label = document.getElementById('sb-card-size-label');
+                if (label) label.innerText = size + 'px';
+                const slider = document.getElementById('sb-card-size-slider');
+                if (slider && parseInt(slider.value, 10) !== size) slider.value = size;
+                saveState();
+            },
+
             toggleViewMode() {
                 storyboardState.viewMode = storyboardState.viewMode === 'filmstrip' ? 'grid' : 'filmstrip';
                 const btn = document.getElementById('sb-view-mode-btn');
@@ -9292,6 +9327,15 @@
 
                 const styleSelect = document.getElementById('sb-style-select');
                 if (styleSelect && styleSelect.value !== storyboardState.stylePreset) styleSelect.value = storyboardState.stylePreset;
+
+                const cardSize = storyboardState.cardSize || 280;
+                container.style.setProperty('--storyboard-card-size', cardSize + 'px');
+                const slider = document.getElementById('sb-card-size-slider');
+                if (slider && parseInt(slider.value, 10) !== cardSize) slider.value = cardSize;
+                const label = document.getElementById('sb-card-size-label');
+                if (label) label.innerText = cardSize + 'px';
+                const sizeGroup = document.getElementById('sb-card-size-group');
+                if (sizeGroup) sizeGroup.style.display = isFilmstrip ? 'none' : 'inline-flex';
 
                 if (!storyboardState.shots.length) {
                     container.innerHTML = `
