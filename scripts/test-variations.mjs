@@ -741,6 +741,12 @@ let focusTest = await page.evaluate(() => {
   const focusedOnInsert = block.classList.contains('insertion-focus');
   const typeWhileFocused = blockType(block);
 
+  block.focus();
+  const range = document.createRange();
+  range.selectNodeContents(block);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
   document.execCommand('insertText', false, 'MARGO');
   const textAfterTyping = block.innerText;
 
@@ -766,6 +772,12 @@ let rememberTest = await page.evaluate(() => {
   // Dialogue/action are excluded on purpose -- nobody wants the last line back.
   formatBlock('dialogue');
   const dlgBlock = document.querySelector('#editor-page .dialogue');
+  dlgBlock.focus();
+  const range = document.createRange();
+  range.selectNodeContents(dlgBlock);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
   document.execCommand('insertText', false, 'A very specific line.');
   formatBlock('character'); // blurs the dialogue block
   formatBlock('dialogue');
@@ -921,7 +933,7 @@ let furniturePersists = await page.evaluate(() => {
     metaDocType: saved.meta.docType,
   };
 });
-ok('scriptJSON() writes formatVersion 3', furniturePersists.formatVersion === 3, furniturePersists);
+ok('scriptJSON() writes valid project formatVersion', furniturePersists.formatVersion >= 3, furniturePersists);
 ok('scriptJSON() carries the furniture templates under settings, not lists',
   furniturePersists.furniture['header-left'] === 'DRAFT — {date}', furniturePersists);
 ok('scriptJSON() carries the page-number preset under settings',
@@ -1277,6 +1289,223 @@ ok('...just a highlight background so the removed text stays readable',
 let extCheck = await page.evaluate(() => withExtension('MyScript', '.fdproj'));
 ok('Save now suggests the .fdproj extension', extCheck === 'MyScript.fdproj', extCheck);
 
+console.log('\n== 35. Multi-Panel Workspace Layouts (FDPanels) ==');
+let panelLayouts = await page.evaluate(() => {
+  const wrapper = document.getElementById('editor-wrapper');
+  
+  // Test 1-Pane Solo
+  setLayoutMode('single');
+  const isSingle = wrapper.classList.contains('layout-single');
+  const slot1Vis = !document.getElementById('slot-1').classList.contains('hidden');
+  const slot2Hidden = document.getElementById('slot-2').classList.contains('hidden');
+
+  // Test 2-Pane Split
+  setLayoutMode('split-h');
+  const isSplitH = wrapper.classList.contains('layout-split-h');
+  const slot2Vis = !document.getElementById('slot-2').classList.contains('hidden');
+
+  // Test 3-Pane Studio
+  setLayoutMode('studio-3');
+  const isStudio3 = wrapper.classList.contains('layout-studio-3');
+  const slot3Vis = !document.getElementById('slot-3').classList.contains('hidden');
+
+  // Test 4-Pane Quad
+  setLayoutMode('quad-4');
+  const isQuad4 = wrapper.classList.contains('layout-quad-4');
+  const slot4Vis = !document.getElementById('slot-4').classList.contains('hidden');
+
+  // Reset to split-h
+  setLayoutMode('split-h');
+
+  return { isSingle, slot1Vis, slot2Hidden, isSplitH, slot2Vis, isStudio3, slot3Vis, isQuad4, slot4Vis };
+});
+ok('1-Pane Solo mode hides secondary slots', panelLayouts.isSingle && panelLayouts.slot1Vis && panelLayouts.slot2Hidden, panelLayouts);
+ok('2-Pane Split mode displays two primary slots', panelLayouts.isSplitH && panelLayouts.slot2Vis, panelLayouts);
+ok('3-Pane Studio mode displays 3 dockable panels', panelLayouts.isStudio3 && panelLayouts.slot3Vis, panelLayouts);
+ok('4-Pane Quad mode displays all 4 dockable panels', panelLayouts.isQuad4 && panelLayouts.slot4Vis, panelLayouts);
+
+let panelDocking = await page.evaluate(() => {
+  // Mount storyboard to slot 2
+  changeSlotType('slot-2', 'storyboard');
+  const slot2HasStoryboard = document.getElementById('slot-2').dataset.type === 'storyboard' &&
+                             document.getElementById('component-storyboard').parentElement.closest('#slot-2');
+  
+  // Mount reference board to slot 2
+  changeSlotType('slot-2', 'reference-board');
+  const slot2HasRef = document.getElementById('slot-2').dataset.type === 'reference-board' &&
+                      document.getElementById('component-reference-board').parentElement.closest('#slot-2');
+
+  // Mount media player to slot 2
+  changeSlotType('slot-2', 'media-player');
+  const slot2HasMedia = document.getElementById('slot-2').dataset.type === 'media-player' &&
+                        document.getElementById('component-media-player').parentElement.closest('#slot-2');
+
+  return { slot2HasStoryboard, slot2HasRef, slot2HasMedia };
+});
+ok('Dynamic slot switching docks Storyboards cleanly into slot', !!panelDocking.slot2HasStoryboard, panelDocking);
+ok('Dynamic slot switching docks References cleanly into slot', !!panelDocking.slot2HasRef, panelDocking);
+ok('Dynamic slot switching docks Video Player cleanly into slot', !!panelDocking.slot2HasMedia, panelDocking);
+
+console.log('\n== 36. Video & Live Action Reference Player (FDMediaPlayer) ==');
+let mediaTest = await page.evaluate(() => {
+  // Test YouTube URL loading
+  FDMediaPlayer.loadUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  const ytLoaded = mediaState.sourceType === 'youtube' && mediaState.sourceTitle.includes('dQw4w9WgXcQ');
+  const badgeText = document.getElementById('media-source-badge').innerText;
+
+  // Test Scene Bookmark Tagging
+  FDMediaPlayer.tagActiveScene();
+  const bookmarkKeys = Object.keys(mediaState.bookmarks);
+  const hasBookmark = bookmarkKeys.length > 0;
+  const chipContainer = document.getElementById('media-scene-chips').innerHTML;
+  const hasChip = chipContainer.includes('scene-chip');
+
+  // Test Bookmark Deletion
+  if (hasBookmark) {
+    FDMediaPlayer.deleteBookmark(bookmarkKeys[0]);
+  }
+  const deleted = Object.keys(mediaState.bookmarks).length === 0;
+
+  return { ytLoaded, badgeText, hasBookmark, hasChip, deleted };
+});
+ok('YouTube video URL embedding and parser operates correctly', mediaTest.ytLoaded && mediaTest.badgeText.includes('YouTube'), mediaTest);
+ok('Scene timestamp bookmark created and tagged to active scene', mediaTest.hasBookmark && mediaTest.hasChip, mediaTest);
+ok('Scene bookmark deletion works cleanly', mediaTest.deleted, mediaTest);
+
+console.log('\n== 37. Storyboard & Visual Beat Deck (FDStoryboard & FDVisualGen) ==');
+let storyboardTest = await page.evaluate(async () => {
+  // Auto-populate from screenplay scenes
+  FDStoryboard.autoPopulateFromScript();
+  const shotCount = storyboardState.shots.length;
+  const firstShot = storyboardState.shots[0];
+
+  // Test Aspect Ratio setting
+  FDStoryboard.setAspectRatio('2.39:1');
+  const arSet = storyboardState.aspectRatio === '2.39:1';
+
+  // Test Shot Variations / Takes
+  const shotId = firstShot.id;
+  FDStoryboard.addShotTake(shotId);
+  const takeCount = firstShot.order.length;
+  FDStoryboard.switchShotTake(shotId, firstShot.order[1]);
+  const viewingTake2 = firstShot.viewing === firstShot.order[1];
+  FDStoryboard.setShotTakeTop(shotId, firstShot.order[1]);
+  const takePromoted = firstShot.order[0] === firstShot.viewing;
+
+  // Test AI Concept Frame Generation
+  await FDStoryboard.generateShotFrame(shotId);
+  const currentTake = firstShot.takes[firstShot.viewing];
+  const frameGenerated = !!(currentTake && currentTake.image && currentTake.image.startsWith('data:image/svg+xml'));
+
+  return { shotCount, firstShotHeading: firstShot.heading, arSet, takeCount, viewingTake2, takePromoted, frameGenerated };
+});
+ok('Auto-populate generates storyboard shot cards from screenplay scenes', storyboardTest.shotCount > 0, storyboardTest);
+ok('Aspect ratio configuration (Cinemascope 2.39:1) updates properly', storyboardTest.arSet, storyboardTest);
+ok('Multi-take variation system adds alternate visual takes', storyboardTest.takeCount === 2, storyboardTest);
+ok('Take promotion reorders the primary visual thumbnail', storyboardTest.takePromoted, storyboardTest);
+ok('AI Concept Sketch engine generates rich framed visual art', storyboardTest.frameGenerated, storyboardTest);
+
+console.log('\n== 38. Reference Library & Lightbox Modal (FDReferences & FDLightbox) ==');
+let refTest = await page.evaluate(() => {
+  // Add Palette reference
+  referenceState.items.push({
+    id: 'test_ref_1',
+    category: 'lighting',
+    type: 'palette',
+    title: 'Neon Cyberpunk Palette',
+    colors: ['#0f172a', '#38bdf8', '#f59e0b'],
+    notes: 'Key aesthetic lighting'
+  });
+
+  // Add Directing note
+  referenceState.items.push({
+    id: 'test_ref_2',
+    category: 'directing',
+    type: 'note',
+    title: 'Camera Directive',
+    notes: 'Low angle steadycam tracking Elena'
+  });
+
+  FDReferences.renderReferences();
+  const gridHtml = document.getElementById('ref-card-grid').innerHTML;
+  const hasPalette = gridHtml.includes('Neon Cyberpunk Palette');
+
+  // Filter by category
+  FDReferences.setCategory('directing');
+  const directingFiltered = document.getElementById('ref-card-grid').innerHTML.includes('Camera Directive');
+
+  // Reset category
+  FDReferences.setCategory('all');
+
+  // Test Lightbox open and close
+  FDLightbox.open('data:image/svg+xml;utf8,<svg></svg>', '<b>Caption Test</b>');
+  const lbOpen = document.getElementById('fd-lightbox-modal').classList.contains('active');
+  FDLightbox.close();
+  const lbClosed = !document.getElementById('fd-lightbox-modal').classList.contains('active');
+
+  return { hasPalette, directingFiltered, lbOpen, lbClosed };
+});
+ok('Reference moodboard renders palette and directing note cards', refTest.hasPalette, refTest);
+ok('Category filtering isolates targeted creative references', refTest.directingFiltered, refTest);
+ok('Fullscreen Lightbox modal opens and closes properly', refTest.lbOpen && refTest.lbClosed, refTest);
+
+console.log('\n== 39. Project Persistence v4 Round-Trip ==');
+let v4Persistence = await page.evaluate(() => {
+  const jsonStr = scriptJSON();
+  const parsed = JSON.parse(jsonStr);
+
+  const hasFormatV4 = parsed.formatVersion === 4;
+  const hasLayout = parsed.layout && parsed.layout.mode !== undefined;
+  const hasMedia = parsed.media && parsed.media.sourceType !== undefined;
+  const hasStoryboard = parsed.storyboard && Array.isArray(parsed.storyboard.shots) && parsed.storyboard.shots.length > 0;
+  const hasReferences = parsed.references && Array.isArray(parsed.references.items) && parsed.references.items.length > 0;
+
+  return { hasFormatV4, hasLayout, hasMedia, hasStoryboard, hasReferences };
+});
+ok('scriptJSON() serializes formatVersion 4 schema', v4Persistence.hasFormatV4, v4Persistence);
+ok('scriptJSON() persists multi-panel layout configuration', v4Persistence.hasLayout, v4Persistence);
+ok('scriptJSON() persists media playback and scene timestamps', v4Persistence.hasMedia, v4Persistence);
+ok('scriptJSON() persists storyboard shot cards and visual takes', v4Persistence.hasStoryboard, v4Persistence);
+ok('scriptJSON() persists creative reference moodboard items', v4Persistence.hasReferences, v4Persistence);
+
+console.log('\n== 40. Netflix-Style Studio Hub & Catalog Engine ==');
+let hubTest = await page.evaluate(() => {
+  togglePanelType('studio-hub');
+  const billboard = document.getElementById('studio-billboard');
+  const title = billboard ? billboard.querySelector('.billboard-title').innerText : '';
+  const rows = document.querySelectorAll('.netflix-row');
+  const cards = document.querySelectorAll('.netflix-card');
+  const catalogCount = STUDIO_CATALOG.length;
+
+  // Test Spotlight change
+  FDStudioHub.setSpotlight('oppenheimer-2023');
+  const newTitle = billboard.querySelector('.billboard-title').innerText;
+
+  // Test Dual Launch (Watch & Read)
+  FDStudioHub.launchDual('project-hail-mary-2026');
+  const dualMode = layoutState.mode;
+  const slot1 = layoutState.slots[0].type;
+  const slot2 = layoutState.slots[1].type;
+  const badgeText = document.getElementById('media-source-badge') ? document.getElementById('media-source-badge').innerText : '';
+
+  return {
+    initialTitle: title,
+    rowCount: rows.length,
+    cardCount: cards.length,
+    catalogCount,
+    newTitle,
+    dualMode,
+    slot1,
+    slot2,
+    badgeText
+  };
+});
+ok('Studio Hub renders Netflix billboard spotlight', hubTest.initialTitle === 'Following', hubTest);
+ok('Studio Hub renders 4 Netflix-style carousels and cards', hubTest.rowCount === 4 && hubTest.cardCount >= 10, hubTest);
+ok('Studio Hub dynamic spotlight switching works', hubTest.newTitle === 'Oppenheimer', hubTest);
+ok('Dual Launch (Watch & Read) mounts side-by-side script and video player', hubTest.dualMode === 'split-h' && hubTest.slot1 === 'script-edit' && hubTest.slot2 === 'media-player', hubTest);
+ok('Dual Launch sets video media badge and source path', hubTest.badgeText.includes('Project Hail Mary'), hubTest);
+
 console.log('\n== Console errors ==');
 if (errors.length) { errors.slice(0, 12).forEach(e => console.log('  ! ' + e)); fail += errors.length; }
 else console.log('  none');
@@ -1286,3 +1515,4 @@ console.log('  ' + pass + ' passed, ' + fail + ' failed');
 console.log('=====================================');
 await browser.close();
 process.exit(fail ? 1 : 0);
+

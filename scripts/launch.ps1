@@ -2,7 +2,11 @@
 # what OCR (tesseract.js, worker+WASM) and autosave/version history (needs
 # reliable IndexedDB) both require. See scripts/serve.js for why.
 #
-# Invoked by launch-final-drafter.bat; not meant to be run standalone.
+# Invoked by launch-final-drafter.bat and launch-studio-hub.bat; not meant to
+# be run standalone. -Page picks which of the two front doors opens:
+# empty.html (the editor) or hub.html (the library).
+
+param([string]$Page = 'empty.html')
 
 $ErrorActionPreference = 'Stop'
 $Dir = Split-Path -Parent $PSScriptRoot   # scripts/ -> repo root
@@ -26,16 +30,18 @@ function Open-Url($chrome, $url) {
 }
 
 function Open-FileFallback($chrome) {
-    Write-Warning 'Falling back to file:// -- OCR and autosave will not work.'
-    $page = Join-Path $Dir 'empty.html'
-    $fileUrl = 'file:///' + ($page -replace '\\', '/')
+    # The Studio Hub needs the server for its /media and /api routes, so on
+    # file:// it can only ever show the "could not read the library" state.
+    Write-Warning 'Falling back to file:// -- OCR, autosave and the Studio Hub will not work.'
+    $pagePath = Join-Path $Dir $Page
+    $fileUrl = 'file:///' + ($pagePath -replace '\\', '/')
     if ($chrome) { Start-Process -FilePath $chrome -ArgumentList "--app=$fileUrl" }
-    else { Start-Process $page }
+    else { Start-Process $pagePath }
 }
 
 function Test-ServerUp($port) {
     try {
-        $resp = Invoke-WebRequest -Uri "http://127.0.0.1:$port/empty.html" -UseBasicParsing -TimeoutSec 1
+        $resp = Invoke-WebRequest -Uri "http://127.0.0.1:$port/$Page" -UseBasicParsing -TimeoutSec 1
         return $resp.StatusCode -eq 200
     } catch { return $false }
 }
@@ -51,7 +57,7 @@ if (-not $node) {
 # A launch from a moment ago may already be serving -- reuse it instead of
 # spawning a second node process fighting over ports.
 if (Test-ServerUp $DefaultPort) {
-    Open-Url $chrome "http://127.0.0.1:$DefaultPort/empty.html"
+    Open-Url $chrome "http://127.0.0.1:$DefaultPort/$Page"
     return
 }
 
@@ -72,7 +78,7 @@ for ($i = 0; $i -lt 50; $i++) {
 }
 
 if ($port) {
-    Open-Url $chrome "http://127.0.0.1:$port/empty.html"
+    Open-Url $chrome "http://127.0.0.1:$port/$Page"
 } else {
     Open-FileFallback $chrome
 }

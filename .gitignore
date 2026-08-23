@@ -1,2 +1,4 @@
 node_modules/
 chrome/
+media-catalog.json
+scripts/*-shot.png

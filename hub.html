@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Final Drafter Studio — Library</title>
+<link rel="icon" href="final-drafter.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Nunito:wght@300;400;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+    // Same as the editor: no separate worker file to fetch, so the library
+    // works from a bare local server with nothing else installed.
+    if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+</script>
+<style>
+:root {
+    --bg: #0b0b0f;
+    --bg-raised: #16161c;
+    --bg-card: #1c1c23;
+    --border: #2b2b34;
+    --text: #f2f2f5;
+    --text-dim: #9a9aa8;
+    --text-faint: #6a6a78;
+    --accent: #e50914;
+    --accent-soft: #ff2b36;
+    --matched: #46d369;
+    --warn: #f5a623;
+    --font-display: "Space Grotesk", "Nunito", system-ui, sans-serif;
+    --font-body: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-script: "Courier Prime", "Courier New", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+}
+
+body.modal-open { overflow: hidden; }
+
+/* ------------------------------------------------------------------ top bar */
+#topbar {
+    position: sticky; top: 0; z-index: 60;
+    display: flex; align-items: center; gap: 18px;
+    padding: 14px 42px;
+    background: linear-gradient(180deg, rgba(11,11,15,0.97) 0%, rgba(11,11,15,0.85) 70%, rgba(11,11,15,0) 100%);
+    backdrop-filter: blur(6px);
+}
+
+.brand {
+    font-family: var(--font-display);
+    font-weight: 700; font-size: 1.15rem; letter-spacing: 0.16em;
+    color: var(--accent); text-transform: uppercase;
+    white-space: nowrap;
+}
+.brand span { color: var(--text); letter-spacing: 0.05em; font-weight: 600; }
+
+#search {
+    flex: 0 1 320px; margin-left: auto;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text);
+    padding: 8px 16px;
+    font-family: var(--font-body); font-size: 0.85rem;
+    outline: none;
+}
+#search:focus { border-color: var(--accent); background: rgba(255,255,255,0.1); }
+#search::placeholder { color: var(--text-faint); }
+
+.topbtn {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-family: var(--font-body); font-size: 0.8rem; font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+}
+.topbtn:hover { background: rgba(255,255,255,0.14); color: var(--text); }
+
+/* --------------------------------------------------------------- billboard */
+#billboard {
+    position: relative;
+    min-height: 62vh;
+    margin-top: -76px;
+    padding: 130px 42px 48px;
+    display: flex; align-items: flex-end;
+    overflow: hidden;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+#billboard-bg {
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, #14141c, #221a2c 60%, #2c1622);
+    transition: background 0.5s ease;
+}
+#billboard-poster {
+    position: absolute; right: 0; top: 0; bottom: 0; width: 46%;
+    background-size: cover; background-position: top center;
+    opacity: 0.5; filter: grayscale(1) contrast(0.85);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 45%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%);
+}
+#billboard-scrim {
+    position: absolute; inset: 0;
+    background:
+        linear-gradient(90deg, rgba(11,11,15,0.96) 0%, rgba(11,11,15,0.75) 45%, rgba(11,11,15,0.25) 100%),
+        linear-gradient(0deg, var(--bg) 0%, rgba(11,11,15,0) 40%);
+}
+#billboard-content { position: relative; z-index: 2; max-width: 640px; }
+
+.bb-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.badge {
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: 4px;
+    background: rgba(255,255,255,0.1); color: var(--text-dim);
+    border: 1px solid rgba(255,255,255,0.09);
+}
+.badge.matched { background: rgba(70,211,105,0.16); color: var(--matched); border-color: rgba(70,211,105,0.35); }
+.badge.warn { background: rgba(245,166,35,0.14); color: var(--warn); border-color: rgba(245,166,35,0.32); }
+.badge.accent { background: rgba(229,9,20,0.18); color: var(--accent-soft); border-color: rgba(229,9,20,0.4); }
+
+#bb-title {
+    font-family: var(--font-display);
+    font-size: clamp(2.2rem, 5vw, 3.6rem);
+    font-weight: 700; line-height: 1.02; margin: 0 0 10px;
+}
+#bb-meta { color: var(--text-dim); font-size: 0.92rem; margin-bottom: 14px; }
+#bb-meta b { color: var(--text); font-weight: 600; }
+#bb-files {
+    font-family: var(--font-script); font-size: 0.76rem; color: var(--text-faint);
+    line-height: 1.7; margin-bottom: 20px; word-break: break-all;
+}
+#bb-files .fl { color: var(--text-dim); }
+
+.bb-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: none; border-radius: 6px; cursor: pointer;
+    font-family: var(--font-body); font-size: 0.9rem; font-weight: 700;
+    padding: 11px 22px;
+    background: rgba(255,255,255,0.14); color: var(--text);
+}
+.btn:hover { background: rgba(255,255,255,0.24); }
+.btn.primary { background: var(--accent); color: #fff; }
+.btn.primary:hover { background: var(--accent-soft); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* -------------------------------------------------------------------- rows */
+#rows { padding: 26px 0 80px; }
+.row { margin-bottom: 38px; }
+.row-head {
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 0 42px 12px;
+}
+.row-title { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; }
+.row-sub { font-size: 0.78rem; color: var(--text-faint); }
+.row-empty { padding: 0 42px; color: var(--text-faint); font-size: 0.85rem; }
+
+.carousel {
+    display: flex; gap: 14px;
+    padding: 6px 42px 14px;
+    overflow-x: auto; scroll-behavior: smooth;
+    scrollbar-width: thin; scrollbar-color: #333 transparent;
+}
+.carousel::-webkit-scrollbar { height: 8px; }
+.carousel::-webkit-scrollbar-thumb { background: #2e2e38; border-radius: 4px; }
+
+.card {
+    position: relative; flex: 0 0 190px; width: 190px; aspect-ratio: 2 / 3;
+    border-radius: 8px; overflow: hidden; cursor: pointer;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    transition: transform 0.18s ease, border-color 0.18s ease;
+}
+.card:hover { transform: translateY(-4px) scale(1.03); border-color: rgba(255,255,255,0.28); z-index: 5; }
+.card.active { border-color: var(--accent); }
+.card-art { position: absolute; inset: 0; background-size: cover; background-position: top center; opacity: 0; transition: opacity 0.4s ease; }
+.card-art.loaded { opacity: 1; }
+.card-grad { position: absolute; inset: 0; }
+/* Multiplied over the white title page, so the card's own colour comes
+   through the paper and the typed text stays black. */
+.card-tint { position: absolute; inset: 0; mix-blend-mode: multiply; opacity: 0; transition: opacity 0.4s ease; }
+.card-art.loaded + .card-tint { opacity: 1; }
+.card-scrim { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.55) 32%, rgba(0,0,0,0) 62%); }
+.card-body { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px; }
+.card-title { font-family: var(--font-display); font-size: 0.9rem; font-weight: 600; line-height: 1.2; }
+.card-sub { font-size: 0.72rem; color: var(--text-dim); margin-top: 3px; }
+.card-flags { position: absolute; top: 8px; left: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
+.flag {
+    font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 6px; border-radius: 3px;
+    background: rgba(0,0,0,0.62); color: var(--text-dim); border: 1px solid rgba(255,255,255,0.12);
+}
+.flag.matched { color: var(--matched); border-color: rgba(70,211,105,0.4); }
+.flag.warn { color: var(--warn); border-color: rgba(245,166,35,0.4); }
+.card-actions {
+    position: absolute; inset: auto 0 0 0; padding: 10px;
+    display: flex; gap: 6px; opacity: 0;
+    background: linear-gradient(0deg, rgba(0,0,0,0.95), rgba(0,0,0,0.6) 70%, transparent);
+    transition: opacity 0.18s ease;
+}
+.card:hover .card-actions { opacity: 1; }
+.mini {
+    flex: 1; border: none; border-radius: 4px; cursor: pointer;
+    background: rgba(255,255,255,0.16); color: #fff;
+    font-family: var(--font-body); font-size: 0.72rem; font-weight: 700;
+    padding: 6px 4px;
+}
+.mini.primary { background: var(--accent); }
+.mini:hover { filter: brightness(1.25); }
+
+/* ------------------------------------------------------------ episode modal */
+#modal {
+    position: fixed; inset: 0; z-index: 200; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.75);
+    padding: 40px;
+}
+#modal.open { display: flex; }
+#modal-box {
+    background: var(--bg-raised); border: 1px solid var(--border); border-radius: 10px;
+    width: min(760px, 100%); max-height: 80vh; overflow: auto; padding: 24px 26px;
+}
+#modal-box h2 { font-family: var(--font-display); margin: 0 0 4px; font-size: 1.3rem; }
+#modal-box .sub { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 18px; }
+.ep {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border);
+    margin-bottom: 8px; background: var(--bg-card);
+}
+.ep-num { font-family: var(--font-display); font-weight: 700; color: var(--text-faint); min-width: 54px; }
+.ep-name { flex: 1; font-size: 0.8rem; font-family: var(--font-script); color: var(--text-dim); word-break: break-all; }
+.ep .btn { padding: 7px 14px; font-size: 0.78rem; }
+
+#footer {
+    padding: 26px 42px 48px; color: var(--text-faint); font-size: 0.76rem;
+    border-top: 1px solid rgba(255,255,255,0.05); line-height: 1.7;
+}
+#footer code { font-family: var(--font-script); color: var(--text-dim); }
+
+#toast {
+    position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%) translateY(20px);
+    background: var(--bg-raised); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 20px; font-size: 0.85rem; z-index: 300;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+@media (max-width: 780px) {
+    #topbar, #billboard, .row-head, .carousel, #footer { padding-left: 20px; padding-right: 20px; }
+    #billboard-poster { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+    <div class="brand">Final Drafter <span>Studio</span></div>
+    <input id="search" type="search" placeholder="Search the library…  ( / )" autocomplete="off">
+    <button class="topbtn" id="btn-rescan" title="Re-read both library folders and rebuild the catalog">↻ Rescan</button>
+    <button class="topbtn" onclick="window.location.href='empty.html'" title="Open Final Drafter with an empty script">Open Editor</button>
+</div>
+
+<div id="billboard">
+    <div id="billboard-bg"></div>
+    <div id="billboard-poster"></div>
+    <div id="billboard-scrim"></div>
+    <div id="billboard-content">
+        <div class="bb-badges" id="bb-badges"></div>
+        <h1 id="bb-title">Reading library…</h1>
+        <div id="bb-meta"></div>
+        <div id="bb-files"></div>
+        <div class="bb-actions" id="bb-actions"></div>
+    </div>
+</div>
+
+<div id="rows"></div>
+
+<div id="footer">
+    <div id="footer-counts"></div>
+    <div>Screenplays: <code id="footer-scripts-root"></code> &nbsp;·&nbsp; Films: <code id="footer-videos-root"></code></div>
+    <div>A title appears in the top row only when both folders hold it — matching is by name and year, so a screenplay filed under a different title than its release will not pair up.</div>
+</div>
+
+<div id="modal" onclick="if(event.target===this) closeModal()">
+    <div id="modal-box"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// =====================================================================
+// Final Drafter Studio — library front end.
+//
+// Reads /api/catalog (built by scripts/scan-media.mjs), shows every IP that
+// has both a screenplay and a film, and hands the chosen pair to the editor
+// as empty.html?script=...&video=..., which opens them side by side.
+// =====================================================================
+
+let CATALOG = null;
+let spotlight = null;      // the item currently filling the billboard
+let filter = '';
+
+const $ = id => document.getElementById(id);
+
+function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+}
+
+function mediaUrl(p) { return '/media?p=' + encodeURIComponent(p); }
+
+function fmtSize(bytes) {
+    if (!bytes) return '';
+    const gb = bytes / 1073741824;
+    if (gb >= 1) return gb.toFixed(1) + ' GB';
+    return Math.max(1, Math.round(bytes / 1048576)) + ' MB';
+}
+
+function baseName(p) { return String(p || '').split(/[\\/]/).pop(); }
+
+function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// A stable colour per title, so a card looks the same on every visit and two
+// titles sitting next to each other never share a gradient.
+function hueOf(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
+    return h;
+}
+function gradientFor(title) {
+    const h = hueOf(title || 'x');
+    const h2 = (h + 42) % 360;
+    return 'linear-gradient(145deg, hsl(' + h + ' 42% 16%), hsl(' + h2 + ' 38% 26%))';
+}
+// The same two hues, but light enough to survive being multiplied over a white
+// script page: too dark here and the typed text disappears into the tint.
+function posterTintFor(title) {
+    const h = hueOf(title || 'x');
+    const h2 = (h + 42) % 360;
+    return 'linear-gradient(160deg, hsl(' + h + ' 58% 64%), hsl(' + h2 + ' 52% 42%))';
+}
+
+// ------------------------------------------------------------------ posters
+// The first page of the screenplay is the poster: it is the one image the
+// library actually has on disk. Rendered lazily, two at a time, because these
+// are full PDFs being fetched off a spinning L: drive.
+const posterCache = new Map();
+let posterQueue = [];
+let posterActive = 0;
+
+function queuePoster(pdfPath, apply) {
+    if (!pdfPath || !window.pdfjsLib) return;
+    if (posterCache.has(pdfPath)) {
+        const v = posterCache.get(pdfPath);
+        if (v) apply(v);
+        return;
+    }
+    posterQueue.push({ pdfPath, apply });
+    pumpPosters();
+}
+
+function pumpPosters() {
+    while (posterActive < 2 && posterQueue.length) {
+        const job = posterQueue.shift();
+        if (posterCache.has(job.pdfPath)) {
+            const v = posterCache.get(job.pdfPath);
+            if (v) job.apply(v);
+            continue;
+        }
+        posterActive++;
+        renderPoster(job.pdfPath).then(url => {
+            posterCache.set(job.pdfPath, url);
+            if (url) job.apply(url);
+        }).catch(() => {
+            posterCache.set(job.pdfPath, null);
+        }).finally(() => {
+            posterActive--;
+            pumpPosters();
+        });
+    }
+}
+
+async function renderPoster(pdfPath) {
+    const doc = await pdfjsLib.getDocument({ url: mediaUrl(pdfPath) }).promise;
+    const page = await doc.getPage(1);
+    const viewport = page.getViewport({ scale: 1 });
+    const scale = 460 / viewport.width;
+    const scaled = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(scaled.width);
+    canvas.height = Math.ceil(scaled.height);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport: scaled }).promise;
+    // Left as white paper: the card multiplies its own colour over it, which
+    // turns each title page into a tinted poster instead of a grey rectangle.
+    try { doc.destroy(); } catch (e) { }
+    return canvas.toDataURL('image/jpeg', 0.72);
+}
+
+// ------------------------------------------------------------------ opening
+// Everything the editor needs travels in the query string; empty.html reads
+// it on load, splits the workspace, and fills both panes.
+function editorUrl(opts) {
+    const q = new URLSearchParams();
+    if (opts.script) q.set('script', opts.script);
+    if (opts.video) q.set('video', opts.video);
+    if (opts.title) q.set('title', opts.title);
+    q.set('mode', opts.mode || 'dual');
+    return 'empty.html?' + q.toString();
+}
+
+function openDual(item, videoIdx, scriptIdx) {
+    const v = item.videos && item.videos[videoIdx || 0];
+    const s = item.scripts && item.scripts[scriptIdx || 0];
+    window.location.href = editorUrl({
+        script: s && s.path,
+        video: v && v.path,
+        title: item.title + (item.year ? ' (' + item.year + ')' : ''),
+        mode: 'dual',
+    });
+}
+
+function openScriptOnly(path, title) {
+    window.location.href = editorUrl({ script: path, title: title, mode: 'script' });
+}
+
+function openVideoOnly(path, title) {
+    window.location.href = editorUrl({ video: path, title: title, mode: 'video' });
+}
+
+async function openExternal(path) {
+    try {
+        const r = await fetch('/api/open-external?p=' + encodeURIComponent(path), { method: 'POST' });
+        const j = await r.json();
+        if (j.ok) toast('Handed to your default player: ' + baseName(path));
+        else toast('Could not open it: ' + (j.error || 'unknown error'));
+    } catch (e) {
+        toast('Could not open it: ' + e.message);
+    }
+}
+
+// --------------------------------------------------------------- billboard
+function setSpotlight(item) {
+    spotlight = item;
+    const grad = gradientFor(item.title);
+    $('billboard-bg').style.background = grad;
+
+    const script = item.scripts && item.scripts[0];
+    const video = item.videos && item.videos[0];
+    const play = video && video.play ? video.play : null;
+
+    const poster = $('billboard-poster');
+    poster.style.backgroundImage = '';
+    if (script) queuePoster(script.path, url => {
+        if (spotlight === item) poster.style.backgroundImage = 'url(' + url + ')';
+    });
+
+    const badges = [];
+    if (script && video) badges.push('<span class="badge matched">Script + Film</span>');
+    else if (script) badges.push('<span class="badge">Screenplay only</span>');
+    else if (video) badges.push('<span class="badge">Film only</span>');
+    if (item.year) badges.push('<span class="badge">' + item.year + '</span>');
+    if (item.kind === 'series') badges.push('<span class="badge accent">' + item.videos.length + ' episodes</span>');
+    if (play && play.level === 'external') badges.push('<span class="badge warn">Needs an external player</span>');
+    if (play && play.level === 'maybe') badges.push('<span class="badge warn">HEVC — may not decode</span>');
+    $('bb-badges').innerHTML = badges.join('');
+
+    $('bb-title').textContent = item.title;
+
+    const bits = [];
+    if (video) bits.push('<b>' + esc(fmtSize(video.size)) + '</b> film');
+    if (item.videos && item.videos.length > 1) bits.push(item.videos.length + ' files');
+    if (script) bits.push('<b>' + esc(fmtSize(script.size)) + '</b> screenplay PDF');
+    $('bb-meta').innerHTML = bits.join(' &nbsp;·&nbsp; ');
+
+    const files = [];
+    if (script) files.push('<div><span class="fl">SCRIPT</span> ' + esc(baseName(script.path)) + '</div>');
+    if (video) files.push('<div><span class="fl">FILM&nbsp;&nbsp;</span> ' + esc(baseName(video.path)) + '</div>');
+    $('bb-files').innerHTML = files.join('');
+
+    const acts = [];
+    if (script && video) {
+        acts.push('<button class="btn primary" onclick="openDual(currentItem())">⚡ Open Dual Workspace</button>');
+    }
+    if (video) {
+        if (play && play.level === 'external') {
+            acts.push('<button class="btn" onclick="openExternal(currentItem().videos[0].path)">▶ Play in system player</button>');
+        } else {
+            acts.push('<button class="btn" onclick="openVideoOnly(currentItem().videos[0].path, currentItem().title)">▶ Play film</button>');
+        }
+    }
+    if (script) {
+        acts.push('<button class="btn" onclick="openScriptOnly(currentItem().scripts[0].path, currentItem().title)">📜 Read screenplay</button>');
+    }
+    if (item.videos && item.videos.length > 1) {
+        acts.push('<button class="btn" onclick="showEpisodes(currentItem())">🎞 All ' + item.videos.length + ' files</button>');
+    }
+    $('bb-actions').innerHTML = acts.join('');
+
+    document.querySelectorAll('.card').forEach(c => c.classList.toggle('active', c.dataset.uid === item._uid));
+}
+
+function currentItem() { return spotlight; }
+
+// ------------------------------------------------------------------- cards
+function cardHtml(item) {
+    const script = item.scripts && item.scripts[0];
+    const video = item.videos && item.videos[0];
+    const play = video && video.play ? video.play : null;
+
+    const flags = [];
+    if (script && video) flags.push('<span class="flag matched">Dual</span>');
+    else if (script) flags.push('<span class="flag">Script</span>');
+    else if (video) flags.push('<span class="flag">Film</span>');
+    if (play && play.level === 'external') flags.push('<span class="flag warn">' + esc((video.name.split('.').pop() || '').toUpperCase()) + '</span>');
+    const fileCount = item.fileCount || item.videos.length;
+    if (fileCount > 1) flags.push('<span class="flag">' + fileCount + (item.kind === 'series' ? ' eps' : ' files') + '</span>');
+
+    const actions = [];
+    if (script && video) actions.push('<button class="mini primary" onclick="event.stopPropagation(); openByUid(\'' + item._uid + '\')">⚡ Dual</button>');
+    if (video && !(script && video)) {
+        if (play && play.level === 'external') actions.push('<button class="mini" onclick="event.stopPropagation(); openExternalByUid(\'' + item._uid + '\')">▶ Player</button>');
+        else actions.push('<button class="mini" onclick="event.stopPropagation(); openVideoByUid(\'' + item._uid + '\')">▶ Play</button>');
+    }
+    if (script && !(script && video)) actions.push('<button class="mini" onclick="event.stopPropagation(); openScriptByUid(\'' + item._uid + '\')">📜 Read</button>');
+
+    return '<div class="card" data-uid="' + item._uid + '" data-poster="' + esc(script ? script.path : '') + '" onclick="selectByUid(\'' + item._uid + '\')" title="' + esc(item.title) + '">'
+        + '<div class="card-grad" style="background:' + gradientFor(item.title) + '"></div>'
+        + '<div class="card-art"></div>'
+        + '<div class="card-tint" style="background:' + posterTintFor(item.title) + '"></div>'
+        + '<div class="card-scrim"></div>'
+        + '<div class="card-flags">' + flags.join('') + '</div>'
+        + '<div class="card-body">'
+        + '<div class="card-title">' + esc(item.title) + '</div>'
+        + '<div class="card-sub">' + (item.year ? item.year : '—') + (video ? ' · ' + fmtSize(video.size) : '') + '</div>'
+        + '</div>'
+        + '<div class="card-actions">' + actions.join('') + '</div>'
+        + '</div>';
+}
+
+const byUid = new Map();
+function selectByUid(uid) { const i = byUid.get(uid); if (i) setSpotlight(i); }
+function openByUid(uid) { const i = byUid.get(uid); if (i) openDual(i); }
+function openVideoByUid(uid) { const i = byUid.get(uid); if (i) openVideoOnly(i.videos[0].path, i.title); }
+function openScriptByUid(uid) { const i = byUid.get(uid); if (i) openScriptOnly(i.scripts[0].path, i.title); }
+function openExternalByUid(uid) { const i = byUid.get(uid); if (i) openExternal(i.videos[0].path); }
+
+// -------------------------------------------------------------- episodes
+function showEpisodes(item) {
+    const script = item.scripts && item.scripts[0];
+    const rows = item.videos.map((v, idx) => {
+        const ep = v.episode ? ('S' + String(v.episode.season).padStart(2, '0') + 'E' + String(v.episode.episode).padStart(2, '0')) : ('#' + (idx + 1));
+        // Pair an episode script with its own episode when the codes line up.
+        let s = script;
+        if (v.episode && item.scripts.length > 1) {
+            const m = item.scripts.find(x => x.episode && x.episode.season === v.episode.season && x.episode.episode === v.episode.episode);
+            if (m) s = m;
+        }
+        const sIdx = item.scripts.indexOf(s);
+        const external = v.play && v.play.level === 'external';
+        const btn = external
+            ? '<button class="btn" onclick="openExternal(' + JSON.stringify(v.path).replace(/"/g, '&quot;') + ')">▶ Player</button>'
+            : '<button class="btn" onclick="openVideoOnly(' + JSON.stringify(v.path).replace(/"/g, '&quot;') + ', ' + JSON.stringify(item.title).replace(/"/g, '&quot;') + ')">▶ Play</button>';
+        const dual = s
+            ? '<button class="btn primary" onclick="openDual(byUid.get(\'' + item._uid + '\'), ' + idx + ', ' + sIdx + ')">⚡ Dual</button>'
+            : '';
+        return '<div class="ep"><div class="ep-num">' + ep + '</div>'
+            + '<div class="ep-name">' + esc(v.name) + '<br><span style="color:var(--text-faint)">' + fmtSize(v.size) + (external ? ' · not playable in Chrome' : '') + '</span></div>'
+            + dual + btn + '</div>';
+    }).join('');
+
+    $('modal-box').innerHTML = '<h2>' + esc(item.title) + '</h2>'
+        + '<div class="sub">' + item.videos.length + ' video files · ' + item.scripts.length + ' screenplay file(s)</div>'
+        + rows
+        + '<div style="margin-top:16px"><button class="btn" onclick="closeModal()">Close</button></div>';
+    $('modal').classList.add('open');
+    document.body.classList.add('modal-open');
+}
+function closeModal() {
+    $('modal').classList.remove('open');
+    document.body.classList.remove('modal-open');
+}
+
+// ------------------------------------------------------------------- rows
+function rowHtml(title, sub, items, emptyNote) {
+    if (!items.length) {
+        if (!emptyNote) return '';
+        return '<div class="row"><div class="row-head"><div class="row-title">' + esc(title) + '</div></div>'
+            + '<div class="row-empty">' + esc(emptyNote) + '</div></div>';
+    }
+    return '<div class="row">'
+        + '<div class="row-head"><div class="row-title">' + esc(title) + '</div><div class="row-sub">' + esc(sub) + '</div></div>'
+        + '<div class="carousel">' + items.map(cardHtml).join('') + '</div>'
+        + '</div>';
+}
+
+function matches(item) {
+    if (!filter) return true;
+    const hay = (item.title + ' ' + (item.year || '') + ' '
+        + (item.videos || []).map(v => v.name).join(' ') + ' '
+        + (item.scripts || []).map(s => s.name).join(' ')).toLowerCase();
+    return hay.includes(filter);
+}
+
+function render() {
+    const c = CATALOG;
+    byUid.clear();
+
+    const matched = c.items.map((it, i) => tag(it, 'm' + i));
+    // videoOnly carries only the largest file per title, plus how many there
+    // are -- enough for a card, and it keeps the catalog from listing every
+    // episode of every unmatched season.
+    const filmOnly = c.videoOnly.map((v, i) => tag({
+        title: v.title, year: v.year, kind: v.files > 1 ? 'series' : 'film',
+        fileCount: v.files,
+        videos: [{ path: v.path, name: v.name, size: v.size, play: v.play, episode: null }],
+        scripts: [],
+    }, 'v' + i));
+    const scriptOnly = c.scriptOnly.map((s, i) => tag({
+        title: s.title, year: s.year, kind: 'film',
+        videos: [],
+        scripts: [{ path: s.path, name: s.name, size: s.size, episode: null }],
+    }, 's' + i));
+
+    const fm = matched.filter(matches);
+    const fv = filmOnly.filter(matches);
+    const fs = scriptOnly.filter(matches);
+
+    $('rows').innerHTML =
+        rowHtml('▶ Ready to Watch & Read', 'both the screenplay and the film are on disk', fm,
+            filter ? 'Nothing matched in the paired titles.' : 'No title has both a screenplay and a film yet.')
+        + rowHtml('🎬 Films waiting on a screenplay', fv.length + ' in the video library', fv, '')
+        + rowHtml('📜 Screenplays waiting on a film', fs.length + ' in the screenplay library', fs, '');
+
+    observePosters();
+
+    if (fm.length) setSpotlight(fm[0]);
+    else if (fv.length) setSpotlight(fv[0]);
+    else if (fs.length) setSpotlight(fs[0]);
+
+    $('footer-counts').textContent =
+        c.counts.matched + ' paired · ' + c.counts.videoTitles + ' film titles · '
+        + c.counts.scripts + ' screenplays · scanned ' + new Date(c.generatedAt).toLocaleString();
+    $('footer-scripts-root').textContent = c.roots.scripts;
+    $('footer-videos-root').textContent = c.roots.videos;
+
+    function tag(item, uid) { item._uid = uid; byUid.set(uid, item); return item; }
+}
+
+// Posters only render for cards that actually come into view -- there are 200+
+// screenplays in the bottom row and no reason to read them all.
+let observer = null;
+function observePosters() {
+    if (observer) observer.disconnect();
+    observer = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+            if (!e.isIntersecting) return;
+            const card = e.target;
+            observer.unobserve(card);
+            const p = card.dataset.poster;
+            if (!p) return;
+            queuePoster(p, url => {
+                const art = card.querySelector('.card-art');
+                if (!art) return;
+                art.style.backgroundImage = 'url(' + url + ')';
+                art.classList.add('loaded');
+            });
+        });
+    }, { rootMargin: '200px' });
+    document.querySelectorAll('.card').forEach(c => observer.observe(c));
+}
+
+// ------------------------------------------------------------------- boot
+async function load(rescan) {
+    const r = await fetch('/api/catalog' + (rescan ? '?rescan=1' : ''));
+    if (!r.ok) throw new Error('catalog request failed (' + r.status + ')');
+    CATALOG = await r.json();
+    if (CATALOG.error) throw new Error(CATALOG.error);
+    render();
+}
+
+$('search').addEventListener('input', e => {
+    filter = e.target.value.trim().toLowerCase();
+    if (CATALOG) render();
+});
+
+$('btn-rescan').addEventListener('click', async () => {
+    const b = $('btn-rescan');
+    b.disabled = true; b.textContent = '↻ Scanning…';
+    try {
+        posterCache.clear();
+        await load(true);
+        toast('Library rescanned — ' + CATALOG.counts.matched + ' paired titles.');
+    } catch (e) {
+        toast('Rescan failed: ' + e.message);
+    }
+    b.disabled = false; b.textContent = '↻ Rescan';
+});
+
+document.addEventListener('keydown', e => {
+    if (e.key === '/' && document.activeElement !== $('search')) {
+        e.preventDefault(); $('search').focus();
+    } else if (e.key === 'Escape') {
+        closeModal();
+        if (document.activeElement === $('search')) $('search').blur();
+    } else if (e.key === 'Enter' && spotlight && document.activeElement !== $('search')) {
+        if (spotlight.scripts.length && spotlight.videos.length) openDual(spotlight);
+    }
+});
+
+load(false).catch(err => {
+    $('bb-title').textContent = 'Could not read the library';
+    $('bb-meta').innerHTML = esc(err.message)
+        + '<br>Start the server with <code>node scripts/serve.js</code> and open this page over http://127.0.0.1, not from the file system.';
+});
+</script>
+</body>
+</html>
