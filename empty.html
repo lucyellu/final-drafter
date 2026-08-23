@@ -1305,6 +1305,16 @@
         }
         .doc-pane.hidden { display: none !important; }
 
+        /* Clean Panel View: Hides panel headers/menu buttons for an unimpeded view of content */
+        #editor-wrapper.clean-panel-view .pane-header {
+            display: none !important;
+        }
+        #view-btn-clean-panels.active {
+            background: var(--color-accent) !important;
+            color: var(--color-on-accent) !important;
+            font-weight: 700;
+        }
+
         .pane-header {
             flex: 0 0 auto;
             display: flex;
@@ -3271,6 +3281,7 @@
                 <button id="view-btn-references" onclick="togglePanelType('reference-board')" title="Show/hide Moodboard & References">📌 References</button>
                 <button id="view-btn-exact" onclick="togglePane('exact')" title="Show/hide Screenplay Print view">🖨️ Print</button>
                 <button id="view-btn-editable" onclick="togglePane('editable')" title="Show/hide the editable screenplay">📝 Edit</button>
+                <button id="view-btn-clean-panels" onclick="FDPanels.toggleCleanPanels()" title="Hide panel menu headers for an unimpeded view of panel contents (Alt+Z)">👁️ Clean Panels</button>
                 <button id="view-btn-sync" onclick="syncPanes()" title="Highlight the matching line in both script panes — and, with a film loaded in the Video panel, seek it to the same spot (Ctrl+M)">Match ⇔</button>
                 <button id="view-btn-swap" onclick="swapPanes()" title="Swap the left and right panes">⇄</button>
             </div>
@@ -3822,6 +3833,7 @@
                 studioVRatio: 0.5,
                 quadColRatio: 0.5,
                 quadRowRatio: 0.5,
+                cleanPanels: false,
                 slots: [
                     { id: 'slot-1', type: 'script-edit' },
                     { id: 'slot-2', type: 'script-render' },
@@ -7499,6 +7511,7 @@
 
                 this.syncLegacyPaneState();
                 this.updateTopbarButtons();
+                this.syncCleanPanelsState();
             },
 
             mountComponent(slotId, type) {
@@ -7613,6 +7626,29 @@
                 if (btnMedia) btnMedia.classList.toggle('active', isMedia);
                 if (btnSb) btnSb.classList.toggle('active', isSb);
                 if (btnRef) btnRef.classList.toggle('active', isRef);
+                this.syncCleanPanelsState();
+            },
+
+            toggleCleanPanels() {
+                layoutState.cleanPanels = !layoutState.cleanPanels;
+                this.syncCleanPanelsState();
+                saveState();
+            },
+
+            syncCleanPanelsState() {
+                const isClean = !!layoutState.cleanPanels;
+                const wrapper = document.getElementById('editor-wrapper');
+                if (wrapper) {
+                    wrapper.classList.toggle('clean-panel-view', isClean);
+                }
+                const btn = document.getElementById('view-btn-clean-panels');
+                if (btn) {
+                    btn.classList.toggle('active', isClean);
+                    btn.innerText = isClean ? '👁️ Menus Hidden' : '👁️ Clean Panels';
+                    btn.title = isClean
+                        ? 'Panel menu headers are hidden. Click to show panel headers and dropdowns (Alt+Z).'
+                        : 'Hide panel menu headers for an unimpeded view of panel contents (Alt+Z)';
+                }
             },
 
             setupSplitters() {
@@ -7773,6 +7809,7 @@
             }
         }
         function togglePanelType(type) { FDPanels.togglePanel(type); }
+        function toggleCleanPanels() { FDPanels.toggleCleanPanels(); }
 
         function applyPaneLayout() {
             FDPanels.applyLayout();
@@ -12277,6 +12314,7 @@
             else if (e.ctrlKey && (e.key === 's' || e.key === 'S')) { e.preventDefault(); e.shiftKey ? saveAsJSON() : saveJSON(); }
             else if (e.ctrlKey && e.shiftKey && (e.key === 'v' || e.key === 'V')) { e.preventDefault(); addVariation(); }
             else if (e.altKey && (e.key === 'h' || e.key === 'H')) { e.preventDefault(); toggleHighlighterTool(); }
+            else if (e.altKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); FDPanels.toggleCleanPanels(); }
             else if (e.ctrlKey && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); deselectAllHighlights(); }
             else if (e.key === 'Escape' && openStackId) { e.preventDefault(); closeDeck(); }
             else if (e.key === 'Escape' && highlighterMode.active) { e.preventDefault(); toggleHighlighterTool(); }
