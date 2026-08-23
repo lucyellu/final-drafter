@@ -1208,6 +1208,14 @@
         }
 
         /* Layout Grid Modes */
+        #editor-wrapper {
+            flex: 1 1 auto;
+            min-width: 0;
+            min-height: 0;
+            position: relative;
+            background: var(--color-border);
+            overflow: hidden;
+        }
         #editor-wrapper.layout-single {
             display: flex;
             flex-direction: row;
@@ -1221,22 +1229,67 @@
             flex-direction: column;
         }
         #editor-wrapper.layout-studio-3 {
-            display: flex;
-            flex-direction: row;
+            display: grid;
+            grid-template-columns: var(--studio-col-1, 1fr) 6px var(--studio-col-2, 1fr);
+            grid-template-rows: var(--studio-row-1, 1fr) 6px var(--studio-row-2, 1fr);
+            gap: 0;
         }
-        #editor-wrapper.layout-studio-3 .studio-right-column {
-            flex: 1 1 0;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+        #editor-wrapper.layout-studio-3 #slot-1 {
+            grid-area: 1 / 1 / 4 / 2;
         }
+        #editor-wrapper.layout-studio-3 #pane-splitter-1 {
+            grid-area: 1 / 2 / 4 / 2;
+            cursor: ew-resize;
+        }
+        #editor-wrapper.layout-studio-3 #slot-2 {
+            grid-area: 1 / 3 / 2 / 4;
+        }
+        #editor-wrapper.layout-studio-3 #pane-splitter-h {
+            grid-area: 2 / 3 / 3 / 4;
+            cursor: ns-resize;
+        }
+        #editor-wrapper.layout-studio-3 #slot-3 {
+            grid-area: 3 / 3 / 4 / 4;
+        }
+
         #editor-wrapper.layout-quad-4 {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-            gap: 1px;
-            background-color: var(--color-border);
+            grid-template-columns: var(--quad-col-1, 1fr) 6px var(--quad-col-2, 1fr);
+            grid-template-rows: var(--quad-row-1, 1fr) 6px var(--quad-row-2, 1fr);
+            gap: 0;
+        }
+        #editor-wrapper.layout-quad-4 #slot-1 {
+            grid-area: 1 / 1 / 2 / 2;
+        }
+        #editor-wrapper.layout-quad-4 #slot-2 {
+            grid-area: 1 / 3 / 2 / 4;
+        }
+        #editor-wrapper.layout-quad-4 #slot-3 {
+            grid-area: 3 / 1 / 4 / 2;
+        }
+        #editor-wrapper.layout-quad-4 #slot-4 {
+            grid-area: 3 / 3 / 4 / 4;
+        }
+        #editor-wrapper.layout-quad-4 #pane-splitter-1 {
+            grid-area: 1 / 2 / 4 / 2;
+            cursor: ew-resize;
+        }
+        #editor-wrapper.layout-quad-4 #pane-splitter-h {
+            grid-area: 2 / 1 / 3 / 4;
+            cursor: ns-resize;
+        }
+        #editor-wrapper.layout-quad-4 #pane-splitter-center {
+            grid-area: 2 / 2 / 3 / 3;
+            cursor: move;
+            z-index: 20;
+            background: var(--color-accent);
+            opacity: 0.5;
+            border-radius: 2px;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+        #editor-wrapper.layout-quad-4 #pane-splitter-center:hover {
+            opacity: 1;
+            transform: scale(1.5);
         }
 
         /* Document Panes & Slots */
@@ -1375,8 +1428,10 @@
             background-color: var(--color-chrome);
             border-left: 1px solid var(--color-border);
             border-right: 1px solid var(--color-border);
-            transition: background 0.2s;
-            z-index: 5;
+            transition: background-color 0.15s ease;
+            z-index: 10;
+            user-select: none;
+            touch-action: none;
         }
         .pane-splitter.horizontal {
             flex: 0 0 6px;
@@ -1387,7 +1442,14 @@
             border-bottom: 1px solid var(--color-border);
         }
         .pane-splitter:hover { background-color: var(--color-accent); }
-        .pane-splitter.hidden { display: none; }
+        .pane-splitter.active-drag { background-color: var(--color-accent-vivid) !important; }
+        .pane-splitter.hidden { display: none !important; }
+        .pane-splitter-center {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .pane-splitter-center.hidden { display: none !important; }
 
         /* Panel Content Containers */
         .panel-content-view {
@@ -3280,7 +3342,7 @@
             </div>
 
             <!-- Primary Splitter -->
-            <div class="pane-splitter" id="pane-splitter-1"></div>
+            <div class="pane-splitter" id="pane-splitter-1" title="Drag to resize panels (Double-click to center)"></div>
 
             <!-- Studio Right Column (hosts Slot 2 & Slot 3 in studio mode) / Regular Slot 2 in split mode -->
             <div class="doc-pane" id="slot-2" data-slot="2" data-type="script-render">
@@ -3305,7 +3367,10 @@
             </div>
 
             <!-- Horizontal Splitter for Studio / Quad -->
-            <div class="pane-splitter horizontal hidden" id="pane-splitter-h"></div>
+            <div class="pane-splitter horizontal hidden" id="pane-splitter-h" title="Drag to resize panels (Double-click to center)"></div>
+
+            <!-- Center Intersection Handle for Quad-4 -->
+            <div class="pane-splitter-center hidden" id="pane-splitter-center" title="Drag to resize all 4 panels simultaneously (Double-click to center)"></div>
 
             <!-- Slot 3 (For Studio-3 and Quad-4) -->
             <div class="doc-pane hidden" id="slot-3" data-slot="3" data-type="storyboard">
@@ -3654,6 +3719,12 @@
         function defaultLayoutState() {
             return {
                 mode: 'split-h', // 'single', 'split-h', 'split-v', 'studio-3', 'quad-4'
+                splitRatio: 0.5,
+                splitVRatio: 0.5,
+                studioHRatio: 0.5,
+                studioVRatio: 0.5,
+                quadColRatio: 0.5,
+                quadRowRatio: 0.5,
                 slots: [
                     { id: 'slot-1', type: 'script-edit' },
                     { id: 'slot-2', type: 'script-render' },
@@ -7220,6 +7291,12 @@
                 const slot4 = document.getElementById('slot-4');
                 const split1 = document.getElementById('pane-splitter-1');
                 const splitH = document.getElementById('pane-splitter-h');
+                const splitCenter = document.getElementById('pane-splitter-center');
+
+                // Clear inline styles on slots
+                [slot1, slot2, slot3, slot4].forEach(s => {
+                    if (s) { s.style.flex = ''; s.style.flexGrow = ''; }
+                });
 
                 if (curMode === 'single') {
                     if (slot1) slot1.classList.remove('hidden');
@@ -7228,16 +7305,37 @@
                     if (slot4) slot4.classList.add('hidden');
                     if (split1) split1.classList.add('hidden');
                     if (splitH) splitH.classList.add('hidden');
-                } else if (curMode === 'split-h' || curMode === 'split-v') {
+                    if (splitCenter) splitCenter.classList.add('hidden');
+                } else if (curMode === 'split-h') {
                     if (slot1) slot1.classList.remove('hidden');
                     if (slot2) slot2.classList.remove('hidden');
                     if (slot3) slot3.classList.add('hidden');
                     if (slot4) slot4.classList.add('hidden');
                     if (split1) {
                         split1.classList.remove('hidden');
-                        split1.classList.toggle('horizontal', curMode === 'split-v');
+                        split1.classList.remove('horizontal');
                     }
                     if (splitH) splitH.classList.add('hidden');
+                    if (splitCenter) splitCenter.classList.add('hidden');
+
+                    const r = layoutState.splitRatio != null ? layoutState.splitRatio : 0.5;
+                    if (slot1) slot1.style.flex = `${r} ${r} 0px`;
+                    if (slot2) slot2.style.flex = `${1 - r} ${1 - r} 0px`;
+                } else if (curMode === 'split-v') {
+                    if (slot1) slot1.classList.remove('hidden');
+                    if (slot2) slot2.classList.remove('hidden');
+                    if (slot3) slot3.classList.add('hidden');
+                    if (slot4) slot4.classList.add('hidden');
+                    if (split1) {
+                        split1.classList.remove('hidden');
+                        split1.classList.add('horizontal');
+                    }
+                    if (splitH) splitH.classList.add('hidden');
+                    if (splitCenter) splitCenter.classList.add('hidden');
+
+                    const r = layoutState.splitVRatio != null ? layoutState.splitVRatio : 0.5;
+                    if (slot1) slot1.style.flex = `${r} ${r} 0px`;
+                    if (slot2) slot2.style.flex = `${1 - r} ${1 - r} 0px`;
                 } else if (curMode === 'studio-3') {
                     if (slot1) slot1.classList.remove('hidden');
                     if (slot2) slot2.classList.remove('hidden');
@@ -7247,14 +7345,39 @@
                         split1.classList.remove('hidden');
                         split1.classList.remove('horizontal');
                     }
-                    if (splitH) splitH.classList.remove('hidden');
+                    if (splitH) {
+                        splitH.classList.remove('hidden');
+                        splitH.classList.add('horizontal');
+                    }
+                    if (splitCenter) splitCenter.classList.add('hidden');
+
+                    const colR = layoutState.studioHRatio != null ? layoutState.studioHRatio : 0.5;
+                    const rowR = layoutState.studioVRatio != null ? layoutState.studioVRatio : 0.5;
+                    wrapper.style.setProperty('--studio-col-1', `${colR}fr`);
+                    wrapper.style.setProperty('--studio-col-2', `${1 - colR}fr`);
+                    wrapper.style.setProperty('--studio-row-1', `${rowR}fr`);
+                    wrapper.style.setProperty('--studio-row-2', `${1 - rowR}fr`);
                 } else if (curMode === 'quad-4') {
                     if (slot1) slot1.classList.remove('hidden');
                     if (slot2) slot2.classList.remove('hidden');
                     if (slot3) slot3.classList.remove('hidden');
                     if (slot4) slot4.classList.remove('hidden');
-                    if (split1) split1.classList.add('hidden');
-                    if (splitH) splitH.classList.add('hidden');
+                    if (split1) {
+                        split1.classList.remove('hidden');
+                        split1.classList.remove('horizontal');
+                    }
+                    if (splitH) {
+                        splitH.classList.remove('hidden');
+                        splitH.classList.add('horizontal');
+                    }
+                    if (splitCenter) splitCenter.classList.remove('hidden');
+
+                    const colR = layoutState.quadColRatio != null ? layoutState.quadColRatio : 0.5;
+                    const rowR = layoutState.quadRowRatio != null ? layoutState.quadRowRatio : 0.5;
+                    wrapper.style.setProperty('--quad-col-1', `${colR}fr`);
+                    wrapper.style.setProperty('--quad-col-2', `${1 - colR}fr`);
+                    wrapper.style.setProperty('--quad-row-1', `${rowR}fr`);
+                    wrapper.style.setProperty('--quad-row-2', `${1 - rowR}fr`);
                 }
 
                 // Update layout label in topbar
@@ -7394,36 +7517,138 @@
             },
 
             setupSplitters() {
+                const wrapper = document.getElementById('editor-wrapper');
                 const split1 = document.getElementById('pane-splitter-1');
+                const splitH = document.getElementById('pane-splitter-h');
+                const splitCenter = document.getElementById('pane-splitter-center');
                 const slot1 = document.getElementById('slot-1');
                 const slot2 = document.getElementById('slot-2');
-                if (!split1 || !slot1 || !slot2) return;
+                if (!wrapper || !split1) return;
 
-                let dragging = false;
-                split1.addEventListener('mousedown', (e) => {
-                    dragging = true;
-                    document.body.style.cursor = layoutState.mode === 'split-v' ? 'ns-resize' : 'ew-resize';
+                let activeDrag = null; // 'v' | 'h' | 'center'
+
+                const startDrag = (type, e) => {
+                    activeDrag = type;
                     document.body.style.userSelect = 'none';
+                    if (type === 'v') {
+                        document.body.style.cursor = layoutState.mode === 'split-v' ? 'ns-resize' : 'ew-resize';
+                        split1.classList.add('active-drag');
+                    } else if (type === 'h') {
+                        document.body.style.cursor = 'ns-resize';
+                        if (splitH) splitH.classList.add('active-drag');
+                    } else if (type === 'center') {
+                        document.body.style.cursor = 'move';
+                        if (splitCenter) splitCenter.classList.add('active-drag');
+                    }
+                    e.preventDefault();
+                };
+
+                split1.addEventListener('mousedown', (e) => {
+                    startDrag('v', e);
                 });
+
+                if (splitH) {
+                    splitH.addEventListener('mousedown', (e) => {
+                        startDrag('h', e);
+                    });
+                }
+
+                if (splitCenter) {
+                    splitCenter.addEventListener('mousedown', (e) => {
+                        startDrag('center', e);
+                    });
+                }
+
+                // Double-click to reset ratios to 50/50
+                split1.addEventListener('dblclick', () => {
+                    if (layoutState.mode === 'split-h') layoutState.splitRatio = 0.5;
+                    else if (layoutState.mode === 'split-v') layoutState.splitVRatio = 0.5;
+                    else if (layoutState.mode === 'studio-3') layoutState.studioHRatio = 0.5;
+                    else if (layoutState.mode === 'quad-4') layoutState.quadColRatio = 0.5;
+                    FDPanels.applyLayout();
+                    saveState();
+                });
+
+                if (splitH) {
+                    splitH.addEventListener('dblclick', () => {
+                        if (layoutState.mode === 'studio-3') layoutState.studioVRatio = 0.5;
+                        else if (layoutState.mode === 'quad-4') layoutState.quadRowRatio = 0.5;
+                        FDPanels.applyLayout();
+                        saveState();
+                    });
+                }
+
+                if (splitCenter) {
+                    splitCenter.addEventListener('dblclick', () => {
+                        layoutState.quadColRatio = 0.5;
+                        layoutState.quadRowRatio = 0.5;
+                        FDPanels.applyLayout();
+                        saveState();
+                    });
+                }
+
                 window.addEventListener('mousemove', (e) => {
-                    if (!dragging) return;
-                    const wrapper = document.getElementById('editor-wrapper');
+                    if (!activeDrag) return;
                     const rect = wrapper.getBoundingClientRect();
-                    if (layoutState.mode === 'split-v') {
-                        const ratio = Math.max(0.15, Math.min(0.85, (e.clientY - rect.top) / rect.height));
-                        slot1.style.flexGrow = ratio;
-                        slot2.style.flexGrow = 1 - ratio;
-                    } else {
-                        const ratio = Math.max(0.15, Math.min(0.85, (e.clientX - rect.left) / rect.width));
-                        slot1.style.flexGrow = ratio;
-                        slot2.style.flexGrow = 1 - ratio;
+                    const curMode = layoutState.mode;
+
+                    if (activeDrag === 'v') {
+                        if (curMode === 'split-h') {
+                            const ratio = Math.max(0.1, Math.min(0.9, (e.clientX - rect.left) / rect.width));
+                            layoutState.splitRatio = ratio;
+                            if (slot1) slot1.style.flex = `${ratio} ${ratio} 0px`;
+                            if (slot2) slot2.style.flex = `${1 - ratio} ${1 - ratio} 0px`;
+                        } else if (curMode === 'split-v') {
+                            const ratio = Math.max(0.1, Math.min(0.9, (e.clientY - rect.top) / rect.height));
+                            layoutState.splitVRatio = ratio;
+                            if (slot1) slot1.style.flex = `${ratio} ${ratio} 0px`;
+                            if (slot2) slot2.style.flex = `${1 - ratio} ${1 - ratio} 0px`;
+                        } else if (curMode === 'studio-3') {
+                            const ratio = Math.max(0.15, Math.min(0.85, (e.clientX - rect.left) / rect.width));
+                            layoutState.studioHRatio = ratio;
+                            wrapper.style.setProperty('--studio-col-1', `${ratio}fr`);
+                            wrapper.style.setProperty('--studio-col-2', `${1 - ratio}fr`);
+                        } else if (curMode === 'quad-4') {
+                            const ratio = Math.max(0.15, Math.min(0.85, (e.clientX - rect.left) / rect.width));
+                            layoutState.quadColRatio = ratio;
+                            wrapper.style.setProperty('--quad-col-1', `${ratio}fr`);
+                            wrapper.style.setProperty('--quad-col-2', `${1 - ratio}fr`);
+                        }
+                    } else if (activeDrag === 'h') {
+                        if (curMode === 'studio-3') {
+                            const ratio = Math.max(0.15, Math.min(0.85, (e.clientY - rect.top) / rect.height));
+                            layoutState.studioVRatio = ratio;
+                            wrapper.style.setProperty('--studio-row-1', `${ratio}fr`);
+                            wrapper.style.setProperty('--studio-row-2', `${1 - ratio}fr`);
+                        } else if (curMode === 'quad-4') {
+                            const ratio = Math.max(0.15, Math.min(0.85, (e.clientY - rect.top) / rect.height));
+                            layoutState.quadRowRatio = ratio;
+                            wrapper.style.setProperty('--quad-row-1', `${ratio}fr`);
+                            wrapper.style.setProperty('--quad-row-2', `${1 - ratio}fr`);
+                        }
+                    } else if (activeDrag === 'center') {
+                        if (curMode === 'quad-4') {
+                            const colRatio = Math.max(0.15, Math.min(0.85, (e.clientX - rect.left) / rect.width));
+                            const rowRatio = Math.max(0.15, Math.min(0.85, (e.clientY - rect.top) / rect.height));
+                            layoutState.quadColRatio = colRatio;
+                            layoutState.quadRowRatio = rowRatio;
+                            wrapper.style.setProperty('--quad-col-1', `${colRatio}fr`);
+                            wrapper.style.setProperty('--quad-col-2', `${1 - colRatio}fr`);
+                            wrapper.style.setProperty('--quad-row-1', `${rowRatio}fr`);
+                            wrapper.style.setProperty('--quad-row-2', `${1 - rowRatio}fr`);
+                        }
                     }
                 });
+
                 window.addEventListener('mouseup', () => {
-                    if (dragging) {
-                        dragging = false;
+                    if (activeDrag) {
+                        activeDrag = null;
                         document.body.style.cursor = '';
                         document.body.style.userSelect = '';
+                        split1.classList.remove('active-drag');
+                        if (splitH) splitH.classList.remove('active-drag');
+                        if (splitCenter) splitCenter.classList.remove('active-drag');
+                        saveState();
                     }
                 });
             }
