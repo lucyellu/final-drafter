@@ -179,6 +179,103 @@ function openExternally(res, rawPath) {
     }
 }
 
+function openExternalUrl(res, targetUrl) {
+    if (!targetUrl) { sendJson(res, 400, { error: 'Missing target url' }); return; }
+    try {
+        const u = new URL(targetUrl);
+        if (!['http:', 'https:'].includes(u.protocol)) {
+            sendJson(res, 400, { error: 'Invalid URL protocol' });
+            return;
+        }
+        const child = spawn('cmd', ['/c', 'start', '', targetUrl], { detached: true, stdio: 'ignore' });
+        child.unref();
+        sendJson(res, 200, { ok: true, url: targetUrl });
+    } catch (e) {
+        sendJson(res, 500, { error: String(e.message) });
+    }
+}
+
+function fetchUrlMetadata(res, targetUrl) {
+    if (!targetUrl) { sendJson(res, 400, { error: 'Missing url query parameter' }); return; }
+    try {
+        const u = new URL(targetUrl);
+        if (!['http:', 'https:'].includes(u.protocol)) {
+            sendJson(res, 400, { error: 'Invalid URL protocol' });
+            return;
+        }
+    } catch (e) {
+        sendJson(res, 400, { error: 'Invalid URL: ' + e.message });
+        return;
+    }
+
+    const isPin = /pinterest\.|pin\.it/i.test(targetUrl);
+    const headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9'
+    };
+
+    fetch(targetUrl, { headers, redirect: 'follow', signal: AbortSignal.timeout(8000) })
+        .then(async r => {
+            const finalUrl = r.url || targetUrl;
+            const html = await r.text();
+
+            let ogImg = (html.match(/property=["']og:image["']\s+content=["']([^"']+)["']/i) ||
+                         html.match(/content=["']([^"']+)["']\s+property=["']og:image["']/i) ||
+                         html.match(/name=["']twitter:image["']\s+content=["']([^"']+)["']/i) ||
+                         html.match(/name=["']twitter:image:src["']\s+content=["']([^"']+)["']/i))?.[1];
+
+            if (ogImg && isPin) {
+                ogImg = ogImg.replace(/\/(?:200x150|236x|474x)\//, '/736x/');
+            }
+            if (!ogImg && isPin) {
+                const pinImgMatch = html.match(/https:\/\/i\.pinimg\.com\/(?:736x|originals|564x|474x|236x)\/[a-f0-9\/]+\.(?:jpg|png|webp|jpeg)/i);
+                if (pinImgMatch) ogImg = pinImgMatch[0].replace(/\/(?:236x|474x)\//, '/736x/');
+            }
+
+            let ogTitle = (html.match(/property=["']og:title["']\s+content=["']([^"']+)["']/i) ||
+                           html.match(/content=["']([^"']+)["']\s+property=["']og:title["']/i) ||
+                           html.match(/name=["']twitter:title["']\s+content=["']([^"']+)["']/i) ||
+                           html.match(/<title>([^<]+)<\/title>/i))?.[1];
+
+            let ogDesc = (html.match(/property=["']og:description["']\s+content=["']([^"']+)["']/i) ||
+                          html.match(/content=["']([^"']+)["']\s+property=["']og:description["']/i) ||
+                          html.match(/name=["']twitter:description["']\s+content=["']([^"']+)["']/i) ||
+                          html.match(/name=["']description["']\s+content=["']([^"']+)["']/i))?.[1];
+
+            let siteName = (html.match(/property=["']og:site_name["']\s+content=["']([^"']+)["']/i) ||
+                            html.match(/content=["']([^"']+)["']\s+property=["']og:site_name["']/i))?.[1];
+
+            const unescapeHtml = (s) => (s || '').replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+
+            let domain = 'Web';
+            try { domain = new URL(finalUrl).hostname.replace(/^www\./, ''); } catch (_) {}
+
+            sendJson(res, 200, {
+                ok: true,
+                url: finalUrl,
+                title: unescapeHtml(ogTitle) || (isPin ? 'Pinterest Board' : 'Web Reference'),
+                image: ogImg || null,
+                description: unescapeHtml(ogDesc) || '',
+                siteName: siteName || (isPin ? 'Pinterest' : domain),
+                isPinterest: isPin
+            });
+        })
+        .catch(err => {
+            let domain = 'Web';
+            try { domain = new URL(targetUrl).hostname.replace(/^www\./, ''); } catch (_) {}
+            sendJson(res, 200, {
+                ok: false,
+                url: targetUrl,
+                title: isPin ? 'Pinterest Board' : 'Web Link',
+                image: null,
+                description: 'Failed to fetch preview: ' + err.message,
+                siteName: isPin ? 'Pinterest' : domain,
+                isPinterest: isPin
+            });
+        });
+}
+
 const server = http.createServer((req, res) => {
     resetIdleTimer();
 
@@ -189,6 +286,8 @@ const server = http.createServer((req, res) => {
     if (urlPath === '/media') { serveMedia(req, res, query.get('p')); return; }
     if (urlPath === '/api/catalog') { serveCatalog(res, query.get('rescan') === '1'); return; }
     if (urlPath === '/api/open-external') { openExternally(res, query.get('p')); return; }
+    if (urlPath === '/api/open-external-url') { openExternalUrl(res, query.get('url')); return; }
+    if (urlPath === '/api/fetch-meta') { fetchUrlMetadata(res, query.get('url')); return; }
 
     if (urlPath === '/') urlPath = '/hub.html';
     const filePath = path.normalize(path.join(ROOT, urlPath));
