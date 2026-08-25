@@ -1981,13 +1981,23 @@
         }
         .shot-frame-wrapper.ar-239 { aspect-ratio: 2.39 / 1; }
         .shot-frame-wrapper.ar-43 { aspect-ratio: 4 / 3; }
+        .shot-frame-wrapper.ar-11 { aspect-ratio: 1 / 1; }
         .shot-frame-wrapper.ar-916 { aspect-ratio: 9 / 16; max-height: 320px; }
+        /* FIT is the default: the whole generated frame is shown, letterboxed
+           into the card. object-fit never scales the two axes independently,
+           so pixels stay square at any card size, zoom level or screen
+           density -- what read as "stretched" before was `cover` cropping
+           frames whose real ratio was not the ratio the provider was asked
+           for. `.frame-fill` puts the old crop-to-fill behaviour back. */
         .shot-frame-img {
+            display: block;
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
+            object-position: center;
             cursor: pointer;
         }
+        .shot-frame-wrapper.frame-fill .shot-frame-img { object-fit: cover; }
         .shot-frame-svg {
             width: 100%;
             height: 100%;
@@ -2945,6 +2955,117 @@
         .sb-batch-btn.danger:hover { background: rgba(248, 81, 73, 0.28); }
         .sb-batch-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
+        .sb-style-group { margin-bottom: 16px; }
+        .sb-style-group-title {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-weight: 700;
+            color: var(--color-text-dim);
+            margin-bottom: 8px;
+        }
+        .sb-style-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 8px;
+        }
+        .sb-style-card {
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-elevated);
+            color: var(--color-text);
+            border-radius: 10px;
+            padding: 8px 10px;
+            cursor: pointer;
+            font-family: var(--font-body);
+            transition: all 0.15s ease;
+        }
+        .sb-style-card:hover { border-color: var(--color-border-hover); transform: translateY(-1px); }
+        .sb-style-card.active {
+            border-color: var(--color-accent);
+            box-shadow: inset 0 0 0 1px var(--color-accent);
+        }
+        .sb-style-thumb {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            border-radius: 7px;
+            overflow: hidden;
+            background: #0d0d10;
+            border: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 5px;
+        }
+        /* Same rule as the shot cards: show the whole example frame, never
+           crop or stretch it. */
+        .sb-style-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: center;
+            display: block;
+        }
+        .sb-style-thumb-msg {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 0.68rem;
+            color: var(--color-text-dim);
+        }
+        .sb-style-thumb-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-dim);
+            border-radius: 6px;
+            font-size: 0.68rem;
+            padding: 2px 6px;
+            cursor: pointer;
+            font-family: var(--font-body);
+        }
+        .sb-style-thumb-btn.wide {
+            position: static;
+            padding: 5px 10px;
+            font-weight: 700;
+        }
+        .sb-style-thumb-btn:hover { color: var(--color-text); border-color: var(--color-border-hover); }
+        .sb-style-works { margin-top: 4px; }
+        .sb-style-works summary {
+            cursor: pointer;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--color-text-muted);
+            list-style: revert;
+        }
+        .sb-style-works summary:hover { color: var(--color-text-dim); }
+        .sb-style-works div {
+            font-size: 0.66rem;
+            color: var(--color-text-dim);
+            line-height: 1.4;
+            padding: 4px 0 2px;
+        }
+        .sb-style-footer {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            color: var(--color-text-dim);
+            border-top: 1px solid var(--color-border);
+            margin-top: 8px;
+            padding-top: 12px;
+        }
+        .sb-style-card b { font-size: 0.78rem; font-weight: 700; }
+        .sb-style-card span { font-size: 0.67rem; color: var(--color-text-dim); line-height: 1.35; }
+
         .sb-batch-progress-head {
             display: flex;
             justify-content: space-between;
@@ -3842,20 +3963,17 @@
                         </div>
                         <div class="storyboard-toolbar-group">
                             <span style="font-size:0.72rem; color:var(--color-text-dim);">Aspect:</span>
-                            <select class="shot-spec-select" id="sb-aspect-select" onchange="FDStoryboard.setAspectRatio(this.value)">
-                                <option value="16:9" selected>16:9 Widescreen</option>
-                                <option value="2.39:1">2.39:1 Cinemascope</option>
-                                <option value="4:3">4:3 Classic</option>
-                                <option value="9:16">9:16 Vertical</option>
-                            </select>
+                            <div class="storyboard-view-pills" id="sb-aspect-pills" title="Reframes every shot card at once">
+                                <button class="sb-view-btn" data-ar="16:9" onclick="FDStoryboard.setAspectRatio('16:9')" title="16:9 Widescreen">16:9</button>
+                                <button class="sb-view-btn" data-ar="2.39:1" onclick="FDStoryboard.setAspectRatio('2.39:1')" title="2.39:1 Cinemascope">2.39:1</button>
+                                <button class="sb-view-btn" data-ar="4:3" onclick="FDStoryboard.setAspectRatio('4:3')" title="4:3 Classic">4:3</button>
+                                <button class="sb-view-btn" data-ar="1:1" onclick="FDStoryboard.setAspectRatio('1:1')" title="1:1 Square">1:1</button>
+                                <button class="sb-view-btn" data-ar="9:16" onclick="FDStoryboard.setAspectRatio('9:16')" title="9:16 Vertical">9:16</button>
+                            </div>
+                            <button class="media-btn" id="sb-reshoot-ar-btn" onclick="FDStoryboard.reshootAllAtAspect()" title="Re-generate every frame at the current aspect ratio">&#8635; Re-shoot all</button>
+                            <button class="media-btn" id="sb-fit-btn" onclick="FDStoryboard.toggleImageFit()" title="Fit: the whole frame is shown. Click for Fill.">&#9974; Fit</button>
                             <span style="font-size:0.72rem; color:var(--color-text-dim);">Style:</span>
-                            <select class="shot-spec-select" id="sb-style-select" onchange="FDStoryboard.setStylePreset(this.value)">
-                                <option value="cinematic" selected>Cinematic 35mm</option>
-                                <option value="concept_art">Concept Art Painting</option>
-                                <option value="sketch">Charcoal Storyboard Sketch</option>
-                                <option value="comic">Graphic Novel Noir</option>
-                                <option value="anime">Anime / Animation</option>
-                            </select>
+                            <button class="media-btn" id="sb-style-btn" onclick="FDStyleLibrary.open()" title="Pick a look - directors &amp; cinematographers, graphic novelists, storyboard artists">&#127912; Cinematic 35mm</button>
                             <div class="storyboard-toolbar-group" id="sb-card-size-group" style="display:inline-flex; align-items:center; gap:4px;" title="Adjust card size / density (how many shots fit on screen)">
                                 <span style="font-size:0.72rem; color:var(--color-text-dim);">Size:</span>
                                 <input type="range" id="sb-card-size-slider" class="sb-card-size-slider" min="60" max="480" step="5" value="60" oninput="FDStoryboard.setCardSize(this.value)">
@@ -4095,6 +4213,7 @@
                 viewMode: 'grid',
                 displayMode: 'image',
                 cardSize: 60,
+                imageFit: 'fit',
                 shots: []
             };
         }
@@ -9328,7 +9447,8 @@
                 offline: [{ v: 'sketch', t: 'Local SVG sketch' }]
             },
 
-            open() {
+            // opts: { scope: 'all' | 'missing' | 'range' }
+            open(opts = {}) {
                 const modal = document.getElementById('sb-batch-modal');
                 if (!modal) {
                     FDGenLog.error('Batch modal markup is missing from the page.');
@@ -9347,7 +9467,12 @@
                 this.syncModelOptions();
 
                 document.getElementById('sb-batch-aspect').value = storyboardState.aspectRatio || '16:9';
-                document.getElementById('sb-batch-style').value = storyboardState.stylePreset || 'cinematic';
+                FDStyleLibrary.fillSelect(document.getElementById('sb-batch-style'), storyboardState.stylePreset);
+
+                if (opts.scope) {
+                    document.getElementById('sb-batch-scope').value = opts.scope;
+                    this.onScopeChange();
+                }
 
                 const scenes = storyboardState.shots.map(s => parseInt(s.sceneNum, 10) || 1);
                 document.getElementById('sb-batch-range-from').value = Math.min.apply(null, scenes);
@@ -9816,6 +9941,21 @@
                 if (neg && cfg.negativePrompt) neg.value = cfg.negativePrompt;
             },
 
+            // One source of truth for the pixel size of a frame. Every ratio
+            // resolves to multiples of 8 -- what diffusion backends round to
+            // anyway -- so the provider returns the ratio it was asked for
+            // instead of quietly resampling to its own. Cards still letterbox
+            // whatever comes back, so a provider that ignores this (DALL-E,
+            // Imagen) costs a black bar, never a stretch or a crop.
+            frameDims(aspectRatio) {
+                const ratios = { '16:9': 16 / 9, '2.39:1': 2.39, '4:3': 4 / 3, '1:1': 1, '9:16': 9 / 16 };
+                const r = ratios[aspectRatio] || ratios['16:9'];
+                const snap = n => Math.max(256, Math.round(n / 8) * 8);
+                return r >= 1
+                    ? { width: 1024, height: snap(1024 / r) }
+                    : { width: snap(1024 * r), height: 1024 };
+            },
+
             // Returns the whole story of an attempt, not just a URL: which
             // route produced the image, how long it took, and -- crucially --
             // whether what came back is a real AI frame or the local sketch
@@ -9877,7 +10017,9 @@
                         sceneNum: options.sceneNum || '1',
                         shotNum: options.shotNum || '1',
                         shotId: options.shotId || '',
-                        seed: Math.floor(Math.random() * 1000000)
+                        seed: Math.floor(Math.random() * 1000000),
+                        width: this.frameDims(aspectRatio).width,
+                        height: this.frameDims(aspectRatio).height
                     };
 
                     FDGenLog.info('POST /api/generate-image :: ' + label, { provider: prov, model: payload.model });
@@ -9936,11 +10078,8 @@
                 //    once it actually decodes -- returning an unverified src
                 //    is what let a dead endpoint pass as a success.
                 if (prov === 'pollinations' && !rateLimited) {
-                    let w = 1024, h = 576;
-                    if (aspectRatio === '2.39:1') { w = 1024; h = 430; }
-                    else if (aspectRatio === '4:3') { w = 1024; h = 768; }
-                    else if (aspectRatio === '9:16') { w = 576; h = 1024; }
-                    else if (aspectRatio === '1:1') { w = 1024; h = 1024; }
+                    const dims = this.frameDims(aspectRatio);
+                    const w = dims.width, h = dims.height;
                     const seed = Math.floor(Math.random() * 1000000);
                     const url = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt)
                         + '?width=' + w + '&height=' + h
@@ -10013,7 +10152,10 @@
                 const isExt = /EXT\./i.test(heading);
 
                 const width = 960;
-                const height = options.aspectRatio === '2.39:1' ? 402 : (options.aspectRatio === '4:3' ? 720 : (options.aspectRatio === '9:16' ? 1706 : 540));
+                const height = options.aspectRatio === '2.39:1' ? 402
+                    : (options.aspectRatio === '4:3' ? 720
+                    : (options.aspectRatio === '1:1' ? 960
+                    : (options.aspectRatio === '9:16' ? 1706 : 540)));
 
                 const bgGradStart = isNight ? '#0b111e' : (isExt ? '#1b2a4a' : '#261e18');
                 const bgGradEnd = isNight ? '#030509' : (isExt ? '#0d1527' : '#120d0a');
@@ -10066,21 +10208,407 @@
         };
 
         // =====================================================================
-        // FDStoryboard — Scene-Aligned Storyboard & Visual Beat Deck
+        // FDStyleLibrary -- named looks for frame generation
+        //
+        // Each preset is a prompt fragment describing a recognisable visual
+        // language (lighting, palette, framing, medium) plus the name it comes
+        // from. The description does the work: image models that filter artist
+        // names still land the look from the rest of the fragment. Legacy ids
+        // (cinematic / concept_art / sketch / comic / anime) are kept so saved
+        // projects keep resolving.
+        // =====================================================================
+        const FD_STYLE_PRESETS = [
+            // --- Directors & cinematographers ---
+            { id: 'cinematic', group: 'Directors & Cinematographers', name: 'Cinematic 35mm', desc: 'Neutral film-look default',
+              works: ['House default -- no particular signature'],
+              prompt: 'Cinematic 35mm film photograph, dramatic volumetric lighting, anamorphic lens, highly detailed, 8k' },
+            { id: 'deakins', group: 'Directors & Cinematographers', name: 'Deakins Naturalism', desc: 'Single-source light, deep shadow, clean wides',
+              works: ['Blade Runner 2049', '1917', 'No Country for Old Men', 'Skyfall'],
+              prompt: 'shot like Roger Deakins, single-source naturalistic lighting, deep inky shadows, immaculate silhouettes, restrained desaturated palette, wide static anamorphic composition' },
+            { id: 'lubezki', group: 'Directors & Cinematographers', name: 'Lubezki Natural Light', desc: 'Available light, magic hour, roaming wide lens',
+              works: ['The Revenant', 'Children of Men', 'Gravity', 'The Tree of Life'],
+              prompt: 'shot like Emmanuel Lubezki, available natural light only, magic hour sun flare, wide-angle lens close to the subject, continuous roaming long-take framing, soft warm highlights' },
+            { id: 'fincher', group: 'Directors & Cinematographers', name: 'Fincher Cold Precision', desc: 'Locked-off frames, green-amber, low key',
+              works: ['Se7en', 'Zodiac', 'The Social Network', 'Gone Girl'],
+              prompt: 'shot like David Fincher, locked-off precise symmetrical framing, low-key digital cleanliness, desaturated green and amber palette, deliberate negative space, quiet menace' },
+            { id: 'kubrick', group: 'Directors & Cinematographers', name: 'Kubrick Symmetry', desc: 'One-point perspective, cold formal geometry',
+              works: ['2001: A Space Odyssey', 'The Shining', 'Barry Lyndon', 'A Clockwork Orange'],
+              prompt: 'Stanley Kubrick style, one-point perspective symmetry, wide-angle geometric corridor framing, cold formal composition, practical candle and fluorescent sources' },
+            { id: 'wes', group: 'Directors & Cinematographers', name: 'Wes Anderson Pastel', desc: 'Flat centred symmetry, storybook pastels',
+              works: ['The Grand Budapest Hotel', 'Moonrise Kingdom', 'The Royal Tenenbaums'],
+              prompt: 'Wes Anderson style, flat planimetric dead-centre framing, symmetrical dollhouse staging, pastel storybook palette, meticulous whimsical production design' },
+            { id: 'doyle', group: 'Directors & Cinematographers', name: 'Wong Kar-wai Neon', desc: 'Saturated neon, smeared motion, tight frames',
+              works: ['In the Mood for Love', 'Chungking Express', '2046'],
+              prompt: 'Christopher Doyle cinematography for Wong Kar-wai, saturated neon reds and greens, smeared step-print motion blur, cramped framing through doorways and mirrors, humid nocturnal romance' },
+            { id: 'richardson', group: 'Directors & Cinematographers', name: 'Richardson Top-Light', desc: 'Blazing top light, blown highlights, retro pop',
+              works: ['Kill Bill', 'Inglourious Basterds', 'JFK', 'Casino'],
+              prompt: 'Robert Richardson cinematography, blazing white top light spilling from above, blown-out practical windows, richly saturated retro palette, bold graphic staging' },
+            { id: 'kaminski', group: 'Directors & Cinematographers', name: 'Spielberg Backlight', desc: 'Hazy god-rays, silver blown backlight',
+              works: ["Schindler's List", 'Saving Private Ryan', 'Minority Report', 'Munich'],
+              prompt: 'Janusz Kaminski cinematography for Steven Spielberg, diffused blown-out backlight through atmospheric haze, god-ray shafts, silvered highlights, warm humanist staging' },
+            { id: 'villeneuve', group: 'Directors & Cinematographers', name: 'Villeneuve Monolith', desc: 'Brutalist scale, fog, monochrome amber',
+              works: ['Dune', 'Blade Runner 2049', 'Sicario', 'Arrival'],
+              prompt: 'Denis Villeneuve style, monumental brutalist scale, lone figures dwarfed by fog and architecture, monochrome amber or slate palette, slow ominous stillness' },
+            { id: 'nolan', group: 'Directors & Cinematographers', name: 'Nolan IMAX Realism', desc: 'Large-format realism, cool steel blue',
+              works: ['Dunkirk', 'Oppenheimer', 'Interstellar', 'Tenet'],
+              prompt: 'Hoyte van Hoytema cinematography for Christopher Nolan, large-format IMAX 65mm realism, cool steel-blue palette, practical in-camera effects, crisp deep-focus documentary immediacy' },
+            { id: 'storaro', group: 'Directors & Cinematographers', name: 'Storaro Color Theory', desc: 'Symbolic colour, sculpted chiaroscuro',
+              works: ['Apocalypse Now', 'The Conformist', 'The Last Emperor'],
+              prompt: 'Vittorio Storaro cinematography, bold symbolic colour theory, sculpted chiaroscuro, saturated gel-lit interiors, painterly Renaissance contrast' },
+
+            // --- Storyboard artists ---
+            { id: 'ranft', group: 'Storyboard Artists', name: 'Joe Ranft Story Sketch', desc: 'Pixar warmth, comic acting beats, loose pencil',
+              works: ['Toy Story', "A Bug's Life", 'Monsters, Inc.', 'The Nightmare Before Christmas', 'Who Framed Roger Rabbit'],
+              prompt: 'animation story sketch in the tradition of Joe Ranft, loose warm pencil line, comic timing and broad acting poses, readable staging, gentle humour, colour-pencil accents on story paper' },
+            { id: 'grant', group: 'Storyboard Artists', name: 'Joe Grant Disney Sketch', desc: 'Golden-age story sketch, caricature charm',
+              works: ['Snow White', 'Pinocchio', 'Fantasia', 'Dumbo', 'Beauty and the Beast', 'The Lion King'],
+              prompt: 'classic Disney story sketch in the tradition of Joe Grant, soft graphite and pastel on tone paper, caricatured expressive characters, storybook warmth, golden-age animation staging' },
+            { id: 'russell_boards', group: 'Storyboard Artists', name: 'David Russell Film Boards', desc: 'Polished live-action boards, lens-accurate',
+              works: ['Feature-film storyboards exhibited at the Smithsonian and Getty'],
+              prompt: 'polished live-action feature film storyboard in the tradition of David Russell, tonal graphite rendering, lens-accurate perspective, confident figure drawing, clear camera-move staging' },
+            { id: 'sanchez_boards', group: 'Storyboard Artists', name: 'Nicolas Sanchez Ad Boards', desc: 'Commercial boards, clean colour, product clarity',
+              works: ['Commercial boards for Apple, Coca-Cola, Sony, Adidas'],
+              prompt: 'commercial advertising storyboard in the tradition of Nicolas Sanchez, crisp digital marker colour, clean confident line, glossy product-focused clarity, bright even lighting' },
+            { id: 'michelson', group: 'Storyboard Artists', name: 'Harold Michelson Boards', desc: 'Forced perspective, exact architectural staging',
+              works: ['The Birds', 'The Graduate', 'Ben-Hur'],
+              prompt: 'classic production storyboard in the tradition of Harold Michelson, dramatic forced perspective, exact architectural staging, graphite on board, precise lens geometry' },
+            { id: 'huebner', group: 'Storyboard Artists', name: 'Mentor Huebner Illustration', desc: 'Atmospheric charcoal production illustration',
+              works: ['Blade Runner', 'North by Northwest', 'Ben-Hur'],
+              prompt: 'production illustration in the tradition of Mentor Huebner, atmospheric charcoal and gouache, moody smoke-filled depth, monumental sets, cinematic key-frame staging' },
+            { id: 'ridleygram', group: 'Storyboard Artists', name: 'Ridleygram Thumbnails', desc: 'Fast felt-tip thumbnails, dense hatching',
+              works: ['Alien', 'Blade Runner', 'Gladiator'],
+              prompt: "director's thumbnail storyboard in the manner of Ridley Scott's ridleygrams, fast felt-tip and ink, dense energetic hatching, heavy blacks, rough urgent perspective" },
+            { id: 'despretz', group: 'Storyboard Artists', name: 'Despretz Chiaroscuro', desc: 'Heavy graphite and ink, operatic scale',
+              works: ['Gladiator', 'The Fifth Element', 'Alien Resurrection'],
+              prompt: 'feature storyboard in the tradition of Sylvain Despretz, heavy graphite and ink chiaroscuro, operatic scale, muscular figures, deep dramatic shadow' },
+            { id: 'toth', group: 'Storyboard Artists', name: 'Alex Toth Economy', desc: 'Flat black shapes, radical clarity',
+              works: ['Space Ghost', 'The Herculoids', 'Zorro'],
+              prompt: 'Alex Toth style, radical economy of line, flat black shapes, bold simplified silhouettes, immaculate staging clarity, limited flat colour' },
+            { id: 'peet', group: 'Storyboard Artists', name: 'Bill Peet Story Board', desc: 'Warm story sketch, coloured pencil',
+              works: ['Dumbo', '101 Dalmatians', 'The Sword in the Stone'],
+              prompt: 'Disney story board in the tradition of Bill Peet, warm coloured pencil on story paper, lively character acting, clear silhouette staging, storybook charm' },
+
+            // --- Illustrators & graphic novelists ---
+            { id: 'comic', group: 'Illustrators & Graphic Novelists', name: 'Graphic Novel Noir', desc: 'Bold ink, noir shadow, cel colour',
+              works: ['Generic graphic-novel look'],
+              prompt: 'Graphic novel comic book frame, bold ink lineart, dark noir cinematic shadows, vibrant cel shading' },
+            { id: 'miller', group: 'Illustrators & Graphic Novelists', name: 'Sin City Ink', desc: 'Pure black-and-white ink, one spot colour',
+              works: ['Sin City', 'The Dark Knight Returns', '300'],
+              prompt: 'Frank Miller Sin City style, extreme black and white ink illustration, pure silhouettes, harsh spot blacks, single spot colour accent, rain-streaked noir' },
+            { id: 'mignola', group: 'Illustrators & Graphic Novelists', name: 'Mignola Shadow Blocks', desc: 'Slabs of black, angular, ochre and slate',
+              works: ['Hellboy', 'B.P.R.D.', 'Baltimore'],
+              prompt: 'Mike Mignola style, massive angular blocks of solid black, minimal ink linework, limited flat palette of ochre and slate, occult gothic atmosphere' },
+            { id: 'moebius', group: 'Illustrators & Graphic Novelists', name: 'Moebius Clear Line', desc: 'Ligne claire, luminous flats, vast vistas',
+              works: ['The Incal', 'Arzach', 'Blueberry'],
+              prompt: 'Moebius Jean Giraud style, fine even ligne claire ink line, flat luminous pastel colour, vast surreal desert perspective, meticulous graphic detail' },
+            { id: 'sienkiewicz', group: 'Illustrators & Graphic Novelists', name: 'Sienkiewicz Expressionist', desc: 'Mixed media, collage, ink splatter',
+              works: ['Elektra: Assassin', 'New Mutants', 'Stray Toasters'],
+              prompt: 'Bill Sienkiewicz style, expressionist mixed-media painting, torn collage texture, ink splatter and dry-brush, distorted emotive figures' },
+            { id: 'kirby', group: 'Illustrators & Graphic Novelists', name: 'Kirby Dynamism', desc: 'Silver-age power poses, heavy inks',
+              works: ['Fantastic Four', 'New Gods', 'Thor'],
+              prompt: 'Jack Kirby style, bold silver-age comic art, exaggerated foreshortened power poses, heavy black inks, crackling cosmic energy dots' },
+            { id: 'otomo', group: 'Illustrators & Graphic Novelists', name: 'Otomo Mecha Detail', desc: 'Dense machinery, exact perspective',
+              works: ['Akira', 'Domu', 'Steamboy'],
+              prompt: 'Katsuhiro Otomo Akira style, dense mechanical detail, exact architectural perspective, restrained realistic manga rendering, muted urban palette' },
+            { id: 'concept_art', group: 'Illustrators & Graphic Novelists', name: 'Concept Art Painting', desc: 'Digital matte painting, atmospheric',
+              works: ['Generic production concept art'],
+              prompt: 'Concept art digital matte painting, atmospheric lighting, trending on artstation, cinematic composition' },
+
+            // --- Board media & previz ---
+            { id: 'sketch', group: 'Board Media & Previz', name: 'Charcoal Boards', desc: 'High-contrast charcoal production drawing',
+              works: ['Medium, not a signature'],
+              prompt: 'Charcoal storyboard sketch on paper, high contrast expressive line art, film production drawing' },
+            { id: 'pencil_boards', group: 'Board Media & Previz', name: 'Pencil Production Boards', desc: 'Graphite panel with camera-move arrows',
+              works: ['Medium, not a signature'],
+              prompt: 'classic graphite production storyboard panel, loose confident pencil line, tonal shading, camera move arrows and annotations, visible paper texture' },
+            { id: 'marker_boards', group: 'Board Media & Previz', name: 'Grey Marker Boards', desc: 'Grey-tone marker, black ink outline',
+              works: ['Medium, not a signature'],
+              prompt: 'grey-tone marker storyboard rendering, quick tonal marker blocks, black ink outline, production board panel on white paper' },
+            { id: 'ink_wash', group: 'Board Media & Previz', name: 'Ink Wash Boards', desc: 'Brush-and-ink wash, dramatic values',
+              works: ['Medium, not a signature'],
+              prompt: 'brush and ink wash storyboard, dramatic tonal values, loose gestural figures, high contrast staging on toned paper' },
+            { id: 'previz', group: 'Board Media & Previz', name: 'Grey-Model Previz', desc: 'Untextured 3D blockout, accurate lens',
+              works: ['Medium, not a signature'],
+              prompt: 'untextured grey clay 3D previz render, neutral studio lighting, accurate lens perspective, blockout geometry, animatic frame' },
+            { id: 'animatic', group: 'Board Media & Previz', name: 'Color Animatic', desc: 'Flat colour key, clean vector line',
+              works: ['Medium, not a signature'],
+              prompt: 'flat colour animation storyboard key, clean vector line, simplified shapes, bold readable staging' },
+
+            // --- Animation ---
+            { id: 'anime', group: 'Animation', name: 'Anime Keyframe', desc: 'Vivid animation keyframe, huge skies',
+              works: ['Your Name', '5 Centimeters per Second', 'Weathering With You'],
+              prompt: 'Anime keyframe animation concept art, Makoto Shinkai aesthetic, gorgeous sky, vivid colors' },
+            { id: 'ghibli', group: 'Animation', name: 'Ghibli Watercolor', desc: 'Hand-painted background, soft daylight',
+              works: ['Spirited Away', 'My Neighbor Totoro', 'Princess Mononoke'],
+              prompt: 'Studio Ghibli style hand-painted watercolour animation background, soft naturalistic daylight, lush detailed nature, gentle nostalgic palette' }
+        ];
+
+        const FDStyleLibrary = {
+            pending: null,        // style highlighted in the picker, not yet applied
+            previews: null,       // { styleId: imageUrl } -- generated on demand
+            previewBusy: null,    // style id currently generating
+            previewRunAll: false, // "Preview every look" sweep in progress
+
+            // Same subject for every preview, so the only thing that changes
+            // between thumbnails is the look itself.
+            SAMPLE_PROMPT: 'a lone figure standing at the mouth of a rain-slicked alley, distant city lights beyond, wide shot',
+            PREVIEW_KEY: 'fd_style_previews',
+
+            get(id) {
+                return FD_STYLE_PRESETS.find(s => s.id === id) || FD_STYLE_PRESETS[0];
+            },
+
+            groups() {
+                const out = [];
+                FD_STYLE_PRESETS.forEach(s => {
+                    let g = out.find(x => x.name === s.group);
+                    if (!g) { g = { name: s.group, items: [] }; out.push(g); }
+                    g.items.push(s);
+                });
+                return out;
+            },
+
+            // Fills any <select> from the same library the picker shows.
+            fillSelect(el, selectedId) {
+                if (!el) return;
+                el.innerHTML = this.groups().map(g =>
+                    '<optgroup label="' + g.name + '">' + g.items.map(s =>
+                        '<option value="' + s.id + '">' + s.name + '</option>'
+                    ).join('') + '</optgroup>'
+                ).join('');
+                el.value = selectedId || storyboardState.stylePreset || 'cinematic';
+            },
+
+            // Preview thumbnails outlive the project file -- they describe the
+            // look, not the story -- so they live in localStorage.
+            loadPreviews() {
+                if (this.previews) return this.previews;
+                try {
+                    this.previews = JSON.parse(localStorage.getItem(this.PREVIEW_KEY) || '{}') || {};
+                } catch (e) {
+                    this.previews = {};
+                }
+                return this.previews;
+            },
+
+            savePreviews() {
+                try {
+                    localStorage.setItem(this.PREVIEW_KEY, JSON.stringify(this.previews || {}));
+                } catch (e) {
+                    FDGenLog.warn('Could not save style previews: ' + (e && e.message));
+                }
+            },
+
+            open() {
+                const modal = document.getElementById('sb-style-modal');
+                if (!modal) return;
+                this.loadPreviews();
+                this.pending = storyboardState.stylePreset || 'cinematic';
+                this.render();
+                modal.style.display = 'flex';
+            },
+
+            close() {
+                this.previewRunAll = false;
+                const modal = document.getElementById('sb-style-modal');
+                if (modal) modal.style.display = 'none';
+            },
+
+            render() {
+                const body = document.getElementById('sb-style-body');
+                if (!body) return;
+                body.innerHTML = this.groups().map(g => `
+                    <div class="sb-style-group">
+                        <div class="sb-style-group-title">${g.name}</div>
+                        <div class="sb-style-grid">
+                            ${g.items.map(s => this.cardHtml(s)).join('')}
+                        </div>
+                    </div>`).join('');
+                this.syncStatus();
+            },
+
+            cardHtml(s) {
+                return `
+                    <div class="sb-style-card ${s.id === this.pending ? 'active' : ''}"
+                         id="sb-style-card-${s.id}"
+                         onclick="FDStyleLibrary.pick('${s.id}')"
+                         title="${FDStoryboard.escapeHtml(s.prompt)}">
+                        <div class="sb-style-thumb" id="sb-style-thumb-${s.id}">${this.thumbHtml(s.id)}</div>
+                        <b>${FDStoryboard.escapeHtml(s.name)}</b>
+                        <span>${FDStoryboard.escapeHtml(s.desc)}</span>
+                        <details class="sb-style-works" onclick="event.stopPropagation()">
+                            <summary>Known for</summary>
+                            <div>${(s.works || []).map(w => FDStoryboard.escapeHtml(w)).join(' &middot; ')}</div>
+                        </details>
+                    </div>`;
+            },
+
+            thumbHtml(id) {
+                if (this.previewBusy === id) {
+                    return '<div class="sb-style-thumb-msg"><span class="shot-spinner"></span>Generating&hellip;</div>';
+                }
+                const url = (this.previews || {})[id];
+                if (url) {
+                    return `<img src="${url}" alt="" referrerpolicy="no-referrer">
+                            <button class="sb-style-thumb-btn" onclick="event.stopPropagation(); FDStyleLibrary.preview('${id}', true)" title="Generate a fresh example">&#8635;</button>`;
+                }
+                return `<button class="sb-style-thumb-btn wide" onclick="event.stopPropagation(); FDStyleLibrary.preview('${id}')" title="Generate one example frame in this look">&#10022; Example</button>`;
+            },
+
+            renderThumb(id) {
+                const el = document.getElementById('sb-style-thumb-' + id);
+                if (el) el.innerHTML = this.thumbHtml(id);
+            },
+
+            // Generates one sample frame in this look with whatever provider is
+            // configured, and remembers it so the picker fills in over time.
+            async preview(id, force) {
+                if (this.previewBusy) return;
+                this.loadPreviews();
+                if (this.previews[id] && !force) return;
+                const style = this.get(id);
+                this.previewBusy = id;
+                this.renderThumb(id);
+                this.syncStatus();
+                try {
+                    const detail = await FDVisualGen.generateImageDetailed(
+                        style.prompt + ', ' + this.SAMPLE_PROMPT,
+                        { aspectRatio: '16:9', stylePreset: id, label: 'style-preview:' + id }
+                    );
+                    if (detail && detail.imageUrl && detail.isAi) {
+                        this.previews[id] = detail.imageUrl;
+                        this.savePreviews();
+                    } else {
+                        FDGenLog.warn('Style preview fell back to a placeholder :: ' + id, detail && detail.error);
+                    }
+                } catch (err) {
+                    FDGenLog.error('Style preview failed :: ' + id, err);
+                } finally {
+                    this.previewBusy = null;
+                    this.renderThumb(id);
+                    this.syncStatus();
+                }
+            },
+
+            // One at a time -- the free endpoints queue a single generation per
+            // IP, and a parallel sweep just trades thumbnails for 429s.
+            async previewAll() {
+                if (this.previewRunAll) { this.previewRunAll = false; this.syncStatus(); return; }
+                this.loadPreviews();
+                this.previewRunAll = true;
+                this.syncStatus();
+                for (const s of FD_STYLE_PRESETS) {
+                    if (!this.previewRunAll) break;
+                    if (this.previews[s.id]) continue;
+                    await this.preview(s.id);
+                }
+                this.previewRunAll = false;
+                this.syncStatus();
+            },
+
+            syncStatus() {
+                const btn = document.getElementById('sb-style-previewall-btn');
+                const status = document.getElementById('sb-style-status');
+                const done = FD_STYLE_PRESETS.filter(s => (this.previews || {})[s.id]).length;
+                if (btn) btn.innerHTML = this.previewRunAll ? 'Stop previews' : 'Generate examples';
+                if (status) {
+                    status.innerHTML = this.previewBusy
+                        ? 'Generating example for <b>' + FDStoryboard.escapeHtml(this.get(this.previewBusy).name) + '</b>&hellip;'
+                        : done + ' of ' + FD_STYLE_PRESETS.length + ' looks have an example frame';
+                }
+            },
+
+            pick(id) {
+                const prev = this.pending;
+                this.pending = id;
+                [prev, id].forEach(pid => {
+                    const card = document.getElementById('sb-style-card-' + pid);
+                    if (card) card.classList.toggle('active', pid === id);
+                });
+            },
+
+            apply() {
+                FDStoryboard.setStylePreset(this.pending || 'cinematic');
+                this.close();
+            },
+
+            // A style only changes future generations, so offer the re-shoot in
+            // the same breath.
+            applyAndReshoot() {
+                FDStoryboard.setStylePreset(this.pending || 'cinematic');
+                this.close();
+                FDStoryboardBatch.open({ scope: 'all' });
+            }
+        };
+
+        // =====================================================================
+        // FDStoryboard -- Scene-Aligned Storyboard & Visual Beat Deck
         // =====================================================================
         const FDStoryboard = {
             init() {
                 this.renderStoryboard();
             },
 
+            arClassFor(ar) {
+                return ar === '2.39:1' ? 'ar-239'
+                    : ar === '4:3' ? 'ar-43'
+                    : ar === '1:1' ? 'ar-11'
+                    : ar === '9:16' ? 'ar-916'
+                    : '';
+            },
+
+            // One click reframes every card. Existing images are not re-cropped
+            // -- in Fit mode they letterbox into the new box, so nothing is lost
+            // until you re-shoot them.
             setAspectRatio(val) {
                 storyboardState.aspectRatio = val;
                 this.renderStoryboard();
                 saveState();
             },
 
+            reshootAllAtAspect() {
+                if (!storyboardState.shots.length) {
+                    alert('No shots in storyboard yet. Auto-Populate from Script or add a shot first.');
+                    return;
+                }
+                FDStoryboardBatch.open({ scope: 'all' });
+            },
+
+            setImageFit(mode) {
+                storyboardState.imageFit = (mode === 'fill') ? 'fill' : 'fit';
+                const filling = storyboardState.imageFit === 'fill';
+                document.querySelectorAll('.shot-frame-wrapper').forEach(el => el.classList.toggle('frame-fill', filling));
+                this.syncToolbarControls();
+                saveState();
+            },
+
+            toggleImageFit() {
+                this.setImageFit(storyboardState.imageFit === 'fill' ? 'fit' : 'fill');
+            },
+
+            syncToolbarControls() {
+                const pills = document.getElementById('sb-aspect-pills');
+                if (pills) {
+                    pills.querySelectorAll('button[data-ar]').forEach(b => {
+                        b.classList.toggle('active', b.getAttribute('data-ar') === storyboardState.aspectRatio);
+                    });
+                }
+                const fitBtn = document.getElementById('sb-fit-btn');
+                if (fitBtn) {
+                    const filling = storyboardState.imageFit === 'fill';
+                    fitBtn.innerHTML = filling ? '\u26F6 Fill' : '\u26F6 Fit';
+                    fitBtn.title = filling
+                        ? 'Fill: frames are cropped to fill the card. Click for Fit.'
+                        : 'Fit: the whole frame is shown, letterboxed when its ratio differs. Click for Fill.';
+                }
+                const styleBtn = document.getElementById('sb-style-btn');
+                if (styleBtn) styleBtn.innerHTML = '\uD83C\uDFA8 ' + FDStyleLibrary.get(storyboardState.stylePreset).name;
+            },
+
             setStylePreset(val) {
                 storyboardState.stylePreset = val;
+                this.restyleAutoPrompts();
+                this.renderStoryboard();
                 saveState();
             },
 
@@ -10147,6 +10675,7 @@
                         }
                     };
                     shot.prompt = this.buildPromptForShot(shot);
+                    shot.promptAuto = true;
                     shot.takes.take1.image = FDVisualGen.generateOfflineConceptFrame(shot.prompt, {
                         aspectRatio: storyboardState.aspectRatio,
                         stylePreset: storyboardState.stylePreset,
@@ -10181,6 +10710,7 @@
                     }
                 };
                 shot.prompt = this.buildPromptForShot(shot);
+                shot.promptAuto = true;
                 shot.takes.take1.image = FDVisualGen.generateOfflineConceptFrame(shot.prompt, {
                     aspectRatio: storyboardState.aspectRatio,
                     stylePreset: storyboardState.stylePreset,
@@ -10200,16 +10730,18 @@
                 saveState();
             },
 
-            buildPromptForShot(shot) {
-                const styles = {
-                    'cinematic': 'Cinematic 35mm film photograph, dramatic volumetric lighting, anamorphic lens, highly detailed, 8k',
-                    'concept_art': 'Concept art digital matte painting, atmospheric lighting, trending on artstation, cinematic composition',
-                    'sketch': 'Charcoal storyboard sketch on paper, high contrast expressive line art, film production drawing',
-                    'comic': 'Graphic novel comic book frame, bold ink lineart, dark noir cinematic shadows, vibrant cel shading',
-                    'anime': 'Anime keyframe animation concept art, Makoto Shinkai aesthetic, gorgeous sky, vivid colors'
-                };
-                const styleDesc = styles[storyboardState.stylePreset] || styles['cinematic'];
-                return `${styleDesc}, ${shot.shotType} of ${shot.action}, set in ${shot.heading}, camera ${shot.camera}`;
+            buildPromptForShot(shot, styleId) {
+                const style = FDStyleLibrary.get(styleId || storyboardState.stylePreset);
+                return `${style.prompt}, ${shot.shotType} of ${shot.action}, set in ${shot.heading}, camera ${shot.camera}`;
+            },
+
+            // Rewrites every auto-built prompt after a style change. Prompts
+            // the user typed over (promptAuto === false) are left alone.
+            restyleAutoPrompts() {
+                storyboardState.shots.forEach(shot => {
+                    if (shot.promptAuto === false) return;
+                    shot.prompt = this.buildPromptForShot(shot);
+                });
             },
 
             autoPromptShot(shotId) {
@@ -10292,7 +10824,13 @@
                 let report = { ok: false, shotId, label, source: null, error: null, ms: 0 };
 
                 try {
-                    const prompt = shot.prompt || this.buildPromptForShot(shot);
+                    // Auto prompts are rebuilt here so a style switch actually
+                    // reaches the provider -- the cached prompt still carried
+                    // the style that was selected when the shot was created.
+                    const prompt = (shot.promptAuto === false && shot.prompt)
+                        ? shot.prompt
+                        : this.buildPromptForShot(shot, opts.stylePreset);
+                    if (shot.promptAuto !== false) shot.prompt = prompt;
                     const detail = await FDVisualGen.generateImageDetailed(prompt, {
                         aspectRatio: opts.aspectRatio || storyboardState.aspectRatio,
                         stylePreset: opts.stylePreset || storyboardState.stylePreset,
@@ -10462,11 +11000,7 @@
                 const btn = document.getElementById('sb-view-mode-btn');
                 if (btn) btn.innerText = isFilmstrip ? '▦ Grid' : '▤ Filmstrip';
 
-                const arSelect = document.getElementById('sb-aspect-select');
-                if (arSelect && arSelect.value !== storyboardState.aspectRatio) arSelect.value = storyboardState.aspectRatio;
-
-                const styleSelect = document.getElementById('sb-style-select');
-                if (styleSelect && styleSelect.value !== storyboardState.stylePreset) styleSelect.value = storyboardState.stylePreset;
+                this.syncToolbarControls();
 
                 const curDisplay = storyboardState.displayMode || 'image';
                 const btnFull = document.getElementById('sb-view-full-btn');
@@ -10498,7 +11032,8 @@
                     return;
                 }
 
-                const arClass = storyboardState.aspectRatio === '2.39:1' ? 'ar-239' : (storyboardState.aspectRatio === '4:3' ? 'ar-43' : (storyboardState.aspectRatio === '9:16' ? 'ar-916' : ''));
+                const arClass = this.arClassFor(storyboardState.aspectRatio)
+                    + (storyboardState.imageFit === 'fill' ? ' frame-fill' : '');
 
                 container.innerHTML = storyboardState.shots.map((shot, idx) => {
                     const curTake = shot.takes[shot.viewing] || shot.takes[shot.order[0]] || {};
@@ -10652,10 +11187,17 @@
 
             updateShotField(shotId, field, val) {
                 const shot = storyboardState.shots.find(s => s.id === shotId);
-                if (shot) {
-                    shot[field] = val;
-                    saveState();
+                if (!shot) return;
+                shot[field] = val;
+                if (field === 'prompt') {
+                    // Typed over by hand -- style switches stop rewriting it.
+                    shot.promptAuto = false;
+                } else if (shot.promptAuto !== false) {
+                    shot.prompt = this.buildPromptForShot(shot);
+                    const inp = document.getElementById('sb-prompt-' + shotId);
+                    if (inp) inp.value = shot.prompt;
                 }
+                saveState();
             },
 
             escapeHtml(s) {
@@ -13539,6 +14081,29 @@
     <div id="suggest-menu" class="suggest-menu"></div>
 
     <!-- Import Script modal: which project the import lands in -->
+    <!-- Storyboard look / style library -->
+    <div id="sb-style-modal" class="modal-overlay">
+        <div class="modal-content" style="width:720px;">
+            <div class="modal-header">
+                <h2>&#127912; Storyboard Look</h2>
+                <button class="close-btn" onclick="FDStyleLibrary.close()" title="Close">&#10005;</button>
+            </div>
+            <div class="sb-batch-hint" style="margin-bottom:14px;">
+                The look is baked into every prompt the storyboard generates. Picking one here rewrites the auto prompts on all shots &mdash; prompts you typed yourself are left alone. Examples are generated on demand with your current provider and kept between sessions.
+            </div>
+            <div id="sb-style-body"></div>
+            <div class="sb-style-footer">
+                <span id="sb-style-status">&mdash;</span>
+                <button class="sb-batch-btn" id="sb-style-previewall-btn" onclick="FDStyleLibrary.previewAll()" style="padding:6px 12px; font-size:0.75rem;" title="Generate one example frame for every look that has none, one at a time, with the current provider">Generate examples</button>
+            </div>
+            <div class="sb-batch-actions">
+                <button class="sb-batch-btn" onclick="FDStyleLibrary.close()">Cancel</button>
+                <button class="sb-batch-btn" onclick="FDStyleLibrary.applyAndReshoot()" title="Apply this look and open Batch Generate set to every shot">Use &amp; re-shoot all</button>
+                <button class="sb-batch-btn primary" onclick="FDStyleLibrary.apply()">Use this look</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Batch Generate Storyboard Frames -->
     <div id="sb-batch-modal" class="modal-overlay">
         <div class="modal-content" style="width:620px;">
@@ -13593,19 +14158,14 @@
                             <option value="16:9">16:9 Widescreen</option>
                             <option value="2.39:1">2.39:1 Cinemascope</option>
                             <option value="4:3">4:3 Classic</option>
+                            <option value="1:1">1:1 Square</option>
                             <option value="9:16">9:16 Vertical</option>
                         </select>
                     </div>
 
                     <div class="sb-batch-field">
                         <label for="sb-batch-style">Style preset</label>
-                        <select id="sb-batch-style">
-                            <option value="cinematic">Cinematic 35mm</option>
-                            <option value="concept_art">Concept Art Painting</option>
-                            <option value="sketch">Charcoal Storyboard Sketch</option>
-                            <option value="comic">Graphic Novel Noir</option>
-                            <option value="anime">Anime / Animation</option>
-                        </select>
+                        <select id="sb-batch-style"><!-- filled from FD_STYLE_PRESETS --></select>
                     </div>
 
                     <div class="sb-batch-field">

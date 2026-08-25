@@ -515,6 +515,22 @@ function saveCustomImage(req, res) {
     });
 }
 
+// DALL-E / gpt-image only render a fixed set of canvas sizes, so pick the one
+// closest to the ratio that was asked for. Cards letterbox the difference
+// rather than stretching it.
+function openaiSize(model, ratio) {
+    const sizes = String(model).startsWith('gpt-image')
+        ? ['1024x1024', '1536x1024', '1024x1536']
+        : ['1024x1024', '1792x1024', '1024x1792'];
+    let best = sizes[0], bestDelta = Infinity;
+    for (const s of sizes) {
+        const [w, h] = s.split('x').map(Number);
+        const delta = Math.abs(Math.log((w / h) / ratio));
+        if (delta < bestDelta) { bestDelta = delta; best = s; }
+    }
+    return best;
+}
+
 function generateAiImage(req, res) {
     let body = '';
     req.on('data', chunk => { body += chunk; });
@@ -529,12 +545,21 @@ function generateAiImage(req, res) {
             const sceneNum = data.sceneNum || '1';
             const shotNum = data.shotNum || '1';
 
+            // The page computes the exact frame size (multiples of 8) and
+            // sends it along; the table below is only for older callers that
+            // post an aspectRatio on its own.
             let width = 1024;
             let height = 576; // 16:9
-            if (aspectRatio === '2.39:1') { width = 1024; height = 430; }
+            if (aspectRatio === '2.39:1') { width = 1024; height = 432; }
             else if (aspectRatio === '4:3') { width = 1024; height = 768; }
             else if (aspectRatio === '9:16') { width = 576; height = 1024; }
             else if (aspectRatio === '1:1') { width = 1024; height = 1024; }
+            const reqW = parseInt(data.width, 10);
+            const reqH = parseInt(data.height, 10);
+            if (reqW >= 256 && reqW <= 2048 && reqH >= 256 && reqH <= 2048) {
+                width = reqW;
+                height = reqH;
+            }
 
             if (provider === 'pollinations') {
                 const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&model=${encodeURIComponent(model)}&seed=${seed}&nologo=true`;
@@ -646,7 +671,7 @@ function generateAiImage(req, res) {
                         model: data.openaiModel || 'dall-e-3',
                         prompt: prompt,
                         n: 1,
-                        size: aspectRatio === '9:16' ? '1024x1792' : '1792x1024',
+                        size: openaiSize(data.openaiModel || 'dall-e-3', width / height),
                         response_format: 'b64_json'
                     }),
                     signal: AbortSignal.timeout(55000)
