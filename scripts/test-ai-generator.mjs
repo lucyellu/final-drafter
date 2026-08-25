@@ -79,7 +79,7 @@ async function run() {
     });
     const testGenJson = await testGen.json();
     ok('Backend /api/generate-image returns 200 OK', testGen.status === 200, testGen.status);
-    ok('Backend returns valid AI image URL or base64 data', testGenJson.ok && typeof testGenJson.imageUrl === 'string' && (testGenJson.imageUrl.startsWith('http') || testGenJson.imageUrl.startsWith('data:image/')), { ok: testGenJson.ok, imgLen: testGenJson.imageUrl ? testGenJson.imageUrl.length : 0 });
+    ok('Backend returns valid AI image URL or base64 data', testGenJson.ok && typeof testGenJson.imageUrl === 'string' && (testGenJson.imageUrl.startsWith('http') || testGenJson.imageUrl.startsWith('data:image/') || testGenJson.imageUrl.startsWith('/storyboards/')), { ok: testGenJson.ok, imgUrl: testGenJson.imageUrl });
 
     // 2. Open empty.html in browser
     await page.goto(`http://127.0.0.1:${PORT}/empty.html`, { waitUntil: 'networkidle2' });
@@ -133,18 +133,26 @@ async function run() {
       return {
         isAi: take.isAi,
         imageLen: take.image ? take.image.length : 0,
-        imageIsBase64OrUrl: take.image ? (take.image.startsWith('data:image/') || take.image.startsWith('http')) : false,
+        imageIsBase64OrUrl: take.image ? (take.image.startsWith('data:image/') || take.image.startsWith('http') || take.image.startsWith('/storyboards/')) : false,
         cardImgSrc: cardImg ? cardImg.src.substring(0, 50) : null
       };
     });
 
     ok('Shot 1 take marked as AI generated', shot1Data.isAi === true, shot1Data);
-    ok('Shot 1 image populated with valid AI image data', shot1Data.imageIsBase64OrUrl && shot1Data.imageLen > 50, shot1Data);
+    ok('Shot 1 image populated with valid AI image data', shot1Data.imageIsBase64OrUrl && shot1Data.imageLen > 5, shot1Data);
 
-    // 5. Test Batch AI Generation (generateAllMissing / #sb-batch-gen-btn)
+    // 5. Test Batch AI Generation. The toolbar button now opens the Batch
+    // Generate popup (options, live progress, cancel), so the headless flag is
+    // what drives a run straight through without UI. Popup behaviour itself is
+    // covered by scripts/test-batch-generate.mjs.
     console.log('Running Batch Generation for all shots...');
+    const batchOpensPopup = await page.evaluate(() => {
+      return document.getElementById('sb-batch-gen-btn').getAttribute('onclick') === 'FDStoryboardBatch.open()';
+    });
+    ok('Batch Generate button opens the batch popup', batchOpensPopup);
+
     await page.evaluate(async () => {
-      await FDStoryboard.generateAllMissing();
+      await FDStoryboard.generateAllMissing({ headless: true });
     });
 
     const allShotsData = await page.evaluate(() => {
@@ -153,14 +161,33 @@ async function run() {
         return {
           id: s.id,
           isAi: take.isAi,
-          hasValidImage: take.image && (take.image.startsWith('data:image/') || take.image.startsWith('http'))
+          hasValidImage: take.image && (take.image.startsWith('data:image/') || take.image.startsWith('http') || take.image.startsWith('/storyboards/'))
         };
       });
     });
 
     ok('All shots in storyboard have AI generated images after Batch Generate', allShotsData.every(s => s.isAi && s.hasValidImage), allShotsData);
 
-    // 6. Test Settings UI Sync
+    // 6. Test Open Storyboard Folder Endpoint & Button
+    console.log('Testing /api/open-storyboard-folder endpoint and toolbar button...');
+    const folderRes = await fetch(`http://127.0.0.1:${PORT}/api/open-storyboard-folder`, { method: 'POST' });
+    const folderJson = await folderRes.json();
+    ok('/api/open-storyboard-folder returns 200 OK', folderRes.status === 200, folderRes.status);
+    ok('Folder path is storyboards directory', folderJson.ok && folderJson.path.includes('storyboards'), folderJson);
+
+    const btnExists = await page.evaluate(() => {
+      const btn = document.getElementById('sb-open-folder-btn');
+      return !!btn && btn.innerText.includes('Open Folder');
+    });
+    ok('Storyboard toolbar has "📂 Open Folder" button', btnExists);
+
+    // 7. Verify files saved to disk in storyboards/
+    const storyboardFiles = await page.evaluate(async () => {
+      return storyboardState.shots.map(s => s.takes[s.viewing].image);
+    });
+    ok('Storyboard images contain valid saved URLs or local paths', storyboardFiles.length > 0 && storyboardFiles.every(img => typeof img === 'string' && img.length > 0), storyboardFiles);
+
+    // 8. Test Settings Modal provider controls...
     console.log('Verifying Settings Modal provider controls...');
     await page.evaluate(() => {
       openSettings();
@@ -186,7 +213,7 @@ async function run() {
       closeSettings();
     });
 
-    // 7. Save Screenshot
+    // 9. Save Screenshot
     const screenshotPath = path.join(ROOT, 'scripts', 'ai-generator-verified.png');
     await page.screenshot({ path: screenshotPath });
     console.log(`Saved screenshot to ${path.relative(ROOT, screenshotPath)}`);

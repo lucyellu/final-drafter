@@ -269,7 +269,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 12px;
+            padding: 0 8px 0 4px;
             z-index: 1000;
             gap: 10px;
             flex-shrink: 0;
@@ -291,27 +291,6 @@
             gap: 8px;
             flex-shrink: 0;
             overflow: visible;
-        }
-
-        .app-brand {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            color: var(--color-text);
-            padding-right: 6px;
-            user-select: none;
-        }
-        .app-brand-icon {
-            font-size: 1.15rem;
-        }
-        .app-brand-name {
-            background: linear-gradient(135deg, var(--color-text), var(--color-accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 800;
-            letter-spacing: -0.01em;
         }
 
         .top-action-group {
@@ -2852,6 +2831,191 @@
         }
 
         /* Modals */
+        /* ---------------------------------------------------------------
+           Batch Generate modal: options form, live progress and cancel.
+           Generation used to report itself only through the toolbar button's
+           label, which is clipped in a narrow panel -- so a run that was
+           working looked identical to one that never started.
+           --------------------------------------------------------------- */
+        .sb-batch-warn {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            font-size: 0.78rem;
+            line-height: 1.45;
+            border: 1px solid rgba(227, 179, 65, 0.45);
+            background: rgba(227, 179, 65, 0.12);
+            color: #e3b341;
+        }
+        .sb-batch-warn.danger {
+            border-color: rgba(248, 81, 73, 0.45);
+            background: rgba(248, 81, 73, 0.12);
+            color: #ff9d96;
+        }
+        .sb-batch-warn b { color: inherit; }
+        .sb-batch-warn button {
+            background: rgba(255,255,255,0.10);
+            border: 1px solid currentColor;
+            color: inherit;
+            border-radius: 7px;
+            padding: 4px 9px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: var(--font-body);
+            white-space: nowrap;
+        }
+        .sb-batch-warn button:hover { background: rgba(255,255,255,0.18); }
+
+        .sb-batch-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px 16px;
+        }
+        .sb-batch-grid .full { grid-column: 1 / -1; }
+        .sb-batch-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+        .sb-batch-field > label {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-weight: 700;
+            color: var(--color-text-dim);
+        }
+        .sb-batch-field select,
+        .sb-batch-field input[type="text"],
+        .sb-batch-field input[type="number"] { width: 100%; }
+        .sb-batch-hint { font-size: 0.7rem; color: var(--color-text-dim); line-height: 1.4; }
+        .sb-batch-check {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 0.78rem;
+            color: var(--color-text);
+            cursor: pointer;
+        }
+        .sb-batch-range-row { display: flex; align-items: center; gap: 6px; }
+        .sb-batch-range-row input { width: 68px; }
+
+        .sb-batch-summary {
+            margin: 16px 0 4px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            font-size: 0.8rem;
+            color: var(--color-text);
+        }
+        .sb-batch-summary b { color: var(--color-accent); }
+
+        .sb-batch-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 18px;
+            padding-top: 14px;
+            border-top: 1px solid var(--color-border);
+        }
+        .sb-batch-btn {
+            border-radius: 10px;
+            padding: 9px 16px;
+            font-weight: 700;
+            font-size: 0.84rem;
+            font-family: var(--font-body);
+            cursor: pointer;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-elevated);
+            color: var(--color-text);
+            transition: all 0.15s ease;
+        }
+        .sb-batch-btn:hover { border-color: var(--color-border-hover); }
+        .sb-batch-btn.primary {
+            background: var(--color-accent);
+            border-color: var(--color-accent);
+            color: #06121f;
+        }
+        .sb-batch-btn.primary:hover { filter: brightness(1.1); }
+        .sb-batch-btn.danger {
+            background: rgba(248, 81, 73, 0.16);
+            border-color: rgba(248, 81, 73, 0.5);
+            color: #ff9d96;
+        }
+        .sb-batch-btn.danger:hover { background: rgba(248, 81, 73, 0.28); }
+        .sb-batch-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .sb-batch-progress-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-size: 0.82rem;
+            color: var(--color-text-dim);
+            margin-bottom: 8px;
+        }
+        .sb-batch-progress-head #sb-batch-count {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--color-text);
+            font-variant-numeric: tabular-nums;
+        }
+        .sb-batch-bar {
+            height: 10px;
+            border-radius: 999px;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            overflow: hidden;
+        }
+        .sb-batch-bar-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--color-accent), #a78bfa);
+            transition: width 0.25s ease;
+        }
+        .sb-batch-bar-fill.cancelled { background: linear-gradient(90deg, #f85149, #b3261e); }
+        .sb-batch-stats {
+            display: flex;
+            gap: 16px;
+            margin: 12px 0 6px;
+            font-size: 0.78rem;
+            color: var(--color-text-dim);
+            font-variant-numeric: tabular-nums;
+        }
+        .sb-batch-stats .ok b { color: #3fb950; }
+        .sb-batch-stats .fail b { color: #f85149; }
+        .sb-batch-stats .skip b { color: #e3b341; }
+        .sb-batch-current {
+            font-size: 0.78rem;
+            color: var(--color-text);
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            margin-bottom: 10px;
+            min-height: 34px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sb-batch-log {
+            height: 190px;
+            overflow-y: auto;
+            border-radius: 8px;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            padding: 8px 10px;
+            font-family: var(--font-mono, ui-monospace, Consolas, monospace);
+            font-size: 0.7rem;
+            line-height: 1.6;
+            color: var(--color-text-dim);
+        }
+        .sb-batch-log .l-ok { color: #3fb950; }
+        .sb-batch-log .l-fail { color: #f85149; }
+        .sb-batch-log .l-warn { color: #e3b341; }
+        .sb-batch-log .l-info { color: var(--color-text-dim); }
+        .sb-batch-log .l-time { opacity: 0.55; margin-right: 6px; }
+
         .modal-overlay {
             display: none;
             position: fixed;
@@ -3248,10 +3412,6 @@
 
     <div id="top-bar">
         <div class="top-bar-left">
-            <div class="app-brand" title="Final Drafter — Creative IP Screenplay Suite">
-                <span class="app-brand-icon">🎬</span>
-                <span class="app-brand-name">Final Drafter</span>
-            </div>
             <div class="menu-item" id="menu-file" tabindex="0" title="File Menu (Open, Import, Save, Export)">
                 <span>File</span>
                 <span style="font-size: 0.65rem; opacity: 0.7;">▼</span>
@@ -3263,6 +3423,7 @@
                     <div onclick="newScript()">✨ New Script</div>
                     <div onclick="saveJSON()" title="Write straight back to the file this script is already attached to (Ctrl+S)">💾 Save (.fdproj)</div>
                     <div onclick="saveAsJSON()" title="Choose a new file and folder to save to; the script stays attached to that new file">💾 Save As… (Ctrl+Shift+S)</div>
+                    <div onclick="FDStoryboard.openStoryboardFolder()" title="Open the local folder where storyboard images are saved on your computer">📂 Open Storyboard Images Folder</div>
                     <div onclick="foldAltDrafts()" title="Turn hand-typed &quot;* ALT DRAFT *&quot; sections into variation stacks on the scenes they rewrite">⚡ Fold Alternates into Stacks…</div>
                     <div onclick="window.print()">🖨️ Export as PDF</div>
                     <div onclick="exportMD()">📝 Export as Markdown</div>
@@ -3672,8 +3833,11 @@
                             <button class="media-btn" onclick="FDStoryboard.addNewShot()" title="Add a new custom shot card">
                                 + Add Shot
                             </button>
-                            <button class="media-btn" id="sb-batch-gen-btn" onclick="FDStoryboard.generateAllMissing()" title="Generate AI storyboard frames for shots">
+                            <button class="media-btn" id="sb-batch-gen-btn" onclick="FDStoryboardBatch.open()" title="Open batch options: pick which shots, which provider, how fast — with live progress and a cancel button">
                                 ✨ Batch Generate
+                            </button>
+                            <button class="media-btn" id="sb-open-folder-btn" onclick="FDStoryboard.openStoryboardFolder()" title="Open the local folder where storyboard images are saved on your computer (final-drafter/storyboards)">
+                                📂 Open Folder
                             </button>
                         </div>
                         <div class="storyboard-toolbar-group">
@@ -9076,6 +9240,491 @@
         // =====================================================================
         // FDVisualGen — AI Image, Video & Concept Sketch Generation Engine
         // =====================================================================
+        /* ---------------------------------------------------------------
+           FDGenLog -- a dedicated trace channel for image generation.
+           A failed generate used to be indistinguishable from a successful
+           one: the offline placeholder that ships on every new shot card
+           looks the same as the offline placeholder a failed request falls
+           back to, and nothing was written to the console either way. Every
+           stage now announces itself under the [FDGen] tag, and the last 500
+           entries are kept in memory so a finished run can still be examined
+           with FDGenLog.dump().
+           --------------------------------------------------------------- */
+        const FDGenLog = {
+            enabled: true,
+            entries: [],
+            listeners: [],
+
+            _push(level, msg, data) {
+                const entry = { ts: Date.now(), level, msg, data };
+                this.entries.push(entry);
+                if (this.entries.length > 500) this.entries.shift();
+
+                if (this.enabled) {
+                    const style = level === 'error' ? 'color:#f85149;font-weight:700'
+                        : level === 'warn' ? 'color:#e3b341;font-weight:700'
+                        : level === 'ok' ? 'color:#3fb950;font-weight:700'
+                        : 'color:#58a6ff;font-weight:700';
+                    const sink = level === 'error' ? console.error : (level === 'warn' ? console.warn : console.log);
+                    if (data !== undefined) sink('%c[FDGen]', style, msg, data);
+                    else sink('%c[FDGen]', style, msg);
+                }
+
+                this.listeners.forEach(fn => { try { fn(entry); } catch (_) {} });
+                return entry;
+            },
+
+            info(msg, data) { return this._push('info', msg, data); },
+            ok(msg, data) { return this._push('ok', msg, data); },
+            warn(msg, data) { return this._push('warn', msg, data); },
+            error(msg, data) { return this._push('error', msg, data); },
+
+            subscribe(fn) { this.listeners.push(fn); return () => { this.listeners = this.listeners.filter(f => f !== fn); }; },
+            clear() { this.entries = []; },
+            dump() {
+                console.table(this.entries.map(e => ({ time: new Date(e.ts).toLocaleTimeString(), level: e.level, message: e.msg })));
+                return this.entries;
+            }
+        };
+        window.FDGenLog = FDGenLog;
+
+        /* ---------------------------------------------------------------
+           FDStoryboardBatch -- the Batch Generate popup.
+           Batch generation used to run headless off the toolbar button, with
+           its only progress readout being that button's own label. In a
+           narrow panel the label is clipped, so an 80-shot run looked exactly
+           like a dead click, and there was no way to stop one once started.
+           This owns the options form, a live progress readout, and a cancel
+           that actually aborts the in-flight request.
+           --------------------------------------------------------------- */
+        const FDStoryboardBatch = {
+            running: false,
+            cancelled: false,
+            controller: null,
+            opts: null,
+            stats: null,
+            startedAt: 0,
+            timer: null,
+            backoff: 0,
+
+            MODELS: {
+                pollinations: [
+                    { v: 'flux', t: 'Flux (default, photoreal)' },
+                    { v: 'flux-realism', t: 'Flux Realism' },
+                    { v: 'flux-anime', t: 'Flux Anime' },
+                    { v: 'flux-3d', t: 'Flux 3D' },
+                    { v: 'turbo', t: 'Turbo / SDXL (fastest)' }
+                ],
+                gemini: [
+                    { v: 'imagen-3.0-generate-002', t: 'Imagen 3' },
+                    { v: 'imagen-4.0-generate-001', t: 'Imagen 4' }
+                ],
+                openai: [
+                    { v: 'dall-e-3', t: 'DALL-E 3' },
+                    { v: 'gpt-image-1', t: 'GPT Image 1' }
+                ],
+                comfyui: [{ v: 'default', t: 'Local workflow' }],
+                custom: [{ v: 'default', t: 'Endpoint default' }],
+                offline: [{ v: 'sketch', t: 'Local SVG sketch' }]
+            },
+
+            open() {
+                const modal = document.getElementById('sb-batch-modal');
+                if (!modal) {
+                    FDGenLog.error('Batch modal markup is missing from the page.');
+                    return;
+                }
+                if (this.running) { modal.style.display = 'flex'; return; }
+
+                if (!storyboardState.shots.length) {
+                    FDGenLog.warn('Batch cancelled: the storyboard has no shots yet.');
+                    alert('No shots in storyboard. Add a shot or click the Auto-Populate from Script button first.');
+                    return;
+                }
+
+                const cfg = settings.aiGen || {};
+                document.getElementById('sb-batch-provider').value = cfg.provider || 'pollinations';
+                this.syncModelOptions();
+
+                document.getElementById('sb-batch-aspect').value = storyboardState.aspectRatio || '16:9';
+                document.getElementById('sb-batch-style').value = storyboardState.stylePreset || 'cinematic';
+
+                const scenes = storyboardState.shots.map(s => parseInt(s.sceneNum, 10) || 1);
+                document.getElementById('sb-batch-range-from').value = Math.min.apply(null, scenes);
+                document.getElementById('sb-batch-range-to').value = Math.max.apply(null, scenes);
+
+                this.showOptions();
+                this.onProviderChange();
+                modal.style.display = 'flex';
+                FDGenLog.info('Batch options opened.', { shots: storyboardState.shots.length, provider: cfg.provider || 'pollinations' });
+            },
+
+            close() {
+                // A run in flight keeps the dialog pinned open -- closing it
+                // would orphan the batch with no way back to its cancel button.
+                if (this.running) return;
+                const modal = document.getElementById('sb-batch-modal');
+                if (modal) modal.style.display = 'none';
+            },
+
+            showOptions() {
+                document.getElementById('sb-batch-options').style.display = 'block';
+                document.getElementById('sb-batch-progress').style.display = 'none';
+                document.getElementById('sb-batch-title').innerText = 'Batch Generate Frames';
+                document.getElementById('sb-batch-x').style.display = 'flex';
+                this.updateSummary();
+            },
+
+            syncModelOptions() {
+                const prov = document.getElementById('sb-batch-provider').value;
+                const cfg = settings.aiGen || {};
+                const list = this.MODELS[prov] || [{ v: 'default', t: 'Default' }];
+                const saved = prov === 'pollinations' ? cfg.pollinationsModel
+                    : prov === 'gemini' ? cfg.geminiModel
+                    : prov === 'openai' ? cfg.openaiModel : null;
+                const sel = document.getElementById('sb-batch-model');
+                sel.innerHTML = list.map(m => '<option value="' + m.v + '">' + m.t + '</option>').join('');
+                if (saved && list.some(m => m.v === saved)) sel.value = saved;
+                sel.disabled = list.length < 2;
+            },
+
+            onProviderChange() {
+                this.syncModelOptions();
+                const prov = document.getElementById('sb-batch-provider').value;
+                const warn = document.getElementById('sb-batch-warning');
+                const cfg = settings.aiGen || {};
+
+                let html = '';
+                let danger = false;
+                if (prov === 'offline') {
+                    danger = true;
+                    html = '<span>&#9888;</span><div><b>Offline sketch draws no AI image.</b> It redraws the same local placeholder every shot already carries, so a whole run finishes with nothing visibly changed. Pick a real provider to get frames.</div>'
+                         + '<button onclick="FDStoryboardBatch.useFreeProvider()">Use free Pollinations</button>';
+                } else if (prov === 'gemini' && !cfg.geminiKey) {
+                    html = '<span>&#9888;</span><div>No Gemini API key is saved. Add one under <b>Settings &rarr; AI Image Generation</b>, or switch to Pollinations, which needs no key.</div>';
+                } else if (prov === 'openai' && !cfg.openaiKey) {
+                    html = '<span>&#9888;</span><div>No OpenAI API key is saved. Add one under <b>Settings &rarr; AI Image Generation</b>, or switch to Pollinations, which needs no key.</div>';
+                } else if (prov === 'pollinations' && (parseInt(document.getElementById('sb-batch-concurrency').value, 10) || 1) > 1) {
+                    html = '<span>&#9888;</span><div>The free Pollinations endpoint answers roughly <b>one request at a time</b> and returns HTTP 429 for the rest. Above 1 parallel request most shots come back as placeholders. The run backs off on its own, but 1 in parallel is the reliable setting.</div>'
+                         + '<button onclick="FDStoryboardBatch.useSafeConcurrency()">Set to 1</button>';
+                } else if (prov === 'custom' && !cfg.customUrl) {
+                    html = '<span>&#9888;</span><div>No custom endpoint URL is saved. Set one under <b>Settings &rarr; AI Image Generation</b>.</div>';
+                }
+
+                warn.className = 'sb-batch-warn' + (danger ? ' danger' : '');
+                warn.innerHTML = html;
+                warn.style.display = html ? 'flex' : 'none';
+                this.updateSummary();
+            },
+
+            useSafeConcurrency() {
+                document.getElementById('sb-batch-concurrency').value = '1';
+                this.onProviderChange();
+            },
+
+            useFreeProvider() {
+                document.getElementById('sb-batch-provider').value = 'pollinations';
+                this.onProviderChange();
+            },
+
+            onScopeChange() {
+                const scope = document.getElementById('sb-batch-scope').value;
+                document.getElementById('sb-batch-range-wrap').style.display = scope === 'range' ? 'flex' : 'none';
+                this.updateSummary();
+            },
+
+            // A shot counts as already generated only when its visible take
+            // carries a real AI image. Every new shot ships with an offline
+            // sketch placeholder, so image-present is not the same as done.
+            shotHasAiFrame(shot) {
+                const take = shot.takes[shot.viewing] || shot.takes[shot.order[0]] || {};
+                return !!take.image && take.isAi === true;
+            },
+
+            selectShots() {
+                const scope = document.getElementById('sb-batch-scope').value;
+                if (scope === 'all') return storyboardState.shots.slice();
+                if (scope === 'missing') return storyboardState.shots.filter(s => !this.shotHasAiFrame(s));
+                const from = parseInt(document.getElementById('sb-batch-range-from').value, 10) || 1;
+                const to = parseInt(document.getElementById('sb-batch-range-to').value, 10) || from;
+                const lo = Math.min(from, to), hi = Math.max(from, to);
+                return storyboardState.shots.filter(s => {
+                    const n = parseInt(s.sceneNum, 10) || 1;
+                    return n >= lo && n <= hi;
+                });
+            },
+
+            updateSummary() {
+                const el = document.getElementById('sb-batch-scope-summary');
+                if (!el) return;
+                const picked = this.selectShots();
+                const total = storyboardState.shots.length;
+                const startBtn = document.getElementById('sb-batch-start-btn');
+                if (!picked.length) {
+                    el.innerHTML = 'Nothing selected &mdash; all <b>' + total + '</b> shots already have an AI frame. Switch to <i>All shots</i> to regenerate them.';
+                    if (startBtn) startBtn.disabled = true;
+                    return;
+                }
+                if (startBtn) startBtn.disabled = false;
+                const conc = parseInt(document.getElementById('sb-batch-concurrency').value, 10) || 1;
+                const delay = parseInt(document.getElementById('sb-batch-delay').value, 10) || 0;
+                // Free endpoints are slow and now run one at a time, so the
+                // old 6s-per-shot guess was off by a factor of three.
+                const est = Math.ceil((picked.length * (20000 + delay)) / conc / 1000);
+                el.innerHTML = 'Will generate <b>' + picked.length + '</b> of ' + total + ' shot' + (total === 1 ? '' : 's')
+                    + ' &mdash; roughly <b>' + this.fmtDuration(est) + '</b> at these settings.';
+            },
+
+            fmtDuration(sec) {
+                if (!isFinite(sec) || sec < 0) return '--';
+                if (sec < 60) return Math.round(sec) + 's';
+                const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+                return m + 'm ' + String(s).padStart(2, '0') + 's';
+            },
+
+            async start() {
+                if (this.running) return;
+                const shots = this.selectShots();
+                if (!shots.length) { this.updateSummary(); return; }
+
+                const prov = document.getElementById('sb-batch-provider').value;
+                const model = document.getElementById('sb-batch-model').value;
+
+                this.opts = {
+                    provider: prov,
+                    model: model,
+                    aspectRatio: document.getElementById('sb-batch-aspect').value,
+                    stylePreset: document.getElementById('sb-batch-style').value,
+                    concurrency: this.effectiveConcurrency(prov),
+                    delay: parseInt(document.getElementById('sb-batch-delay').value, 10) || 0,
+                    newTake: document.getElementById('sb-batch-newtake').checked
+                };
+
+                // The provider chosen here becomes the saved default. A run
+                // that silently reverted to the old setting next time would be
+                // the same trap this dialog exists to close.
+                settings.aiGen = settings.aiGen || {};
+                settings.aiGen.provider = prov;
+                if (prov === 'pollinations') settings.aiGen.pollinationsModel = model;
+                else if (prov === 'gemini') settings.aiGen.geminiModel = model;
+                else if (prov === 'openai') settings.aiGen.openaiModel = model;
+                saveSettings();
+
+                storyboardState.aspectRatio = this.opts.aspectRatio;
+                storyboardState.stylePreset = this.opts.stylePreset;
+
+                this.running = true;
+                this.cancelled = false;
+                this.controller = new AbortController();
+                this.stats = { total: shots.length, done: 0, ok: 0, fail: 0, placeholder: 0 };
+                this.backoff = 0;
+                this.startedAt = Date.now();
+
+                document.getElementById('sb-batch-options').style.display = 'none';
+                document.getElementById('sb-batch-progress').style.display = 'block';
+                document.getElementById('sb-batch-title').innerText = 'Generating...';
+                document.getElementById('sb-batch-x').style.display = 'none';
+                const cancelBtn = document.getElementById('sb-batch-cancel-btn');
+                cancelBtn.style.display = 'inline-block';
+                cancelBtn.disabled = false;
+                cancelBtn.innerText = 'Cancel Batch';
+                document.getElementById('sb-batch-done-btn').style.display = 'none';
+                document.getElementById('sb-batch-back-btn').style.display = 'none';
+                document.getElementById('sb-batch-bar-fill').className = 'sb-batch-bar-fill';
+                document.getElementById('sb-batch-log').innerHTML = '';
+                this.renderProgress();
+
+                this.log('info', 'Batch started - ' + shots.length + ' shot(s) via ' + prov + '/' + model + ', ' + this.opts.concurrency + ' in parallel.');
+                if (this.clampedFrom) {
+                    this.log('warn', 'Held at 1 parallel request (you chose ' + this.clampedFrom + ') - ' + prov + ' only queues one generation per IP.');
+                }
+                FDGenLog.info('Batch started', Object.assign({ shots: shots.length }, this.opts));
+
+                this.timer = setInterval(() => this.renderProgress(), 1000);
+
+                const queue = shots.slice();
+                const workers = [];
+                for (let i = 0; i < Math.max(1, this.opts.concurrency); i++) {
+                    workers.push(this.runWorker(queue, i));
+                }
+
+                try {
+                    await Promise.all(workers);
+                } catch (e) {
+                    FDGenLog.error('Batch worker crashed', e);
+                    this.log('fail', 'Batch error: ' + (e && e.message ? e.message : e));
+                } finally {
+                    clearInterval(this.timer);
+                    this.timer = null;
+                    this.running = false;
+                    this.finish();
+                }
+            },
+
+            async runWorker(queue) {
+                while (queue.length) {
+                    if (this.cancelled) return;
+                    const shot = queue.shift();
+                    if (!shot) return;
+
+                    const label = 'S' + String(shot.sceneNum).padStart(2, '0') + '-SH' + String(shot.shotNum).padStart(2, '0');
+                    this.setCurrent(label + '  ' + (shot.heading || shot.shotType || ''));
+
+                    let res;
+                    try {
+                        res = await FDStoryboard.generateShotFrame(shot.id, {
+                            signal: this.controller.signal,
+                            deferRender: true,
+                            newTake: this.opts.newTake,
+                            aspectRatio: this.opts.aspectRatio,
+                            stylePreset: this.opts.stylePreset,
+                            providerOverrides: this.buildProviderOverrides()
+                        });
+                    } catch (err) {
+                        res = { ok: false, cancelled: !!(err && err.name === 'AbortError'), error: err && err.message };
+                    }
+
+                    if (res.cancelled || this.cancelled) {
+                        this.log('warn', label + ' cancelled.');
+                        return;
+                    }
+
+                    this.stats.done++;
+                    if (res.ok) {
+                        this.stats.ok++;
+                        this.backoff = 0;
+                        this.log('ok', label + ' generated in ' + ((res.ms || 0) / 1000).toFixed(1) + 's via ' + res.source + '.');
+                    } else if (res.source === 'offline' || res.source === 'offline-fallback') {
+                        this.stats.placeholder++;
+                        this.log('warn', label + ' fell back to a local placeholder' + (res.error ? ' - ' + res.error : '') + '.');
+                    } else {
+                        this.stats.fail++;
+                        this.log('fail', label + ' failed - ' + (res.error || 'unknown error'));
+                    }
+
+                    // A 429 means the endpoint wants the whole batch to slow
+                    // down, not just this shot. Widen the gap for everyone and
+                    // let it decay again once frames start landing -- charging
+                    // through the queue at the same rate just converts the rest
+                    // of the storyboard into placeholders.
+                    if (res.rateLimited) {
+                        this.backoff = Math.min(this.backoff ? this.backoff * 2 : 4000, 30000);
+                        this.log('warn', 'Rate limited - waiting ' + Math.round(this.backoff / 1000) + 's before the next shot.');
+                    }
+                    this.renderProgress();
+
+                    const gap = Math.max(this.opts.delay || 0, this.backoff || 0);
+                    if (queue.length && gap && !this.cancelled) {
+                        await new Promise(r => setTimeout(r, gap));
+                    }
+                }
+            },
+
+            // Pollinations' free tier queues exactly one generation per IP
+            // and refuses the rest with a 429, so anything above one worker
+            // turns most of a run into placeholders. The dialog warns about it;
+            // this makes sure a run can never actually exceed the limit.
+            SINGLE_SLOT_PROVIDERS: ['pollinations'],
+
+            effectiveConcurrency(prov) {
+                const asked = parseInt(document.getElementById('sb-batch-concurrency').value, 10) || 1;
+                if (this.SINGLE_SLOT_PROVIDERS.indexOf(prov) !== -1 && asked > 1) {
+                    this.clampedFrom = asked;
+                    FDGenLog.warn('Concurrency clamped to 1 for ' + prov + ' (asked for ' + asked + ').');
+                    return 1;
+                }
+                this.clampedFrom = 0;
+                return Math.max(1, asked);
+            },
+
+            buildProviderOverrides() {
+                const o = { provider: this.opts.provider };
+                if (this.opts.provider === 'pollinations') o.pollinationsModel = this.opts.model;
+                else if (this.opts.provider === 'gemini') o.geminiModel = this.opts.model;
+                else if (this.opts.provider === 'openai') o.openaiModel = this.opts.model;
+                return o;
+            },
+
+            cancel() {
+                if (!this.running) return;
+                this.cancelled = true;
+                if (this.controller) this.controller.abort();
+                const btn = document.getElementById('sb-batch-cancel-btn');
+                if (btn) { btn.disabled = true; btn.innerText = 'Stopping...'; }
+                const bar = document.getElementById('sb-batch-bar-fill');
+                if (bar) bar.classList.add('cancelled');
+                this.log('warn', 'Cancelling - stopping after in-flight requests unwind.');
+                FDGenLog.warn('Batch cancelled by user', this.stats);
+            },
+
+            finish() {
+                // One render and one history snapshot for the whole run. Doing
+                // both per frame re-laid out the entire screenplay once per
+                // shot, which froze the UI hard enough to look like a dead click.
+                FDStoryboard.renderStoryboard();
+                saveState();
+
+                const s = this.stats;
+                const elapsed = Math.round((Date.now() - this.startedAt) / 1000);
+                document.getElementById('sb-batch-title').innerText = this.cancelled ? 'Batch Cancelled' : 'Batch Complete';
+                document.getElementById('sb-batch-x').style.display = 'flex';
+                document.getElementById('sb-batch-cancel-btn').style.display = 'none';
+                document.getElementById('sb-batch-done-btn').style.display = 'inline-block';
+                document.getElementById('sb-batch-back-btn').style.display = 'inline-block';
+                this.setCurrent(this.cancelled
+                    ? 'Stopped after ' + s.done + ' of ' + s.total + ' shots (' + this.fmtDuration(elapsed) + ').'
+                    : 'Finished ' + s.done + ' of ' + s.total + ' shots in ' + this.fmtDuration(elapsed) + '.');
+                this.log('info', 'Done - ' + s.ok + ' generated, ' + s.placeholder + ' placeholder, ' + s.fail + ' failed.');
+                FDGenLog.info('Batch finished', Object.assign({ elapsedSec: elapsed, cancelled: this.cancelled }, s));
+                this.renderProgress();
+                flashSaved(this.cancelled
+                    ? 'Batch cancelled - ' + s.ok + ' frame(s) generated.'
+                    : 'Generated ' + s.ok + '/' + s.total + ' storyboard frames.');
+            },
+
+            renderProgress() {
+                if (!this.stats) return;
+                const s = this.stats;
+                const pct = s.total ? Math.round((s.done / s.total) * 100) : 0;
+                const set = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
+                set('sb-batch-count', s.done + ' / ' + s.total);
+                set('sb-batch-ok', s.ok);
+                set('sb-batch-fail', s.fail);
+                set('sb-batch-skip', s.placeholder);
+                const bar = document.getElementById('sb-batch-bar-fill');
+                if (bar) bar.style.width = pct + '%';
+
+                const eta = document.getElementById('sb-batch-eta');
+                if (eta) {
+                    const elapsed = (Date.now() - this.startedAt) / 1000;
+                    if (!this.running) eta.innerText = pct + '% - ' + this.fmtDuration(elapsed) + ' elapsed';
+                    else if (s.done > 0) eta.innerText = pct + '% - ~' + this.fmtDuration((elapsed / s.done) * (s.total - s.done)) + ' left';
+                    else eta.innerText = pct + '% - estimating...';
+                }
+            },
+
+            setCurrent(text) {
+                const el = document.getElementById('sb-batch-current');
+                if (!el) return;
+                const safe = FDStoryboard.escapeHtml(text);
+                el.innerHTML = this.running
+                    ? '<span style="opacity:0.7;">&#9203;</span><span>' + safe + '</span>'
+                    : '<span>' + safe + '</span>';
+            },
+
+            log(kind, msg) {
+                const box = document.getElementById('sb-batch-log');
+                if (!box) return;
+                const cls = kind === 'ok' ? 'l-ok' : kind === 'fail' ? 'l-fail' : kind === 'warn' ? 'l-warn' : 'l-info';
+                const line = document.createElement('div');
+                line.className = cls;
+                line.innerHTML = '<span class="l-time">' + new Date().toLocaleTimeString() + '</span>' + FDStoryboard.escapeHtml(msg);
+                box.appendChild(line);
+                box.scrollTop = box.scrollHeight;
+            }
+        };
+        window.FDStoryboardBatch = FDStoryboardBatch;
+
         const FDVisualGen = {
             setProvider(val) {
                 if (!settings.aiGen) settings.aiGen = {};
@@ -9167,21 +9816,54 @@
                 if (neg && cfg.negativePrompt) neg.value = cfg.negativePrompt;
             },
 
-            async generateImage(prompt, options = {}) {
-                const cfg = settings.aiGen || {};
+            // Returns the whole story of an attempt, not just a URL: which
+            // route produced the image, how long it took, and -- crucially --
+            // whether what came back is a real AI frame or the local sketch
+            // placeholder. The two are visually indistinguishable on a card,
+            // which is why a silently-failed generate used to read as "nothing
+            // happened". generateImage() below keeps the old string contract.
+            async generateImageDetailed(prompt, options = {}) {
+                const cfg = Object.assign({}, settings.aiGen || {}, options.providerOverrides || {});
                 const prov = cfg.provider || 'pollinations';
+                const label = options.label || 'frame';
+                const t0 = performance.now();
+                const took = () => Math.round(performance.now() - t0);
+                const aspectRatio = options.aspectRatio || storyboardState.aspectRatio || '16:9';
+                const stylePreset = options.stylePreset || storyboardState.stylePreset || 'cinematic';
+
+                const abortIfCancelled = () => {
+                    if (options.signal && options.signal.aborted) {
+                        const e = new Error('Cancelled');
+                        e.name = 'AbortError';
+                        throw e;
+                    }
+                };
+                abortIfCancelled();
+
+                FDGenLog.info('generate start :: ' + label, {
+                    provider: prov, aspectRatio, stylePreset,
+                    prompt: String(prompt || '').slice(0, 140)
+                });
 
                 if (prov === 'offline') {
-                    await new Promise(r => setTimeout(r, 250));
-                    return this.generateOfflineConceptFrame(prompt, options);
+                    FDGenLog.warn('generate skipped :: ' + label + ' -- provider is "offline", so this draws the same local SVG sketch the card already had. No AI request was made. Switch the provider in Batch Generate or Settings to get real frames.');
+                    await new Promise(r => setTimeout(r, 60));
+                    return {
+                        imageUrl: this.generateOfflineConceptFrame(prompt, options),
+                        source: 'offline', isAi: false, provider: prov, ms: took(),
+                        error: 'Provider is set to Offline sketch'
+                    };
                 }
 
-                // 1. Primary: backend API proxy route
+                let lastError = null;
+                let rateLimited = false;
+
+                // 1. Primary: backend API proxy route.
                 try {
                     const payload = {
                         prompt: prompt,
-                        aspectRatio: options.aspectRatio || storyboardState.aspectRatio || '16:9',
-                        stylePreset: options.stylePreset || storyboardState.stylePreset || 'cinematic',
+                        aspectRatio: aspectRatio,
+                        stylePreset: stylePreset,
                         provider: prov,
                         model: (prov === 'pollinations' ? (cfg.pollinationsModel || 'flux') : (prov === 'gemini' ? cfg.geminiModel : cfg.openaiModel)),
                         geminiKey: cfg.geminiKey,
@@ -9191,39 +9873,135 @@
                         comfyUrl: cfg.comfyUrl,
                         customUrl: cfg.customUrl,
                         customKey: cfg.customKey,
+                        negativePrompt: cfg.negativePrompt,
+                        sceneNum: options.sceneNum || '1',
+                        shotNum: options.shotNum || '1',
+                        shotId: options.shotId || '',
                         seed: Math.floor(Math.random() * 1000000)
                     };
 
+                    FDGenLog.info('POST /api/generate-image :: ' + label, { provider: prov, model: payload.model });
                     const res = await fetch('/api/generate-image', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify(payload),
+                        signal: options.signal
                     });
 
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.ok && data.imageUrl) {
-                            return data.imageUrl;
+                    if (!res.ok) {
+                        lastError = 'Backend returned HTTP ' + res.status;
+                        FDGenLog.error('backend HTTP error :: ' + label, { status: res.status, statusText: res.statusText });
+                    } else {
+                        const data = await res.json().catch(err => {
+                            lastError = 'Backend sent a non-JSON reply';
+                            FDGenLog.error('backend JSON parse failed :: ' + label, err);
+                            return null;
+                        });
+                        if (data && data.ok && data.imageUrl) {
+                            // A same-origin path points at a file the server has
+                            // already written, so it is trustworthy. Anything
+                            // absolute is an upstream URL that has never been
+                            // proven to load -- committing one unchecked is what
+                            // pinned broken <img> tags to the board while the
+                            // run cheerfully reported success.
+                            const isRemote = /^https?:\/\//i.test(data.imageUrl);
+                            if (isRemote) {
+                                const check = await this.preloadImage(data.imageUrl, 90000, options.signal);
+                                if (!check.ok) {
+                                    lastError = 'Backend returned an image URL that will not load (' + check.error + ')';
+                                    FDGenLog.error('backend image URL failed to load :: ' + label, { url: data.imageUrl, reason: check.error });
+                                }
+                            }
+                            if (!isRemote || !lastError) {
+                                FDGenLog.ok('generated via backend :: ' + label + ' in ' + took() + 'ms', { imageUrl: data.imageUrl, savedTo: data.localPath });
+                                return { imageUrl: data.imageUrl, source: 'backend', isAi: true, provider: prov, ms: took(), savedTo: data.localPath || null };
+                            }
+                        }
+                        if (data) {
+                            lastError = data.error || 'Backend reported no image';
+                            rateLimited = !!data.rateLimited;
+                            FDGenLog.error('backend reported failure :: ' + label, data);
                         }
                     }
                 } catch (err) {
-                    console.warn('Backend generate-image error, attempting client-side fallback:', err);
+                    if (err && err.name === 'AbortError') { FDGenLog.warn('aborted :: ' + label); throw err; }
+                    lastError = 'Backend unreachable: ' + (err && err.message ? err.message : err);
+                    FDGenLog.error('backend request threw :: ' + label, err);
                 }
 
-                // 2. Client-side fallback for Pollinations (direct image URL)
-                if (prov === 'pollinations') {
-                    const ar = options.aspectRatio || storyboardState.aspectRatio || '16:9';
+                abortIfCancelled();
+
+                // 2. Client-side fallback for Pollinations, whose image URL can
+                //    be hit straight from the page. The URL is only trusted
+                //    once it actually decodes -- returning an unverified src
+                //    is what let a dead endpoint pass as a success.
+                if (prov === 'pollinations' && !rateLimited) {
                     let w = 1024, h = 576;
-                    if (ar === '2.39:1') { w = 1024; h = 430; }
-                    else if (ar === '4:3') { w = 1024; h = 768; }
-                    else if (ar === '9:16') { w = 576; h = 1024; }
-                    else if (ar === '1:1') { w = 1024; h = 1024; }
+                    if (aspectRatio === '2.39:1') { w = 1024; h = 430; }
+                    else if (aspectRatio === '4:3') { w = 1024; h = 768; }
+                    else if (aspectRatio === '9:16') { w = 576; h = 1024; }
+                    else if (aspectRatio === '1:1') { w = 1024; h = 1024; }
                     const seed = Math.floor(Math.random() * 1000000);
-                    return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&model=${encodeURIComponent(cfg.pollinationsModel || 'flux')}&seed=${seed}&nologo=true`;
+                    const url = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt)
+                        + '?width=' + w + '&height=' + h
+                        + '&model=' + encodeURIComponent(cfg.pollinationsModel || 'flux')
+                        + '&seed=' + seed + '&nologo=true';
+
+                    FDGenLog.warn('falling back to direct Pollinations URL :: ' + label, { reason: lastError, url });
+                    const loaded = await this.preloadImage(url, 90000, options.signal);
+                    if (loaded.ok) {
+                        FDGenLog.ok('generated via direct Pollinations :: ' + label + ' in ' + took() + 'ms');
+                        return { imageUrl: url, source: 'pollinations-direct', isAi: true, provider: prov, ms: took() };
+                    }
+                    lastError = 'Pollinations image did not load (' + loaded.error + ')';
+                    rateLimited = true; // A direct hit that will not decode is nearly always the same 429 cooldown.
+                    FDGenLog.error('direct Pollinations load failed :: ' + label, loaded.error);
                 }
 
-                // 3. Built-in Offline SVG Concept Art Sketcher
-                return this.generateOfflineConceptFrame(prompt, options);
+                abortIfCancelled();
+
+                // 3. Built-in offline SVG concept sketcher, last resort.
+                FDGenLog.error('generate FAILED :: ' + label + ' -- drawing a local placeholder instead.', { reason: lastError });
+                return {
+                    imageUrl: this.generateOfflineConceptFrame(prompt, options),
+                    source: 'offline-fallback', isAi: false, provider: prov, ms: took(),
+                    error: lastError || 'Unknown generation failure',
+                    rateLimited: rateLimited
+                };
+            },
+
+            // Decodes a remote image before it is committed to a card, so a
+            // 404 or a timed-out endpoint is reported as a failure instead of
+            // being pinned to the storyboard as a broken <img>.
+            preloadImage(url, timeoutMs, signal) {
+                return new Promise(resolve => {
+                    const img = new Image();
+                    let settled = false;
+                    const done = (ok, error) => {
+                        if (settled) return;
+                        settled = true;
+                        clearTimeout(timer);
+                        if (signal) signal.removeEventListener('abort', onAbort);
+                        img.onload = img.onerror = null;
+                        resolve({ ok, error });
+                    };
+                    const onAbort = () => { img.src = ''; done(false, 'cancelled'); };
+                    const timer = setTimeout(() => { img.src = ''; done(false, 'timed out after ' + Math.round(timeoutMs / 1000) + 's'); }, timeoutMs);
+                    if (signal) {
+                        if (signal.aborted) return onAbort();
+                        signal.addEventListener('abort', onAbort);
+                    }
+                    img.onload = () => done(true, null);
+                    img.onerror = () => done(false, 'network or decode error');
+                    img.referrerPolicy = 'no-referrer';
+                    img.src = url;
+                });
+            },
+
+            // Back-compat wrapper: callers that only want a src keep working.
+            async generateImage(prompt, options = {}) {
+                const detail = await this.generateImageDetailed(prompt, options);
+                return detail.imageUrl;
             },
 
             generateOfflineConceptFrame(prompt, options) {
@@ -9481,79 +10259,193 @@
                 saveState();
             },
 
-            async generateShotFrame(shotId) {
-                const shot = storyboardState.shots.find(s => s.id === shotId);
-                if (!shot) return;
-
-                const loadingEl = document.getElementById('sb-loading-' + shotId);
-                if (loadingEl) loadingEl.style.display = 'flex';
-
+            async openStoryboardFolder() {
                 try {
-                    const prompt = shot.prompt || this.buildPromptForShot(shot);
-                    const imgResult = await FDVisualGen.generateImage(prompt, {
-                        aspectRatio: storyboardState.aspectRatio,
-                        stylePreset: storyboardState.stylePreset,
-                        shotType: shot.shotType,
-                        camera: shot.camera,
-                        heading: shot.heading,
-                        action: shot.action
-                    });
-
-                    const currentTake = shot.takes[shot.viewing] || shot.takes[shot.order[0]];
-                    if (currentTake) {
-                        currentTake.image = imgResult;
-                        currentTake.isAi = true;
-                        currentTake.isOfflineConcept = false;
+                    const r = await fetch('/api/open-storyboard-folder', { method: 'POST' });
+                    const res = await r.json();
+                    if (res.ok) {
+                        flashSaved('📂 Opened Storyboard Folder: ' + (res.path || 'final-drafter/storyboards'));
+                    } else {
+                        alert('Storyboard Folder: ' + (res.path || 'final-drafter/storyboards'));
                     }
-                } catch (err) {
-                    console.error('Frame generation failed', err);
-                } finally {
-                    if (loadingEl) loadingEl.style.display = 'none';
-                    this.renderStoryboard();
-                    saveState();
+                } catch (e) {
+                    alert('Storyboard images are saved in the "storyboards" folder inside your final-drafter directory on disk.');
                 }
             },
 
-            async generateAllMissing() {
+            // Resolves to a report rather than a bare boolean, because "the
+            // call returned" and "a real frame landed on the card" are
+            // different things -- the offline sketcher always succeeds.
+            // opts: { signal, deferRender, newTake, aspectRatio, stylePreset,
+            //         providerOverrides }
+            async generateShotFrame(shotId, opts = {}) {
+                const shot = storyboardState.shots.find(s => s.id === shotId);
+                if (!shot) {
+                    FDGenLog.error('generateShotFrame: no shot with id ' + shotId);
+                    return { ok: false, shotId, error: 'Shot not found' };
+                }
+
+                const label = 'S' + String(shot.sceneNum).padStart(2, '0') + '-SH' + String(shot.shotNum).padStart(2, '0');
+                const loadingEl = document.getElementById('sb-loading-' + shotId);
+                if (loadingEl) loadingEl.style.display = 'flex';
+
+                let report = { ok: false, shotId, label, source: null, error: null, ms: 0 };
+
+                try {
+                    const prompt = shot.prompt || this.buildPromptForShot(shot);
+                    const detail = await FDVisualGen.generateImageDetailed(prompt, {
+                        aspectRatio: opts.aspectRatio || storyboardState.aspectRatio,
+                        stylePreset: opts.stylePreset || storyboardState.stylePreset,
+                        shotType: shot.shotType,
+                        camera: shot.camera,
+                        heading: shot.heading,
+                        action: shot.action,
+                        sceneNum: shot.sceneNum,
+                        shotNum: shot.shotNum,
+                        shotId: shot.id,
+                        signal: opts.signal,
+                        providerOverrides: opts.providerOverrides,
+                        label: label
+                    });
+
+                    let take;
+                    if (opts.newTake) {
+                        const takeId = 'take' + (shot.order.length + 1);
+                        take = { id: takeId, name: 'Take ' + (shot.order.length + 1), image: null, ts: Date.now() };
+                        shot.takes[takeId] = take;
+                        shot.order.push(takeId);
+                        shot.viewing = takeId;
+                    } else {
+                        take = shot.takes[shot.viewing] || shot.takes[shot.order[0]];
+                    }
+
+                    if (take) {
+                        take.image = detail.imageUrl;
+                        take.isAi = detail.isAi;
+                        take.isOfflineConcept = !detail.isAi;
+                        take.source = detail.source;
+                        take.ts = Date.now();
+                    } else {
+                        FDGenLog.error('generateShotFrame: ' + label + ' has no take to write into.');
+                    }
+
+                    report = {
+                        ok: !!detail.isAi, shotId, label,
+                        source: detail.source, error: detail.error || null, ms: detail.ms,
+                        rateLimited: !!detail.rateLimited
+                    };
+                } catch (err) {
+                    if (err && err.name === 'AbortError') {
+                        FDGenLog.warn('generateShotFrame cancelled :: ' + label);
+                        report = { ok: false, shotId, label, cancelled: true, source: null, error: 'Cancelled' };
+                    } else {
+                        FDGenLog.error('generateShotFrame threw :: ' + label, err);
+                        report = { ok: false, shotId, label, source: null, error: (err && err.message) || String(err) };
+                    }
+                } finally {
+                    if (loadingEl) loadingEl.style.display = 'none';
+                    if (opts.deferRender) {
+                        // Batch runs repaint one card and skip saveState(),
+                        // which reflows the entire screenplay -- doing that per
+                        // frame is what made long runs feel frozen.
+                        this.refreshShotCardImage(shotId);
+                    } else {
+                        this.renderStoryboard();
+                        saveState();
+                    }
+                }
+
+                return report;
+            },
+
+            // Swaps just this card's <img> src in place. Falls back to a full
+            // render when the card was in its empty state and needs new markup.
+            refreshShotCardImage(shotId) {
+                const shot = storyboardState.shots.find(s => s.id === shotId);
+                if (!shot) return;
+                const take = shot.takes[shot.viewing] || shot.takes[shot.order[0]] || {};
+                if (!take.image) return;
+                const wrap = document.getElementById('sb-frame-' + shotId);
+                if (!wrap) return; // Text mode draws no frame; the final render covers it.
+                const img = wrap.querySelector('img.shot-frame-img');
+                if (img) img.src = take.image;
+                else this.renderStoryboard();
+            },
+
+            // Kept for scripts and older call sites. The popup is the normal
+            // route now: FDStoryboardBatch.open().
+            async generateAllMissing(opts = {}) {
                 const total = storyboardState.shots.length;
                 if (!total) {
-                    alert('No shots in storyboard. Add a shot or click Auto-Populate from Script first!');
-                    return;
+                    FDGenLog.warn('generateAllMissing: storyboard is empty.');
+                    if (!opts.headless) alert('No shots in storyboard. Add a shot or click Auto-Populate from Script first!');
+                    return { ok: 0, total: 0 };
+                }
+
+                if (!opts.headless && document.getElementById('sb-batch-modal')) {
+                    FDStoryboardBatch.open();
+                    return { ok: 0, total: total, opened: true };
                 }
 
                 const btn = document.getElementById('sb-batch-gen-btn');
-                const origHtml = btn ? btn.innerHTML : '✨ Batch Generate';
-                if (btn) {
-                    btn.disabled = true;
-                    btn.innerHTML = `⏳ Generating (0/${total})...`;
-                }
+                const origHtml = btn ? btn.innerHTML : 'Batch Generate';
+                if (btn) { btn.disabled = true; }
 
+                let successCount = 0, done = 0;
                 try {
-                    let done = 0;
                     for (const shot of storyboardState.shots) {
-                        if (btn) btn.innerHTML = `⏳ Generating (${done + 1}/${total})...`;
-                        await this.generateShotFrame(shot.id);
+                        if (btn) btn.innerHTML = 'Generating (' + (done + 1) + '/' + total + ')...';
+                        const res = await this.generateShotFrame(shot.id, { deferRender: true });
+                        if (res.ok) successCount++;
                         done++;
+                        if (done < total) await new Promise(r => setTimeout(r, 1200));
                     }
+                    FDGenLog.info('generateAllMissing finished', { ok: successCount, total });
+                    flashSaved('Generated ' + successCount + '/' + total + ' storyboard frames.');
+                } catch (e) {
+                    FDGenLog.error('generateAllMissing error', e);
+                    flashSaved('Batch generation notice: ' + e.message);
                 } finally {
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.innerHTML = origHtml;
-                    }
+                    this.renderStoryboard();
+                    saveState();
+                    if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
                 }
+                return { ok: successCount, total };
             },
 
             uploadShotImage(shotId, event) {
                 const file = event.target.files[0];
                 if (!file) return;
                 const reader = new FileReader();
-                reader.onload = (e) => {
+                reader.onload = async (e) => {
                     const shot = storyboardState.shots.find(s => s.id === shotId);
                     if (shot) {
                         const curTake = shot.takes[shot.viewing];
-                        if (curTake) curTake.image = e.target.result;
+                        const dataUrl = e.target.result;
+                        if (curTake) {
+                            curTake.image = dataUrl;
+                            curTake.isAi = false;
+                        }
                         this.renderStoryboard();
                         saveState();
+
+                        // Proactively save to disk storyboards directory as well
+                        try {
+                            const res = await fetch('/api/save-image', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    dataUrl: dataUrl,
+                                    filename: `upload_s${shot.sceneNum}_sh${shot.shotNum}_${Date.now()}`
+                                })
+                            });
+                            const j = await res.json();
+                            if (j.ok && j.imageUrl) {
+                                if (curTake) curTake.image = j.imageUrl;
+                                this.renderStoryboard();
+                                saveState();
+                            }
+                        } catch (_) {}
                     }
                 };
                 reader.readAsDataURL(file);
@@ -12647,6 +13539,135 @@
     <div id="suggest-menu" class="suggest-menu"></div>
 
     <!-- Import Script modal: which project the import lands in -->
+    <!-- Batch Generate Storyboard Frames -->
+    <div id="sb-batch-modal" class="modal-overlay">
+        <div class="modal-content" style="width:620px;">
+            <div class="modal-header">
+                <h2 id="sb-batch-title">✨ Batch Generate Frames</h2>
+                <button class="close-btn" id="sb-batch-x" onclick="FDStoryboardBatch.close()" title="Close">✕</button>
+            </div>
+
+            <!-- Options view -->
+            <div id="sb-batch-options">
+                <div id="sb-batch-warning" class="sb-batch-warn" style="display:none;"></div>
+
+                <div class="sb-batch-grid">
+                    <div class="sb-batch-field full">
+                        <label for="sb-batch-scope">Which shots</label>
+                        <select id="sb-batch-scope" onchange="FDStoryboardBatch.onScopeChange()">
+                            <option value="missing">Only shots with no AI frame yet</option>
+                            <option value="all">All shots (regenerate everything)</option>
+                            <option value="range">Scene range…</option>
+                        </select>
+                    </div>
+
+                    <div class="sb-batch-field full" id="sb-batch-range-wrap" style="display:none;">
+                        <label>Scene range (inclusive)</label>
+                        <div class="sb-batch-range-row">
+                            <input type="number" id="sb-batch-range-from" min="1" value="1" oninput="FDStoryboardBatch.updateSummary()">
+                            <span style="font-size:0.78rem; color:var(--color-text-dim);">to</span>
+                            <input type="number" id="sb-batch-range-to" min="1" value="1" oninput="FDStoryboardBatch.updateSummary()">
+                        </div>
+                    </div>
+
+                    <div class="sb-batch-field">
+                        <label for="sb-batch-provider">Image provider</label>
+                        <select id="sb-batch-provider" onchange="FDStoryboardBatch.onProviderChange()">
+                            <option value="pollinations">Pollinations (free, no key)</option>
+                            <option value="gemini">Google Gemini / Imagen</option>
+                            <option value="openai">OpenAI DALL·E</option>
+                            <option value="comfyui">Local ComfyUI</option>
+                            <option value="custom">Custom endpoint</option>
+                            <option value="offline">Offline sketch (no AI)</option>
+                        </select>
+                    </div>
+
+                    <div class="sb-batch-field">
+                        <label for="sb-batch-model">Model</label>
+                        <select id="sb-batch-model"></select>
+                    </div>
+
+                    <div class="sb-batch-field">
+                        <label for="sb-batch-aspect">Aspect ratio</label>
+                        <select id="sb-batch-aspect">
+                            <option value="16:9">16:9 Widescreen</option>
+                            <option value="2.39:1">2.39:1 Cinemascope</option>
+                            <option value="4:3">4:3 Classic</option>
+                            <option value="9:16">9:16 Vertical</option>
+                        </select>
+                    </div>
+
+                    <div class="sb-batch-field">
+                        <label for="sb-batch-style">Style preset</label>
+                        <select id="sb-batch-style">
+                            <option value="cinematic">Cinematic 35mm</option>
+                            <option value="concept_art">Concept Art Painting</option>
+                            <option value="sketch">Charcoal Storyboard Sketch</option>
+                            <option value="comic">Graphic Novel Noir</option>
+                            <option value="anime">Anime / Animation</option>
+                        </select>
+                    </div>
+
+                    <div class="sb-batch-field">
+                        <label for="sb-batch-concurrency">Parallel requests</label>
+                        <select id="sb-batch-concurrency" onchange="FDStoryboardBatch.onProviderChange()">
+                            <option value="1" selected>1 — safest for free endpoints</option>
+                            <option value="2">2 — balanced</option>
+                            <option value="3">3 — faster</option>
+                            <option value="4">4 — fastest (may rate-limit)</option>
+                        </select>
+                    </div>
+
+                    <div class="sb-batch-field">
+                        <label for="sb-batch-delay">Delay between requests</label>
+                        <select id="sb-batch-delay">
+                            <option value="0">None</option>
+                            <option value="600">0.6s</option>
+                            <option value="1200" selected>1.2s</option>
+                            <option value="2500">2.5s</option>
+                        </select>
+                    </div>
+
+                    <div class="sb-batch-field full">
+                        <label class="sb-batch-check" title="Keeps the frame that is already on each card and writes the new image into a fresh take you can flip back from.">
+                            <input type="checkbox" id="sb-batch-newtake">
+                            <span>Write into a new take instead of overwriting the current frame</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="sb-batch-summary" id="sb-batch-scope-summary">—</div>
+                <div class="sb-batch-hint" style="margin-top:8px;">Every step is logged to the browser console under <b>[FDGen]</b>. Run <b>FDGenLog.dump()</b> there for the full trace.</div>
+
+                <div class="sb-batch-actions">
+                    <button class="sb-batch-btn" onclick="FDStoryboardBatch.close()">Cancel</button>
+                    <button class="sb-batch-btn primary" id="sb-batch-start-btn" onclick="FDStoryboardBatch.start()">✨ Start Batch</button>
+                </div>
+            </div>
+
+            <!-- Progress view -->
+            <div id="sb-batch-progress" style="display:none;">
+                <div class="sb-batch-progress-head">
+                    <span id="sb-batch-count">0 / 0</span>
+                    <span id="sb-batch-eta"></span>
+                </div>
+                <div class="sb-batch-bar"><div class="sb-batch-bar-fill" id="sb-batch-bar-fill"></div></div>
+                <div class="sb-batch-stats">
+                    <span class="ok">✓ <b id="sb-batch-ok">0</b> generated</span>
+                    <span class="fail">⚠ <b id="sb-batch-fail">0</b> failed</span>
+                    <span class="skip">↷ <b id="sb-batch-skip">0</b> placeholder</span>
+                </div>
+                <div class="sb-batch-current" id="sb-batch-current">Starting…</div>
+                <div class="sb-batch-log" id="sb-batch-log"></div>
+                <div class="sb-batch-actions">
+                    <button class="sb-batch-btn" id="sb-batch-back-btn" style="display:none;" onclick="FDStoryboardBatch.showOptions()">‹ Back to options</button>
+                    <button class="sb-batch-btn danger" id="sb-batch-cancel-btn" onclick="FDStoryboardBatch.cancel()">■ Cancel Batch</button>
+                    <button class="sb-batch-btn primary" id="sb-batch-done-btn" style="display:none;" onclick="FDStoryboardBatch.close()">Done</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="import-modal" class="modal-overlay">
         <div class="modal-content" style="width:320px;">
             <div class="modal-header">
@@ -12861,6 +13882,11 @@
                     <label style="font-size:0.8rem; color:var(--color-text-dim); margin-top:2px;">Default Negative Prompt</label>
                     <input type="text" id="ai-negative-prompt" value="blurry, low quality, bad anatomy, text, watermark" oninput="FDVisualGen.setNegativePrompt(this.value)"
                            style="width:100%; box-sizing:border-box; background:var(--color-bg); color:var(--color-text); border:1px solid var(--color-border); border-radius:6px; padding:5px 8px; font-size:0.8rem;">
+
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:6px; padding:8px 10px; background:var(--color-bg-sunken); border-radius:6px; border:1px solid var(--color-border);">
+                        <span style="font-size:0.75rem; color:var(--color-text-dim);">📁 Local Storyboard Storage: <b>final-drafter/storyboards</b></span>
+                        <button class="media-btn" onclick="FDStoryboard.openStoryboardFolder()" style="font-size:0.72rem; padding:4px 10px; font-weight:700;">📂 Open Folder</button>
+                    </div>
                 </div>
             </div>
 

@@ -396,6 +396,125 @@ function proxyImage(req, res, targetUrl) {
         });
 }
 
+const STORYBOARD_DIR = path.join(ROOT, 'storyboards');
+
+function ensureStoryboardDir() {
+    if (!fs.existsSync(STORYBOARD_DIR)) {
+        fs.mkdirSync(STORYBOARD_DIR, { recursive: true });
+    }
+    return STORYBOARD_DIR;
+}
+
+function openStoryboardFolder(res) {
+    try {
+        const dir = ensureStoryboardDir();
+        const child = spawn('cmd', ['/c', 'start', '', dir], { detached: true, stdio: 'ignore' });
+        child.unref();
+        sendJson(res, 200, { ok: true, path: dir });
+    } catch (e) {
+        sendJson(res, 500, { error: String(e.message) });
+    }
+}
+
+// Pollinations' free tier allows exactly one queued generation per IP -- a
+// second concurrent request is refused outright with
+//   "Queue full for IP: <addr>: 1 requests already queued (max: 1)"
+// and, because the page cannot see that, the shot silently ended up with a
+// placeholder. Abandoning a request locally does not hand the slot back either,
+// so overlapping callers have to be serialised here rather than raced upstream.
+// Everything that talks to a single-slot endpoint goes through this chain.
+const providerQueues = new Map();
+function runQueued(key, task) {
+    const prev = providerQueues.get(key) || Promise.resolve();
+    // The chain must not break on a rejected task, or every later caller
+    // inherits that rejection instead of getting its turn.
+    const next = prev.then(() => task(), () => task());
+    providerQueues.set(key, next.then(() => {}, () => {}));
+    return next;
+}
+
+// Free image endpoints answer a burst with 429 rather than queueing it, and a
+// flat retry delay just spends the remaining attempts inside the same cooldown
+// window. Back off exponentially, honour Retry-After when the server sends one,
+// and carry the status code out on the error so callers can tell a rate limit
+// apart from a dead endpoint.
+async function fetchWithRetry(url, options = {}, retries = 1, delayMs = 1000) {
+    let lastErr = null;
+    for (let i = 0; i <= retries; i++) {
+        let waitMs = delayMs * Math.pow(2, i);
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), options.timeoutMs || 15000);
+            const r = await fetch(url, { ...options, signal: controller.signal });
+            clearTimeout(timeout);
+            if (!r.ok) {
+                // These endpoints explain themselves in the error body -- the
+                // Pollinations 429 names the queue limit it hit. Carrying that
+                // through beats another bare "HTTP 429" in the log.
+                let detail = '';
+                try {
+                    const raw = (await r.text()).slice(0, 400);
+                    try { detail = JSON.parse(raw).message || JSON.parse(raw).error || raw; }
+                    catch (_) { detail = raw; }
+                } catch (_) { /* body already consumed or empty */ }
+
+                const err = new Error(`HTTP ${r.status}: ${r.statusText}${detail ? ' - ' + detail : ''}`);
+                err.status = r.status;
+                err.detail = detail;
+                if (r.status === 429) {
+                    err.rateLimited = true;
+                    const ra = parseInt(r.headers.get('retry-after') || '', 10);
+                    if (Number.isFinite(ra) && ra > 0) err.retryAfterMs = Math.min(ra * 1000, 60000);
+                }
+                throw err;
+            }
+            return r;
+        } catch (err) {
+            lastErr = err;
+            if (err && err.retryAfterMs) waitMs = err.retryAfterMs;
+            if (i < retries) {
+                console.warn(`[fetchWithRetry] attempt ${i + 1}/${retries + 1} failed (${err.message}); retrying in ${waitMs}ms`);
+                await new Promise(res => setTimeout(res, waitMs));
+            }
+        }
+    }
+    throw lastErr;
+}
+
+function saveCustomImage(req, res) {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+        try {
+            const data = JSON.parse(body || '{}');
+            let dataUrl = data.dataUrl || data.base64 || '';
+            if (!dataUrl) { sendJson(res, 400, { error: 'Missing dataUrl' }); return; }
+
+            const dir = ensureStoryboardDir();
+            let ext = '.jpg';
+            if (dataUrl.includes('image/png')) ext = '.png';
+            else if (dataUrl.includes('image/webp')) ext = '.webp';
+            else if (dataUrl.includes('image/svg')) ext = '.svg';
+
+            const base64Data = dataUrl.replace(/^data:image\/[a-z\+\-]+;base64,/, '');
+            const buf = Buffer.from(base64Data, ext === '.svg' ? 'utf8' : 'base64');
+
+            const filename = (data.filename || `upload_${Date.now()}`).replace(/[^a-zA-Z0-9_\-]/g, '_') + ext;
+            const diskPath = path.join(dir, filename);
+            fs.writeFileSync(diskPath, buf);
+
+            sendJson(res, 200, {
+                ok: true,
+                imageUrl: '/storyboards/' + filename,
+                localPath: diskPath,
+                filename: filename
+            });
+        } catch (e) {
+            sendJson(res, 500, { error: e.message });
+        }
+    });
+}
+
 function generateAiImage(req, res) {
     let body = '';
     req.on('data', chunk => { body += chunk; });
@@ -407,6 +526,8 @@ function generateAiImage(req, res) {
             const provider = data.provider || 'pollinations';
             const model = data.model || 'flux';
             const seed = data.seed || Math.floor(Math.random() * 1000000);
+            const sceneNum = data.sceneNum || '1';
+            const shotNum = data.shotNum || '1';
 
             let width = 1024;
             let height = 576; // 16:9
@@ -417,20 +538,65 @@ function generateAiImage(req, res) {
 
             if (provider === 'pollinations') {
                 const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&model=${encodeURIComponent(model)}&seed=${seed}&nologo=true`;
-                if (data.returnBase64) {
-                    try {
-                        const r = await fetch(pollUrl, { signal: AbortSignal.timeout(15000) });
-                        if (r.ok) {
-                            const buf = Buffer.from(await r.arrayBuffer());
-                            const b64 = 'data:image/jpeg;base64,' + buf.toString('base64');
-                            sendJson(res, 200, { ok: true, imageUrl: b64, provider: 'pollinations' });
-                            return;
-                        }
-                    } catch (e) {
-                        // Fall back to direct URL
+                
+                try {
+                    // Pollinations queues generations, so a first call under
+                    // load routinely runs past a short deadline. Three tries at
+                    // 45s each is the difference between a frame and a blank
+                    // card -- the old 16s single retry gave up on most of a
+                    // parallel batch.
+                    const r = await runQueued('pollinations', () => fetchWithRetry(pollUrl, {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                            'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+                        },
+                        timeoutMs: 90000
+                    }, 4, 5000));
+
+                    const buf = Buffer.from(await r.arrayBuffer());
+                    if (buf.length > 500) {
+                        const dir = ensureStoryboardDir();
+                        const filename = `shot_s${sceneNum}_sh${shotNum}_${Date.now()}_${seed % 10000}.jpg`;
+                        const diskPath = path.join(dir, filename);
+                        fs.writeFileSync(diskPath, buf);
+
+                        const b64 = 'data:image/jpeg;base64,' + buf.toString('base64');
+                        sendJson(res, 200, {
+                            ok: true,
+                            imageUrl: '/storyboards/' + filename,
+                            localPath: diskPath,
+                            filename: filename,
+                            base64: b64,
+                            provider: 'pollinations'
+                        });
+                        return;
                     }
+                } catch (fetchErr) {
+                    console.warn('[generate-image] pollinations download failed:', fetchErr.message);
+                    // Handing back the upstream URL under ok:true was a lie the
+                    // page had no way to catch: the browser usually cannot load
+                    // that URL either, so the card pinned a broken <img> and the
+                    // run reported success. Say what happened and let the client
+                    // try the direct URL itself -- it verifies before committing.
+                    sendJson(res, 200, {
+                        ok: false,
+                        error: fetchErr.rateLimited
+                            ? 'Pollinations rate limit (HTTP 429) - the free endpoint only accepts about one request at a time'
+                            : 'Pollinations download failed: ' + fetchErr.message,
+                        rateLimited: !!fetchErr.rateLimited,
+                        status: fetchErr.status || 0,
+                        directUrl: pollUrl,
+                        provider: 'pollinations'
+                    });
+                    return;
                 }
-                sendJson(res, 200, { ok: true, imageUrl: pollUrl, provider: 'pollinations' });
+
+                sendJson(res, 200, {
+                    ok: false,
+                    error: 'Pollinations returned an empty image',
+                    directUrl: pollUrl,
+                    provider: 'pollinations'
+                });
                 return;
             }
 
@@ -444,12 +610,25 @@ function generateAiImage(req, res) {
                         instances: [{ prompt: prompt }],
                         parameters: { sampleCount: 1, aspectRatio: aspectRatio === '2.39:1' ? '16:9' : aspectRatio }
                     }),
-                    signal: AbortSignal.timeout(35000)
+                    signal: AbortSignal.timeout(45000)
                 });
                 const resp = await r.json();
                 if (resp.predictions && resp.predictions[0] && resp.predictions[0].bytesBase64Encoded) {
+                    const buf = Buffer.from(resp.predictions[0].bytesBase64Encoded, 'base64');
+                    const dir = ensureStoryboardDir();
+                    const filename = `shot_s${sceneNum}_sh${shotNum}_${Date.now()}_gemini.jpg`;
+                    const diskPath = path.join(dir, filename);
+                    fs.writeFileSync(diskPath, buf);
+
                     const b64 = 'data:image/jpeg;base64,' + resp.predictions[0].bytesBase64Encoded;
-                    sendJson(res, 200, { ok: true, imageUrl: b64, provider: 'gemini' });
+                    sendJson(res, 200, {
+                        ok: true,
+                        imageUrl: '/storyboards/' + filename,
+                        localPath: diskPath,
+                        filename: filename,
+                        base64: b64,
+                        provider: 'gemini'
+                    });
                     return;
                 }
                 throw new Error(resp.error?.message || 'Google Gemini / Imagen generation failed');
@@ -470,12 +649,32 @@ function generateAiImage(req, res) {
                         size: aspectRatio === '9:16' ? '1024x1792' : '1792x1024',
                         response_format: 'b64_json'
                     }),
-                    signal: AbortSignal.timeout(45000)
+                    signal: AbortSignal.timeout(55000)
                 });
                 const resp = await r.json();
                 if (resp.data && resp.data[0]) {
-                    const img = resp.data[0].b64_json ? 'data:image/png;base64,' + resp.data[0].b64_json : resp.data[0].url;
-                    sendJson(res, 200, { ok: true, imageUrl: img, provider: 'openai' });
+                    const dir = ensureStoryboardDir();
+                    const filename = `shot_s${sceneNum}_sh${shotNum}_${Date.now()}_openai.png`;
+                    const diskPath = path.join(dir, filename);
+                    let b64 = '';
+                    if (resp.data[0].b64_json) {
+                        const buf = Buffer.from(resp.data[0].b64_json, 'base64');
+                        fs.writeFileSync(diskPath, buf);
+                        b64 = 'data:image/png;base64,' + resp.data[0].b64_json;
+                    } else if (resp.data[0].url) {
+                        const imgRes = await fetch(resp.data[0].url);
+                        const buf = Buffer.from(await imgRes.arrayBuffer());
+                        fs.writeFileSync(diskPath, buf);
+                        b64 = 'data:image/png;base64,' + buf.toString('base64');
+                    }
+                    sendJson(res, 200, {
+                        ok: true,
+                        imageUrl: '/storyboards/' + filename,
+                        localPath: diskPath,
+                        filename: filename,
+                        base64: b64,
+                        provider: 'openai'
+                    });
                     return;
                 }
                 throw new Error(resp.error?.message || 'OpenAI DALL-E generation failed');
@@ -493,7 +692,16 @@ function generateAiImage(req, res) {
                 const resp = await r.json();
                 const img = resp.data?.[0]?.b64_json ? 'data:image/png;base64,' + resp.data[0].b64_json : (resp.data?.[0]?.url || resp.imageUrl || resp.url);
                 if (img) {
-                    sendJson(res, 200, { ok: true, imageUrl: img, provider: 'custom' });
+                    if (img.startsWith('data:image/')) {
+                        const dir = ensureStoryboardDir();
+                        const filename = `shot_s${sceneNum}_sh${shotNum}_${Date.now()}_custom.jpg`;
+                        const diskPath = path.join(dir, filename);
+                        const buf = Buffer.from(img.replace(/^data:image\/[a-z\+\-]+;base64,/, ''), 'base64');
+                        fs.writeFileSync(diskPath, buf);
+                        sendJson(res, 200, { ok: true, imageUrl: '/storyboards/' + filename, localPath: diskPath, provider: 'custom' });
+                    } else {
+                        sendJson(res, 200, { ok: true, imageUrl: img, provider: 'custom' });
+                    }
                     return;
                 }
                 throw new Error('Custom endpoint did not return an image');
@@ -531,6 +739,8 @@ const server = http.createServer((req, res) => {
     if (urlPath === '/api/catalog') { serveCatalog(res, query.get('rescan') === '1'); return; }
     if (urlPath === '/api/open-external') { openExternally(res, query.get('p')); return; }
     if (urlPath === '/api/open-external-url') { openExternalUrl(res, query.get('url')); return; }
+    if (urlPath === '/api/open-storyboard-folder') { openStoryboardFolder(res); return; }
+    if (urlPath === '/api/save-image') { saveCustomImage(req, res); return; }
     if (urlPath === '/api/fetch-meta') { fetchUrlMetadata(res, query.get('url')); return; }
     if (urlPath === '/api/proxy-image') { proxyImage(req, res, query.get('url')); return; }
     if (urlPath === '/api/generate-image') { generateAiImage(req, res); return; }
