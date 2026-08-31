@@ -43,6 +43,8 @@ export function stampPosters(catalog, ix) {
         const hit = ix[posterKey(it.title)];
         if (hit && hit.file) { it.poster = '/posters/' + hit.file; n++; }
         else delete it.poster;
+        if (hit && typeof hit.rating === 'number') { it.rating = hit.rating; it.voteCount = hit.voteCount || 0; }
+        else { delete it.rating; delete it.voteCount; }
     }
     catalog.counts.posters = n;
     return n;

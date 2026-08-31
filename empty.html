@@ -1209,6 +1209,87 @@
             color: var(--color-on-accent);
         }
 
+        .char-list-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 7px 10px;
+            border-bottom: 1px solid var(--color-border);
+            flex-shrink: 0;
+        }
+        .headshot-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 0.76rem;
+            color: var(--color-text-dim);
+            user-select: none;
+        }
+        .headshot-toggle input { display: none; }
+        .headshot-toggle-track {
+            width: 26px; height: 15px;
+            border-radius: 9999px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid var(--color-border);
+            position: relative;
+            transition: background 0.15s ease, border-color 0.15s ease;
+            flex-shrink: 0;
+        }
+        .headshot-toggle-thumb {
+            position: absolute;
+            top: 1px; left: 1px;
+            width: 11px; height: 11px;
+            border-radius: 50%;
+            background: #fff;
+            transition: transform 0.15s ease;
+        }
+        .headshot-toggle input:checked + .headshot-toggle-track {
+            background: var(--color-accent);
+            border-color: var(--color-accent);
+        }
+        .headshot-toggle input:checked + .headshot-toggle-track .headshot-toggle-thumb {
+            transform: translateX(11px);
+        }
+        .headshot-fetch-btn {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-dim);
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+            transition: all 0.15s ease;
+        }
+        .headshot-fetch-btn:hover {
+            background: var(--color-accent);
+            border-color: var(--color-accent);
+            color: var(--color-on-accent);
+        }
+        .headshot-fetch-btn.loading { opacity: 0.6; pointer-events: none; }
+        .char-avatar {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 8px;
+            flex-shrink: 0;
+            box-shadow: 0 0 0 2px rgba(0,0,0,0.5);
+            cursor: pointer;
+        }
+        .char-avatar-placeholder {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.12);
+            color: var(--color-text-dim);
+            font-size: 0.6rem;
+            font-weight: 700;
+        }
+        .color-dot-hidden { display: none; }
+
         .nested-list {
             list-style: none;
             padding: 2px 0 2px 14px;
@@ -4129,6 +4210,14 @@
                  by extractEntities() -- there's no manual "add" control here. -->
             <div id="tab-characters" class="tab-content active">
                 <div class="rs-panel-header">Characters</div>
+                <div class="char-list-toolbar">
+                    <label class="headshot-toggle" title="Show the actor's headshot next to each character">
+                        <input type="checkbox" id="headshot-toggle-input" onchange="FDHeadshots.toggleShow(this.checked)">
+                        <span class="headshot-toggle-track"><span class="headshot-toggle-thumb"></span></span>
+                        <span>Headshots</span>
+                    </label>
+                    <button class="headshot-fetch-btn" id="headshot-fetch-btn" onclick="FDHeadshots.autoFetchFromTMDB()" title="Look up this movie/show on TMDB and match cast headshots to character names">⤓ TMDB</button>
+                </div>
                 <ul class="list-items" id="characters-list"></ul>
             </div>
 
@@ -4324,6 +4413,7 @@
             sectionHeights: {},
             highlightsVisible: true,
             stacksVisible: true,
+            showHeadshots: false,
             aiGen: {
                 provider: 'pollinations',
                 pollinationsModel: 'flux',
@@ -4400,6 +4490,9 @@
 
             const reuseToggle = document.getElementById('reuse-last-insertion-toggle');
             if (reuseToggle) reuseToggle.checked = settings.reuseLastInsertion;
+
+            const headshotToggle = document.getElementById('headshot-toggle-input');
+            if (headshotToggle) headshotToggle.checked = !!settings.showHeadshots;
 
             applyRightSidebarLayout(settings.rightSidebarLayout);
 
@@ -4576,12 +4669,30 @@
                 li.style.borderLeftColor = item.color;
             }
             
+            const showAvatar = type === 'characters' && !!settings.showHeadshots;
             const left = document.createElement('div');
             left.className = 'list-item-left';
-            left.innerHTML = `<span class="toggle-arrow">▶</span> <span class="list-item-color" style="background-color: ${item.color}"></span> 
+            left.innerHTML = `<span class="toggle-arrow">▶</span> <span class="list-item-color${showAvatar ? ' color-dot-hidden' : ''}" style="background-color: ${item.color}"></span>
                               <span class="item-name" title="${item.name}">${item.name}</span>
                               <span class="item-count">${count}</span>`;
-            
+
+            if (showAvatar) {
+                const avatar = document.createElement(item.headshot ? 'img' : 'span');
+                avatar.className = 'char-avatar' + (item.headshot ? '' : ' char-avatar-placeholder');
+                if (item.headshot) {
+                    avatar.src = item.headshot;
+                    avatar.alt = item.name;
+                } else {
+                    avatar.textContent = FDHeadshots.initials(item.name);
+                }
+                avatar.title = item.headshot
+                    ? "Click to change " + item.name + "'s headshot -- right-click to remove"
+                    : "Click to add a headshot for " + item.name;
+                avatar.onclick = (e) => { e.stopPropagation(); FDHeadshots.uploadForCharacter(item); };
+                avatar.oncontextmenu = (e) => { e.preventDefault(); e.stopPropagation(); FDHeadshots.setUrlForCharacter(item); };
+                left.insertBefore(avatar, left.querySelector('.list-item-color'));
+            }
+
             const actions = document.createElement('div');
             actions.className = 'item-actions';
             
@@ -4687,6 +4798,129 @@
             liContainer.appendChild(childrenUl);
             return liContainer;
         }
+
+        // Actor headshots shown next to each character in the sidebar list.
+        // Attached per-character on appState.characters[i].headshot (a URL or
+        // data: URL), so it rides along in the .fdproj file for free via the
+        // existing `lists.characters` save/load path -- no format change needed.
+        // Visibility is a display preference (settings.showHeadshots), not
+        // document content, so it lives in the app-level settings store instead
+        // and applies across every script.
+        const FDHeadshots = {
+            initials(name) {
+                const words = (name || '').trim().split(/\s+/).filter(Boolean);
+                if (!words.length) return '?';
+                if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+                return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+            },
+
+            toggleShow(checked) {
+                settings.showHeadshots = !!checked;
+                saveSettings();
+                extractEntities();
+            },
+
+            uploadForCharacter(item) {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = () => {
+                    const file = input.files && input.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        item.headshot = e.target.result;
+                        extractEntities();
+                        saveState();
+                    };
+                    reader.readAsDataURL(file);
+                };
+                input.click();
+            },
+
+            setUrlForCharacter(item) {
+                const url = prompt(
+                    "Image URL for " + item.name + "'s headshot (leave blank to remove):",
+                    item.headshot && !item.headshot.startsWith('data:') ? item.headshot : ''
+                );
+                if (url === null) return; // cancelled
+                item.headshot = url.trim() || null;
+                extractEntities();
+                saveState();
+            },
+
+            // Normalizes a name/character credit down to bare uppercase words,
+            // so "J. Robert Oppenheimer" and "OPPENHEIMER (V.O.)" can be
+            // compared on letters alone.
+            _normalize(s) {
+                return (s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+            },
+
+            // A script cue is usually just a surname or a nickname ("OPPIE"),
+            // while TMDb's `character` field is the full credited name ("J.
+            // Robert Oppenheimer") -- so a whole-word match either direction
+            // counts, not just an exact string match.
+            _namesMatch(scriptName, tmdbCharacter) {
+                const a = this._normalize(scriptName);
+                const b = this._normalize(tmdbCharacter);
+                if (!a || !b) return false;
+                if (a === b) return true;
+                const aWords = a.split(' ');
+                const bWords = b.split(' ');
+                if (bWords.includes(a) || aWords.includes(b)) return true;
+                if (aWords.length === 1 && bWords[bWords.length - 1] === aWords[0]) return true;
+                if (bWords.length === 1 && aWords[aWords.length - 1] === bWords[0]) return true;
+                if ((' ' + b + ' ').includes(' ' + a + ' ') || (' ' + a + ' ').includes(' ' + b + ' ')) return true;
+                return false;
+            },
+
+            projectTitleAndYear() {
+                const raw = (docMeta && docMeta.title) || '';
+                const m = raw.match(/^(.*?)\s*\((\d{4})\)\s*$/);
+                return m ? { title: m[1].trim(), year: m[2] } : { title: raw.trim(), year: null };
+            },
+
+            async autoFetchFromTMDB() {
+                const { title, year } = this.projectTitleAndYear();
+                if (!title) {
+                    alert('This script has no title yet (File > Title Page) -- TMDb needs a movie/show title to search for.');
+                    return;
+                }
+                const btn = document.getElementById('headshot-fetch-btn');
+                if (btn) { btn.classList.add('loading'); btn.textContent = 'Looking up...'; }
+                try {
+                    const url = '/api/tmdb-cast?title=' + encodeURIComponent(title) + (year ? '&year=' + encodeURIComponent(year) : '');
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    if (!data.ok) {
+                        alert(data.error || 'TMDb lookup failed.');
+                        return;
+                    }
+                    let matched = 0, skipped = 0;
+                    appState.characters.forEach(item => {
+                        const hit = data.cast.find(c => c.profileUrl && this._namesMatch(item.name, c.character));
+                        if (hit) {
+                            if (item.headshot) { skipped++; return; }
+                            item.headshot = hit.profileUrl;
+                            matched++;
+                        }
+                    });
+                    if (matched > 0) settings.showHeadshots = true;
+                    saveSettings();
+                    extractEntities();
+                    saveState();
+                    alert(
+                        'Matched to "' + data.matchedTitle + '": ' + matched + ' headshot' + (matched === 1 ? '' : 's') + ' added' +
+                        (skipped ? ' (' + skipped + ' left as-is -- already had a headshot)' : '') +
+                        (matched === 0 && !skipped ? '\n\nNo character names in the list matched a TMDb cast credit -- try setting headshots manually by clicking each avatar.' : '')
+                    );
+                } catch (e) {
+                    alert('Could not reach the local server for the TMDb lookup. This needs Final Drafter running through launch-final-drafter.bat (not opened straight from a file), and node installed.');
+                } finally {
+                    if (btn) { btn.classList.remove('loading'); btn.textContent = '⤓ TMDB'; }
+                }
+            }
+        };
 
         function insertBlockAtCursor(type, name) {
             let targetClass = type === 'characters' ? 'character' : 'scene-heading';
@@ -8688,6 +8922,17 @@
 
             baseName(p) { return String(p || '').split(/[\\/]/).pop(); },
 
+            // A file picked through <input type=file> never carries a real path
+            // back (browser sandboxing), so it can't be relinked on its own after
+            // a reload. If the library scan already knows a video by this exact
+            // filename, its real disk path stands in -- letting the pick be
+            // reopened through /media instead of an ephemeral blob: URL.
+            resolveVideoPathByName(name) {
+                if (!name) return null;
+                const hit = STUDIO_CATALOG.find(i => i.videoPath && this.baseName(i.videoPath) === name);
+                return hit ? hit.videoPath : null;
+            },
+
             // Chrome has no Matroska or AVI demuxer, so no amount of correct
             // MIME type or byte-range serving will make these play in a <video>
             // tag. Those get handed to the OS player instead.
@@ -8698,6 +8943,16 @@
 
             async bootFromQuery() {
                 const q = new URLSearchParams(window.location.search);
+                const project = q.get('project');
+                if (project) {
+                    try {
+                        await this.openSavedProject(project);
+                    } catch (err) {
+                        console.error(err);
+                        this.setStatus('Could not open the saved project: ' + err.message, true);
+                    }
+                    return;
+                }
                 const script = q.get('script');
                 const video = q.get('video');
                 if (!script && !video) return;
@@ -8762,6 +9017,9 @@
                         + 'or the entry may point at a folder instead of a video file.');
                 }
                 FDMediaPlayer.loadUrl(this.mediaUrl(videoPath), label);
+                // loadUrl's generic branch tags this 'url' since it only sees the
+                // /media?p=... request URL; a library-backed film is really 'local'.
+                mediaState.sourceType = 'local';
             },
 
             showExternalNotice(videoPath, label, reason) {
@@ -8830,6 +9088,28 @@
                 this.setStatus(null);
             },
 
+            // The Hub's "Saved" flag routes here instead of loadScript/loadVideo:
+            // a matched .fdproj carries the whole document -- script, storyboard,
+            // media state and all -- so reopening the raw source files fresh
+            // would throw that progress away. `project_folders` isn't under a
+            // /media root (it's plain repo content), so it's fetched as a normal
+            // static file and handed to the same loadProjectFile() that File ▸
+            // Open Project uses, for exactly one restore path either way.
+            async openSavedProject(filename) {
+                this.setStatus('Resuming ' + filename + '…');
+                let resp;
+                try {
+                    resp = await fetch('/project_folders/' + encodeURIComponent(filename));
+                } catch (err) {
+                    throw new Error('the server did not answer (' + err.message + ')');
+                }
+                if (!resp.ok) throw new Error(filename + ' could not be read (' + resp.status + ')');
+                const blob = await resp.blob();
+                const file = new File([blob], filename, { type: 'application/json' });
+                await loadProjectFile(file, null);
+                this.setStatus(null);
+            },
+
             escape(s) {
                 return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
                     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
@@ -8881,6 +9161,18 @@
             },
 
             loadLocalFile(file) {
+                // A pick that matches a title the library scan already knows by
+                // filename gets routed through the server instead of a blob: URL --
+                // same picture on screen, but /media?p=... survives a reload while
+                // a blob URL dies with the tab. Anything the scan hasn't seen
+                // (outside the library folders, or scanned since) falls back to
+                // the blob URL exactly as before; it just won't relink later.
+                const catalogPath = FDLibrary.resolveVideoPathByName(file.name);
+                if (catalogPath) {
+                    FDLibrary.loadVideo(catalogPath, file.name);
+                    return;
+                }
+
                 if (!this.video) this.video = document.getElementById('media-html5-video');
                 const blobUrl = URL.createObjectURL(file);
                 this.video.src = blobUrl;
@@ -8891,6 +9183,7 @@
                 const ph = document.getElementById('media-empty-placeholder');
                 if (ph) ph.style.display = 'none';
 
+                mediaState.source = null;  // no path a reload can use -- see resolveVideoPathByName above
                 mediaState.sourceType = 'local';
                 mediaState.sourceTitle = file.name;
                 const badge = document.getElementById('media-source-badge');
@@ -8935,6 +9228,7 @@
                         ytContainer.style.display = 'block';
                         ytContainer.innerHTML = `<iframe id="media-yt-iframe" src="https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=1${startParam}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="width:100%; height:100%; border:none;"></iframe>`;
                     }
+                    mediaState.source = url;
                     mediaState.sourceType = 'youtube';
                     mediaState.sourceTitle = 'YouTube: ' + videoId;
                     const badge = document.getElementById('media-source-badge');
@@ -8952,6 +9246,7 @@
                         ytContainer.style.display = 'block';
                         ytContainer.innerHTML = `<iframe src="https://player.vimeo.com/video/${vimeoId}?autoplay=1" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen style="width:100%; height:100%; border:none;"></iframe>`;
                     }
+                    mediaState.source = url;
                     mediaState.sourceType = 'vimeo';
                     mediaState.sourceTitle = 'Vimeo: ' + vimeoId;
                     const badge = document.getElementById('media-source-badge');
@@ -8965,6 +9260,7 @@
                     this.video.style.display = 'block';
                     if (ytContainer) { ytContainer.innerHTML = ''; ytContainer.style.display = 'none'; }
                     if (ph) ph.style.display = 'none';
+                    mediaState.source = url;
                     mediaState.sourceType = 'url';
                     mediaState.sourceTitle = displayTitle || url.split('/').pop().split('?')[0] || 'Web Video';
                     const badge = document.getElementById('media-source-badge');
@@ -13800,9 +14096,53 @@
                 FDStoryboard.renderStoryboard();
                 FDReferences.renderReferences();
                 FDMediaPlayer.renderBookmarks();
+                relinkMedia();
 
                 saveState();
             } catch (err) { alert("Invalid project file."); }
+        }
+
+        // Restoring a project puts bookmarks, sync points, and the saved
+        // timecode back into mediaState, but nothing actually plays until the
+        // pane is told what to load -- this is that step. mediaState.source
+        // (a /media?p=... URL for a library/catalog-backed film, a plain URL
+        // for youtube/vimeo/web video) was blank in every project saved before
+        // this existed, so there's nothing to do for those; the film has to be
+        // relinked once by hand, same as before, and the next Save fixes it
+        // for good.
+        function relinkMedia() {
+            if (!mediaState.source) return;
+            const savedTime = mediaState.currentTime || 0;
+            const video = document.getElementById('media-html5-video');
+            if (video) {
+                const onMeta = () => {
+                    video.removeEventListener('loadedmetadata', onMeta);
+                    if (savedTime) video.currentTime = savedTime;
+                };
+                video.addEventListener('loadedmetadata', onMeta);
+                // A library file that's been moved or renamed since this project
+                // was saved fails inside <video> with nothing on screen to say
+                // so -- same trap loadVideo() already guards against, worth
+                // guarding here too since this is the path a reopened project
+                // actually takes. mediaState.source is the /media?p=<path> URL
+                // the video was pointed at, not the raw path showExternalNotice
+                // wants, so pull the original disk path back out of it first.
+                video.onerror = () => {
+                    let diskPath = mediaState.source;
+                    try {
+                        const qp = new URL(mediaState.source, window.location.href).searchParams.get('p');
+                        if (qp) diskPath = qp;
+                    } catch (e) { /* not a /media URL (e.g. a raw web video url) -- use it as-is */ }
+                    FDLibrary.showExternalNotice(diskPath, mediaState.sourceTitle || 'this film',
+                        'This project’s film could not be reloaded. It may have been moved, renamed, or deleted since this was saved.');
+                };
+            }
+            FDMediaPlayer.loadUrl(mediaState.source, mediaState.sourceTitle);
+            // loadUrl resets sourceType from the URL shape and zeroes duration
+            // for the incoming file's real metadata to fill in -- both correct
+            // behavior for a fresh load, but currentTime is the one field that
+            // has to survive it, since the saved position lives nowhere else.
+            mediaState.currentTime = savedTime;
         }
 
         // Where the next Import Script should land, set by chooseImportMode()

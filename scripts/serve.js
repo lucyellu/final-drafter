@@ -150,6 +150,42 @@ function runScanner(cb) {
     });
 }
 
+// Lightweight index of saved .fdproj projects, so the hub can offer "resume
+// where you left off" instead of always re-importing the raw script+video.
+// Only the fields needed to match a save back to a catalog title are pulled
+// out -- the full document (script text, storyboard shots, etc.) can be
+// megabytes, and the hub only needs enough to decide which file to open.
+const PROJECT_DIR = path.join(ROOT, 'project_folders');
+
+function serveProjects(res) {
+    fs.readdir(PROJECT_DIR, (err, files) => {
+        if (err) { sendJson(res, 200, []); return; }
+        const fdprojFiles = files.filter(f => f.toLowerCase().endsWith('.fdproj'));
+        const out = [];
+        let pending = fdprojFiles.length;
+        if (!pending) { sendJson(res, 200, []); return; }
+        fdprojFiles.forEach(f => {
+            const full = path.join(PROJECT_DIR, f);
+            fs.stat(full, (statErr, stat) => {
+                fs.readFile(full, 'utf8', (readErr, text) => {
+                    if (!readErr) {
+                        try {
+                            const data = JSON.parse(text);
+                            out.push({
+                                file: f,
+                                title: (data.meta && data.meta.title) || '',
+                                sourceTitle: (data.media && data.media.sourceTitle) || '',
+                                modified: (data.meta && data.meta.modified) || (stat && stat.mtime) || null,
+                            });
+                        } catch (e) { /* skip unreadable/corrupt saves */ }
+                    }
+                    if (--pending === 0) sendJson(res, 200, out);
+                });
+            });
+        });
+    });
+}
+
 function serveCatalog(res, forceRescan) {
     const send = () => {
         fs.readFile(CATALOG_FILE, (err, data) => {
@@ -398,6 +434,92 @@ function proxyImage(req, res, targetUrl) {
             res.writeHead(500, { 'Content-Type': 'text/plain' });
             res.end('Proxy error: ' + err.message);
         });
+}
+
+// TMDb cast lookup, for the Characters sidebar's "auto-fetch headshots"
+// button. Same key file and extraction rules as scripts/fetch-posters.mjs --
+// duplicated rather than imported since that script is an ESM module and this
+// server is CommonJS.
+const TMDB_KEY_FILE = path.join(ROOT, 'tmdb-key.txt');
+const TMDB_JWT_RE = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/;
+const TMDB_HEX_RE = /\b[0-9a-f]{32}\b/;
+const TMDB_IMG_BASE = 'https://image.tmdb.org/t/p/w185';
+
+function extractTmdbKey(text) {
+    if (!text) return null;
+    const jwt = text.match(TMDB_JWT_RE);
+    if (jwt) return jwt[0];
+    const hex = text.match(TMDB_HEX_RE);
+    if (hex) return hex[0];
+    return null;
+}
+
+function readTmdbKey() {
+    const env = extractTmdbKey(process.env.TMDB_API_KEY || process.env.TMDB_TOKEN || '');
+    if (env) return env;
+    if (fs.existsSync(TMDB_KEY_FILE)) return extractTmdbKey(fs.readFileSync(TMDB_KEY_FILE, 'utf8'));
+    return null;
+}
+
+async function tmdbGet(pathname, params, key) {
+    const isBearer = TMDB_JWT_RE.test(key);
+    const u = new URL('https://api.themoviedb.org/3' + pathname);
+    for (const [k, v] of Object.entries(params || {})) {
+        if (v != null && v !== '') u.searchParams.set(k, String(v));
+    }
+    if (!isBearer) u.searchParams.set('api_key', key);
+    const headers = { accept: 'application/json' };
+    if (isBearer) headers.authorization = 'Bearer ' + key;
+    const r = await fetch(u, { headers, signal: AbortSignal.timeout(10000) });
+    if (!r.ok) {
+        const err = new Error('TMDb HTTP ' + r.status);
+        err.status = r.status;
+        throw err;
+    }
+    return r.json();
+}
+
+// Finds the best movie/TV match for a title (an exact-name hit beats a
+// popularity-only one, same spirit as fetch-posters.mjs's scorer but simpler
+// since this only needs one confident title, not a whole catalog matched
+// unattended) and returns its cast credits with headshot URLs.
+async function fetchTmdbCast(res, title, year) {
+    const key = readTmdbKey();
+    if (!key) {
+        sendJson(res, 200, { ok: false, error: 'No TMDb key found. Save one as tmdb-key.txt in the app folder -- see scripts/fetch-posters.mjs for setup steps.' });
+        return;
+    }
+    if (!title) { sendJson(res, 400, { error: 'Missing title query parameter' }); return; }
+
+    try {
+        const yearNum = year ? Number(year) : null;
+        let best = null;
+        for (const media of ['movie', 'tv']) {
+            const params = media === 'tv'
+                ? { query: title, first_air_date_year: yearNum || undefined }
+                : { query: title, year: yearNum || undefined };
+            const json = await tmdbGet('/search/' + media, params, key);
+            const results = (json && json.results) || [];
+            for (const r of results) {
+                const name = media === 'tv' ? r.name : r.title;
+                if (!name) continue;
+                const exact = name.trim().toLowerCase() === title.trim().toLowerCase();
+                const score = (exact ? 100 : 0) + Math.min(10, (r.popularity || 0) / 10);
+                if (!best || score > best.score) best = { score, id: r.id, media, name };
+            }
+        }
+        if (!best) { sendJson(res, 200, { ok: false, error: 'No TMDb match found for "' + title + '".' }); return; }
+
+        const credits = await tmdbGet('/' + best.media + '/' + best.id + '/credits', {}, key);
+        const cast = (credits.cast || []).map(c => ({
+            name: c.name,
+            character: c.character || '',
+            profileUrl: c.profile_path ? TMDB_IMG_BASE + c.profile_path : null,
+        }));
+        sendJson(res, 200, { ok: true, matchedTitle: best.name, media: best.media, cast });
+    } catch (e) {
+        sendJson(res, 500, { ok: false, error: 'TMDb lookup failed: ' + e.message });
+    }
 }
 
 const STORYBOARD_DIR = path.join(ROOT, 'storyboards');
@@ -766,6 +888,7 @@ const server = http.createServer((req, res) => {
 
     if (urlPath === '/media') { serveMedia(req, res, query.get('p')); return; }
     if (urlPath === '/api/catalog') { serveCatalog(res, query.get('rescan') === '1'); return; }
+    if (urlPath === '/api/projects') { serveProjects(res); return; }
     if (urlPath === '/api/open-external') { openExternally(res, query.get('p')); return; }
     if (urlPath === '/api/open-external-url') { openExternalUrl(res, query.get('url')); return; }
     if (urlPath === '/api/open-storyboard-folder') { openStoryboardFolder(res); return; }
@@ -773,6 +896,7 @@ const server = http.createServer((req, res) => {
     if (urlPath === '/api/fetch-meta') { fetchUrlMetadata(res, query.get('url')); return; }
     if (urlPath === '/api/proxy-image') { proxyImage(req, res, query.get('url')); return; }
     if (urlPath === '/api/generate-image') { generateAiImage(req, res); return; }
+    if (urlPath === '/api/tmdb-cast') { fetchTmdbCast(res, query.get('title'), query.get('year')); return; }
 
     if (urlPath === '/') urlPath = '/hub.html';
     const filePath = path.normalize(path.join(ROOT, urlPath));

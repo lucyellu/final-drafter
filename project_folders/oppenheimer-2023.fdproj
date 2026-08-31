@@ -5,7 +5,7 @@
     "author": "",
     "docType": "screenplay",
     "created": "2026-08-31T06:46:56.693Z",
-    "modified": "2026-08-31T06:46:56.693Z"
+    "modified": "2026-08-31T07:42:43.449Z"
   },
   "settings": {
     "pageNumber": {
@@ -27,14 +27,14 @@
   },
   "layout": {
     "mode": "split-h",
-    "splitRatio": 0.5,
+    "splitRatio": 0.4312749003984064,
     "splitVRatio": 0.5,
     "studioHRatio": 0.5,
     "studioVRatio": 0.5,
     "quadColRatio": 0.5,
     "quadRowRatio": 0.5,
     "cleanPanels": false,
-    "activeShelf": "storyboard",
+    "activeShelf": "media-player",
     "slots": [
       {
         "id": "slot-1",
@@ -42,7 +42,7 @@
       },
       {
         "id": "slot-2",
-        "type": "storyboard"
+        "type": "media-player"
       },
       {
         "id": "slot-3",
@@ -56,9 +56,9 @@
   },
   "media": {
     "source": null,
-    "sourceType": "url",
-    "sourceTitle": "Oppenheimer (2023)",
-    "currentTime": 0,
+    "sourceType": "local",
+    "sourceTitle": "Oppenheimer.2023.1080p.BluRay.x264.AAC5.1-[YTS.MX].mp4",
+    "currentTime": 3788.836115,
     "duration": 10822.154,
     "bookmarks": {},
     "bookmarkSeq": 0,
@@ -25118,87 +25118,104 @@
       {
         "id": 1788158801102.2349,
         "name": "OPPENHEIMER",
-        "color": "hsl(127, 70%, 60%)"
+        "color": "hsl(127, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/2lKs67r7FI4bPu0AXxMUJZxmUXn.jpg"
       },
       {
         "id": 1788158801102.9124,
         "name": "STRAUSS",
-        "color": "hsl(185, 70%, 60%)"
+        "color": "hsl(185, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/5qHNjhtjMD4YWH3UP0rm4tKwxCL.jpg"
       },
       {
         "id": 1788158801103.227,
         "name": "GROVES",
-        "color": "hsl(317, 70%, 60%)"
+        "color": "hsl(317, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/aCvBXTAR9B1qRjIRzMBYhhbm1fR.jpg"
       },
       {
         "id": 1788158801102.4097,
         "name": "ROBB",
-        "color": "hsl(341, 70%, 60%)"
+        "color": "hsl(341, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/quH4y2dto3UAgZOfaM0QriyRLPN.jpg"
       },
       {
         "id": 1788158801103.0522,
         "name": "KITTY",
-        "color": "hsl(278, 70%, 60%)"
+        "color": "hsl(278, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/5nCSG5TL1bP1geD8aaBfaLnLLCD.jpg"
       },
       {
         "id": 1788158801102.236,
         "name": "RABI",
-        "color": "hsl(21, 70%, 60%)"
+        "color": "hsl(21, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/2vaimzfyPQVxZGHbQS5M3z3tZw0.jpg"
       },
       {
         "id": 1788158801102.97,
         "name": "SENATE AIDE",
-        "color": "hsl(53, 70%, 60%)"
+        "color": "hsl(53, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/vOLiUSDT8rubu0J2YKwBkOL0K6V.jpg"
       },
       {
         "id": 1788158801102.8083,
         "name": "LAWRENCE",
-        "color": "hsl(97, 70%, 60%)"
+        "color": "hsl(97, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/5eMo8D7h1XrSu6ZN4UXhPcS6YNG.jpg"
       },
       {
         "id": 1788158801104.7695,
         "name": "GARRISON",
-        "color": "hsl(286, 70%, 60%)"
+        "color": "hsl(286, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/sNhgAh7TBBYNGR2ExnINXIQ4U5x.jpg"
       },
       {
         "id": 1788158801103.8643,
         "name": "TATLOCK",
-        "color": "hsl(119, 70%, 60%)"
+        "color": "hsl(119, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/1Uvfh7xL4U2evkhs0M3C7BbBYFf.jpg"
       },
       {
         "id": 1788158801104.7617,
         "name": "TELLER",
-        "color": "hsl(237, 70%, 60%)"
+        "color": "hsl(237, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/u10A5DpUYRB1zMF7YoGYcyvhois.jpg"
       },
       {
         "id": 1788158801102.841,
         "name": "BOHR",
-        "color": "hsl(138, 70%, 60%)"
+        "color": "hsl(138, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/AbCqqFxNi5w3nDUFdQt0DGMFh5H.jpg"
       },
       {
         "id": 1788158801103.2563,
         "name": "CHEVALIER",
-        "color": "hsl(261, 70%, 60%)"
+        "color": "hsl(261, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/rUhREsWITBvyoPdLiPJOadAwRYq.jpg"
       },
       {
         "id": 1788158801104.8557,
         "name": "EINSTEIN",
-        "color": "hsl(72, 70%, 60%)"
+        "color": "hsl(72, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/2OqrVBoTYX5oeU1Qt8tfq3i9JUQ.jpg"
       },
       {
         "id": 1788158801104.2751,
         "name": "NICHOLS",
-        "color": "hsl(96, 70%, 60%)"
+        "color": "hsl(96, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/vZ7ix8UeRYgepFPFc4FIVKDLKDX.jpg"
       },
       {
         "id": 1788158801104.8447,
         "name": "PASH",
-        "color": "hsl(302, 70%, 60%)"
+        "color": "hsl(302, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/304ilSygaCRWykoBWAL67TOw8g9.jpg"
       },
       {
         "id": 1788158801103.7249,
         "name": "FRANK",
-        "color": "hsl(76, 70%, 60%)"
+        "color": "hsl(76, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/aeEErE7FcRbGkpxRRkGVdObB7j1.jpg"
       },
       {
         "id": 1788158801102.2961,
@@ -25208,67 +25225,80 @@
       {
         "id": 1788158801105.714,
         "name": "TRUMAN",
-        "color": "hsl(290, 70%, 60%)"
+        "color": "hsl(290, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/yhaSM5habNNI1Tf4ALRwRk3VvSZ.jpg"
       },
       {
         "id": 1788158801103.6099,
         "name": "SERBER",
-        "color": "hsl(229, 70%, 60%)"
+        "color": "hsl(229, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/q4SOVndGsnCmSZKBllLaJCNM72c.jpg"
       },
       {
         "id": 1788158801104.219,
         "name": "BETHE",
-        "color": "hsl(276, 70%, 60%)"
+        "color": "hsl(276, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/bfh0yP6Qr55jg9CGTGScXAw8Ftu.jpg"
       },
       {
         "id": 1788158801102.1077,
         "name": "GRAY",
-        "color": "hsl(203, 70%, 60%)"
+        "color": "hsl(203, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/A3hXimbzDtFxQ1PXNo8gG7RZeN4.jpg"
       },
       {
         "id": 1788158801105.78,
         "name": "BORDEN",
-        "color": "hsl(59, 70%, 60%)"
+        "color": "hsl(59, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/nER1Vzhk51pGHb60KBF1Ja5tEXA.jpg"
       },
       {
         "id": 1788158801104.3977,
         "name": "BUSH",
-        "color": "hsl(107, 70%, 60%)"
+        "color": "hsl(107, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/z974QEHL12qUvLyk6hlWGAmDgom.jpg"
       },
       {
         "id": 1788158801105.9094,
         "name": "KISTIAKOWSKY",
-        "color": "hsl(154, 70%, 60%)"
+        "color": "hsl(154, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/rFWC22ZScaQwA85NBo7l1j9XQdo.jpg"
       },
       {
         "id": 1788158801106.0425,
         "name": "HILL",
-        "color": "hsl(55, 70%, 60%)"
+        "color": "hsl(55, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/8ykTeTRSYd2MKF5uLBvD93X5KMJ.jpg"
       },
       {
         "id": 1788158801102.8804,
         "name": "SENATOR MCGEE",
-        "color": "hsl(85, 70%, 60%)"
+        "color": "hsl(85, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/3MAsDC1JtNqef1O4MwqakGjJkkI.jpg"
       },
       {
         "id": 1788158801102.41,
         "name": "BLACKETT",
-        "color": "hsl(53, 70%, 60%)"
+        "color": "hsl(53, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/6CInTvBeLwXLx2id9TgaULaVEO4.jpg"
       },
       {
         "id": 1788158801105.973,
         "name": "STIMSON",
-        "color": "hsl(353, 70%, 60%)"
+        "color": "hsl(353, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/ctMVpFDKKWCty60lLORf3IoJcv9.jpg"
       },
       {
         "id": 1788158801104.3772,
         "name": "COUNSEL",
-        "color": "hsl(31, 70%, 60%)"
+        "color": "hsl(31, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/k5OCDhwZoFuNtN0o4EDkpBXQsFp.jpg"
       },
       {
         "id": 1788158801104.8293,
         "name": "FERMI",
-        "color": "hsl(235, 70%, 60%)"
+        "color": "hsl(235, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/qdU56yVTNu0SsYqcngTEkIAyB3f.jpg"
       },
       {
         "id": 1788158801105.359,
@@ -25278,87 +25308,104 @@
       {
         "id": 1788158801103.0537,
         "name": "CONDON",
-        "color": "hsl(329, 70%, 60%)"
+        "color": "hsl(329, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/9ewQqJJpjIUCmYWyaak6NuBsrzL.jpg"
       },
       {
         "id": 1788158801103.1543,
         "name": "FEYNMAN",
-        "color": "hsl(75, 70%, 60%)"
+        "color": "hsl(75, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/320qW5yEbxpmyxQ3evmClJbtKag.jpg"
       },
       {
         "id": 1788158801104.3855,
         "name": "CHAIRMAN",
-        "color": "hsl(221, 70%, 60%)"
+        "color": "hsl(221, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/nYkdyh9E0iNuue8k4437gCWD70G.jpg"
       },
       {
         "id": 1788158801105.104,
         "name": "VOLPE",
-        "color": "hsl(132, 70%, 60%)"
+        "color": "hsl(132, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/yww1ArQy1dRZFu5w7iwpT7AhSfe.jpg"
       },
       {
         "id": 1788158801103.425,
         "name": "SENATOR BARTLETT",
-        "color": "hsl(341, 70%, 60%)"
+        "color": "hsl(341, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/ar0XWZlVmpaxj3xQg6Pe2u0WFgH.jpg"
       },
       {
         "id": 1788158801104.1028,
         "name": "SZILARD",
-        "color": "hsl(293, 70%, 60%)"
+        "color": "hsl(293, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/zRAKtRxg83R79LGUB6e6161QGJt.jpg"
       },
       {
         "id": 1788158801104.2175,
         "name": "HORNIG",
-        "color": "hsl(325, 70%, 60%)"
+        "color": "hsl(325, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/yYTsO3nH4ikZJ3K2XTgQASEOWiU.jpg"
       },
       {
         "id": 1788158801105.631,
         "name": "WEATHERMAN",
-        "color": "hsl(342, 70%, 60%)"
+        "color": "hsl(342, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/dgr9K0RvbjRdTNb6V2J25QJF68I.jpg"
       },
       {
         "id": 1788158801102.893,
         "name": "HEISENBERG",
-        "color": "hsl(300, 70%, 60%)"
+        "color": "hsl(300, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/i4c5JjvC5EpecZbp4J96mFmtm0Z.jpg"
       },
       {
         "id": 1788158801103.1426,
         "name": "LOMANITZ",
-        "color": "hsl(303, 70%, 60%)"
+        "color": "hsl(303, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/kb0oEHc1a3lZUoPXaSyccfinFOP.jpg"
       },
       {
         "id": 1788158801103.7864,
         "name": "ALVAREZ",
-        "color": "hsl(4, 70%, 60%)"
+        "color": "hsl(4, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/7PMu5zFOEH7PqFDzrKThgKD4Ndf.jpg"
       },
       {
         "id": 1788158801103.367,
         "name": "RUTH",
-        "color": "hsl(237, 70%, 60%)"
+        "color": "hsl(237, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/6znYbOI2Z8PfzZ6p9jHG5QdAeb2.jpg"
       },
       {
         "id": 1788158801104.9495,
         "name": "JOHNSON",
-        "color": "hsl(321, 70%, 60%)"
+        "color": "hsl(321, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/ov7dsIbcDQhmzvMMFYG0R5QbNxE.jpg"
       },
       {
         "id": 1788158801104.2986,
         "name": "CHARLOTTE",
-        "color": "hsl(337, 70%, 60%)"
+        "color": "hsl(337, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/931EQSqhEPMROWoF4SOGyQpPUAI.jpg"
       },
       {
         "id": 1788158801103.342,
         "name": "SNYDER",
-        "color": "hsl(8, 70%, 60%)"
+        "color": "hsl(8, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/hbv61xBI0sQSKg9APeiLUu9DLcd.jpg"
       },
       {
         "id": 1788158801103.4883,
         "name": "SENATOR PASTORE",
-        "color": "hsl(336, 70%, 60%)"
+        "color": "hsl(336, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/m62gS0B5fcQfFpoq2tmJVfpE43x.jpg"
       },
       {
         "id": 1788158801103.2183,
         "name": "BAINBRIDGE",
-        "color": "hsl(32, 70%, 60%)"
+        "color": "hsl(32, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/qoapD8slSdb550o1JEoepv1SvT0.jpg"
       },
       {
         "id": 1788158801104.1035,
@@ -25368,27 +25415,32 @@
       {
         "id": 1788158801105.1301,
         "name": "MORRISON",
-        "color": "hsl(137, 70%, 60%)"
+        "color": "hsl(137, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/qlB00ZkN8LCReIje5PGDJ2UeCAg.jpg"
       },
       {
         "id": 1788158801105.212,
         "name": "MARSHALL",
-        "color": "hsl(128, 70%, 60%)"
+        "color": "hsl(128, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/4eiHqFEnZSJA8MZrKNEL1q1MSfx.jpg"
       },
       {
         "id": 1788158801103.2927,
         "name": "ELTENTON",
-        "color": "hsl(144, 70%, 60%)"
+        "color": "hsl(144, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/ksxpXRLJplv8kSfEHPYdboIwNfi.jpg"
       },
       {
         "id": 1788158801103.4573,
         "name": "CONCERNED SCIENTIST",
-        "color": "hsl(26, 70%, 60%)"
+        "color": "hsl(26, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/fw41lI6WAHURQymZHMf6cY6pznH.jpg"
       },
       {
         "id": 1788158801105.562,
         "name": "BYRNES",
-        "color": "hsl(231, 70%, 60%)"
+        "color": "hsl(231, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/83kKXFGLe1GDXc1lau63gD5W9uF.jpg"
       },
       {
         "id": 1788158801102.3967,
@@ -25398,12 +25450,14 @@
       {
         "id": 1788158801104.0044,
         "name": "FUCHS",
-        "color": "hsl(289, 70%, 60%)"
+        "color": "hsl(289, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/ffPY0KrV5KP9Nuv27m3JQU6j3Tq.jpg"
       },
       {
         "id": 1788158801104.8923,
         "name": "TOLMAN",
-        "color": "hsl(122, 70%, 60%)"
+        "color": "hsl(122, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/qfALI1iNFbc2xNxL9qGPDhlkMkE.jpg"
       },
       {
         "id": 1788158801105.7305,
@@ -25413,7 +25467,8 @@
       {
         "id": 1788158801105.7495,
         "name": "ARMY CAPTAIN",
-        "color": "hsl(114, 70%, 60%)"
+        "color": "hsl(114, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/esKApCc6fcLekciUuZsrPDbuuwx.jpg"
       },
       {
         "id": 1788158801105.0369,
@@ -25423,12 +25478,14 @@
       {
         "id": 1788158801105.942,
         "name": "AIDE",
-        "color": "hsl(243, 70%, 60%)"
+        "color": "hsl(243, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/vOLiUSDT8rubu0J2YKwBkOL0K6V.jpg"
       },
       {
         "id": 1788158801106.2966,
         "name": "EVANS",
-        "color": "hsl(175, 70%, 60%)"
+        "color": "hsl(175, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/v1j1HB2Kbg64wXUkivmBrKd3lYa.jpg"
       },
       {
         "id": 1788158801102.336,
@@ -25443,22 +25500,26 @@
       {
         "id": 1788158801102.155,
         "name": "DUTCH STUDENT",
-        "color": "hsl(114, 70%, 60%)"
+        "color": "hsl(114, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/gjxKOLnBNkS3lGpRrVreLC4DwgY.jpg"
       },
       {
         "id": 1788158801103.1904,
         "name": "STUDENT",
-        "color": "hsl(264, 70%, 60%)"
+        "color": "hsl(264, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/gjxKOLnBNkS3lGpRrVreLC4DwgY.jpg"
       },
       {
         "id": 1788158801103.5125,
         "name": "WASHBURN",
-        "color": "hsl(202, 70%, 60%)"
+        "color": "hsl(202, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/zsWcj39NbRNYURAg25PP9cAiszc.jpg"
       },
       {
         "id": 1788158801103.6323,
         "name": "JACKIE",
-        "color": "hsl(0, 70%, 60%)"
+        "color": "hsl(0, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/ewbPhI5SRsOFFkHFaIO6Fk24Zfn.jpg"
       },
       {
         "id": 1788158801103.982,
@@ -25473,7 +25534,8 @@
       {
         "id": 1788158801103.634,
         "name": "CONGRESSMAN",
-        "color": "hsl(127, 70%, 60%)"
+        "color": "hsl(127, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/qlIzEnBEuLT9ofE1PCGKKHHGga2.jpg"
       },
       {
         "id": 1788158801103.1125,
@@ -25483,22 +25545,26 @@
       {
         "id": 1788158801103.465,
         "name": "DONALD",
-        "color": "hsl(101, 70%, 60%)"
+        "color": "hsl(101, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/yYTsO3nH4ikZJ3K2XTgQASEOWiU.jpg"
       },
       {
         "id": 1788158801104.3003,
         "name": "BARBARA",
-        "color": "hsl(34, 70%, 60%)"
+        "color": "hsl(34, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/u57rMMDOqoNaElIt5X3ykCetDLO.jpg"
       },
       {
         "id": 1788158801104.3447,
         "name": "NEDDERMEYER",
-        "color": "hsl(115, 70%, 60%)"
+        "color": "hsl(115, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/fO1LaBwXX0AIy5JOCdvA1DAJfnK.jpg"
       },
       {
         "id": 1788158801104.7776,
         "name": "WILKINS",
-        "color": "hsl(359, 70%, 60%)"
+        "color": "hsl(359, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/nj5kTBzhi3wduSw4OT3uOzJGwM9.jpg"
       },
       {
         "id": 1788158801104.3005,
@@ -25523,7 +25589,8 @@
       {
         "id": 1788158801105.6694,
         "name": "CONANT",
-        "color": "hsl(40, 70%, 60%)"
+        "color": "hsl(40, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/ng01ren9pCYPIsIwRqC1xHzD5IG.jpg"
       },
       {
         "id": 1788158801105.7898,
@@ -25533,7 +25600,8 @@
       {
         "id": 1788158801105.3357,
         "name": "SOLDIER",
-        "color": "hsl(146, 70%, 60%)"
+        "color": "hsl(146, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/w2t0hE68gKSfZ5tUlp9TFTKAf4V.jpg"
       },
       {
         "id": 1788158801105.864,
@@ -25553,7 +25621,8 @@
       {
         "id": 1788158801106.5493,
         "name": "SENATOR SCOTT",
-        "color": "hsl(4, 70%, 60%)"
+        "color": "hsl(4, 70%, 60%)",
+        "headshot": "https://image.tmdb.org/t/p/w185/aZHLD1QOEc90t8pJ3SU6T5OmGFa.jpg"
       },
       {
         "id": 1788158801106.855,

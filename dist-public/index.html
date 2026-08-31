@@ -1652,8 +1652,7 @@
             font-size: 0.74rem;
             font-weight: 600;
             color: var(--color-text-dim);
-            min-width: 120px;
-            text-align: right;
+            text-align: left;
         }
         .media-buttons-row {
             display: flex;
@@ -3605,8 +3604,8 @@
                     <div class="media-controls-bar">
                         <div class="media-scrubber-row">
                             <input type="range" id="media-scrubber" class="media-scrubber" min="0" max="100" step="0.01" value="0" oninput="FDMediaPlayer.onScrubInput(this.value)" onchange="FDMediaPlayer.onScrubChange(this.value)">
-                            <div class="media-timecode" id="media-timecode">00:00:00.00 / 00:00:00.00</div>
                         </div>
+                        <div class="media-timecode" id="media-timecode">00:00:00.00 / 00:00:00.00</div>
                         <div class="media-buttons-row">
                             <div class="media-btn-group">
                                 <button class="media-btn" id="media-play-btn" onclick="FDMediaPlayer.togglePlay()" title="Play/Pause (Space)">▶ Play</button>

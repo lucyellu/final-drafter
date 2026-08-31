@@ -161,6 +161,12 @@ function score(results, title, year, media) {
                 tmdbTitle: media === 'tv' ? r.name : r.title,
                 tmdbYear: y,
                 posterPath: r.poster_path,
+                // TMDb's own user score (0-10), not IMDb or Rotten Tomatoes --
+                // TMDb's search results don't carry those. vote_count is kept
+                // alongside it so a rating from three votes can be told apart
+                // from one backed by thousands.
+                rating: typeof r.vote_average === 'number' ? r.vote_average : null,
+                voteCount: r.vote_count || 0,
             };
         });
 }
@@ -302,6 +308,7 @@ await pool(work, 4, async job => {
             file: dl.file, title: job.title,
             tmdbId: hit.tmdbId, media: hit.media,
             tmdbTitle: hit.tmdbTitle, tmdbYear: hit.tmdbYear,
+            rating: hit.rating, voteCount: hit.voteCount,
             fetchedAt: new Date().toISOString(),
         };
         found++;

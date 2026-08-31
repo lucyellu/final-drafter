@@ -115,6 +115,20 @@ body.modal-open { overflow: hidden; }
 #viewmode { display: flex; gap: 6px; margin-left: auto; }
 #viewmode .chip { padding: 6px 12px; }
 
+/* Sort applies inside each genre row -- it reorders the cards in a shelf, not
+   the shelves themselves, so it lives next to the chips that pick which
+   shelves show rather than replacing the genre-first layout. */
+#sortmode { display: flex; align-items: center; gap: 6px; }
+#sortmode .sort-label { color: var(--text-faint); font-size: 0.76rem; margin-right: 2px; }
+#sortmode .chip { padding: 6px 12px; }
+#sortmode .dir { margin-left: 4px; display: inline-block; width: 0.7em; }
+
+/* Whether the library is shelved by genre or read as one sorted list -- the
+   companion control to Sort, since grouping and ordering pull against each
+   other (see the comment in render()). */
+#groupmode { display: flex; gap: 6px; }
+#groupmode .chip { padding: 6px 12px; }
+
 /* Cover mode. Real artwork fills the card, so the paper tint comes off and the
    scrim goes heavier -- a poster is busy where a title page is white space,
    and the title still has to be readable over it. */
@@ -249,6 +263,7 @@ body.modal-open { overflow: hidden; }
 }
 .flag.matched { color: var(--matched); border-color: rgba(70,211,105,0.4); }
 .flag.warn { color: var(--warn); border-color: rgba(245,166,35,0.4); }
+.flag.accent { color: var(--accent-soft); border-color: rgba(229,9,20,0.4); }
 .card-actions {
     position: absolute; inset: auto 0 0 0; padding: 10px;
     display: flex; gap: 6px; opacity: 0;
@@ -337,6 +352,16 @@ body.modal-open { overflow: hidden; }
     <button class="chip" data-avail="script">&#128220; Screenplays</button>
     <button class="chip" data-avail="book">&#128218; Books</button>
     <span id="chip-count"></span>
+    <span id="sortmode">
+        <span class="sort-label">Sort</span>
+        <button class="chip active" data-sort="name" title="Click again to reverse the order">Name<span class="dir"></span></button>
+        <button class="chip" data-sort="date" title="Click again to reverse the order">Date<span class="dir"></span></button>
+        <button class="chip" data-sort="rating" title="TMDb rating -- click again to reverse the order. Unrated titles always sort last.">Rating<span class="dir"></span></button>
+    </span>
+    <span id="groupmode">
+        <button class="chip active" data-group="genre" title="Shelved by genre; the sort order applies within each shelf">&#128193; By Genre</button>
+        <button class="chip" data-group="flat" title="One list, no genre shelves, so the sort order reads across the whole library">&#9776; Flat List</button>
+    </span>
     <span id="viewmode">
         <button class="chip active" data-mode="tile" title="Colour tiles, with the screenplay's title page showing through">&#9638; Tiles</button>
         <button class="chip" data-mode="cover" title="Poster and cover art where the library has it">&#128444; Covers</button>
@@ -368,10 +393,14 @@ body.modal-open { overflow: hidden; }
 // =====================================================================
 
 let CATALOG = null;
+let PROJECTS = [];         // saved .fdproj files, from /api/projects — see findSavedProject()
 let spotlight = null;      // the item currently filling the billboard
 let filter = '';
 let avail = 'all';         // chip bar: all | dual | film | script
 let coverMode = false;     // false = colour tiles, true = poster art
+let sortBy = 'name';       // name | date | rating -- order within each row
+let sortDir = 1;           // 1 = each mode's default direction, -1 = reversed
+let groupByGenre = true;   // false = one flat sorted list, no genre shelves
 
 const $ = id => document.getElementById(id);
 
@@ -484,6 +513,14 @@ async function renderPoster(pdfPath) {
 // it on load, splits the workspace, and fills both panes.
 function editorUrl(opts) {
     const q = new URLSearchParams();
+    // A matched save wins outright: empty.html loads the whole .fdproj (script
+    // text, storyboard shots, bookmarks, the lot) instead of re-importing the
+    // raw files, so script/video/mode are meaningless alongside it.
+    if (opts.project) {
+        q.set('project', opts.project);
+        if (opts.title) q.set('title', opts.title);
+        return 'empty.html?' + q.toString();
+    }
     if (opts.script) q.set('script', opts.script);
     if (opts.video) q.set('video', opts.video);
     if (opts.title) q.set('title', opts.title);
@@ -491,13 +528,42 @@ function editorUrl(opts) {
     return 'empty.html?' + q.toString();
 }
 
+// A save is matched back to a video by exact filename -- the .fdproj format
+// doesn't carry the source path (browser file pickers can't hand one back),
+// but every save does carry mediaState.sourceTitle, which for a locally
+// opened film is just file.name. Several saves can share a name only if two
+// different library files happen to be named identically; picking the most
+// recently modified save is the reasonable call there.
+function findSavedProject(videoPath) {
+    if (!videoPath || !PROJECTS.length) return null;
+    const name = baseName(videoPath);
+    const matches = PROJECTS.filter(p => p.sourceTitle === name);
+    if (!matches.length) return null;
+    matches.sort((a, b) => new Date(b.modified || 0) - new Date(a.modified || 0));
+    return matches[0];
+}
+
+async function loadProjects() {
+    try {
+        const r = await fetch('/api/projects');
+        PROJECTS = r.ok ? await r.json() : [];
+    } catch (e) { PROJECTS = []; }
+}
+
 function openDual(item, videoIdx, scriptIdx) {
     const v = item.videos && item.videos[videoIdx || 0];
     const s = item.scripts && item.scripts[scriptIdx || 0];
+    const title = item.title + (item.year ? ' (' + item.year + ')' : '');
+    const saved = v && findSavedProject(v.path);
+    if (saved) {
+        toast('Resuming saved progress for ' + item.title);
+        window.location.href = editorUrl({ project: saved.file, title: title });
+        return;
+    }
     window.location.href = editorUrl({
         script: s && s.path,
         video: v && v.path,
-        title: item.title + (item.year ? ' (' + item.year + ')' : ''),
+        title: title,
         mode: 'dual',
     });
 }
@@ -507,6 +573,12 @@ function openScriptOnly(path, title) {
 }
 
 function openVideoOnly(path, title) {
+    const saved = findSavedProject(path);
+    if (saved) {
+        toast('Resuming saved progress for ' + title);
+        window.location.href = editorUrl({ project: saved.file, title: title });
+        return;
+    }
     window.location.href = editorUrl({ video: path, title: title, mode: 'video' });
 }
 
@@ -548,6 +620,7 @@ function setSpotlight(item) {
     else if (script) badges.push('<span class="badge">Screenplay only</span>');
     else if (video) badges.push('<span class="badge">Film only</span>');
     if (item.year) badges.push('<span class="badge">' + item.year + '</span>');
+    if (typeof item.rating === 'number') badges.push('<span class="badge" title="TMDb user score">&#9733; ' + item.rating.toFixed(1) + '</span>');
     if (item.kind === 'series') badges.push('<span class="badge accent">' + item.videos.length + ' episodes</span>');
     if (play && play.level === 'external') badges.push('<span class="badge warn">Needs an external player</span>');
     if (play && play.level === 'maybe') badges.push('<span class="badge warn">HEVC — may not decode</span>');
@@ -611,6 +684,7 @@ function cardHtml(item) {
     if (script && video) flags.push('<span class="flag matched">Dual</span>');
     else if (script) flags.push('<span class="flag">' + (isBook ? 'Book' : 'Script') + '</span>');
     else if (video) flags.push('<span class="flag">Film</span>');
+    if (video && findSavedProject(video.path)) flags.push('<span class="flag accent">Saved</span>');
     if (play && play.level === 'external') flags.push('<span class="flag warn">' + esc((video.name.split('.').pop() || '').toUpperCase()) + '</span>');
     const fileCount = item.fileCount || item.videos.length;
     if (fileCount > 1) flags.push('<span class="flag">' + fileCount + (item.kind === 'series' ? ' eps' : ' files') + '</span>');
@@ -654,7 +728,9 @@ function cardHtml(item) {
         + '<div class="card-flags">' + flags.join('') + '</div>'
         + '<div class="card-body">'
         + '<div class="card-title">' + esc(item.title) + '</div>'
-        + '<div class="card-sub">' + (item.year ? item.year : '—') + (video ? ' · ' + fmtSize(video.size) : '') + '</div>'
+        + '<div class="card-sub">' + (item.year ? item.year : '—')
+            + (typeof item.rating === 'number' ? ' · &#9733; ' + item.rating.toFixed(1) : '')
+            + (video ? ' · ' + fmtSize(video.size) : '') + '</div>'
         + '</div>'
         + '<div class="card-actions">' + actions.join('') + '</div>'
         + '</div>';
@@ -742,6 +818,37 @@ function visible(item) {
     return avail === 'all' || availabilityOf(item) === avail;
 }
 
+// Sorting happens once on the flat list, before it gets split into Watch &
+// Read / genre buckets / Unsorted -- every row is built from that list in
+// order, so one sort here reorders every shelf without touching how they're
+// grouped (grouped mode, at least -- Flat List is this order verbatim). Ties,
+// and anything the chosen key can't rank (no year, no rating), fall back to
+// title so the order stays stable and readable.
+//
+// sortDir flips the *chosen* key only -- Date and Rating default to newest/
+// highest first, so sortDir=-1 reads as oldest/lowest first; unrated titles
+// stay pinned last either way, because "unrated" isn't the bottom of the
+// scale, it's outside it.
+function sortItems(items) {
+    const byTitle = (a, b) => a.title.localeCompare(b.title);
+    const sorted = items.slice();
+    if (sortBy === 'date') {
+        sorted.sort((a, b) => sortDir * ((b.year || -Infinity) - (a.year || -Infinity)) || byTitle(a, b));
+    } else if (sortBy === 'rating') {
+        // TMDb's own user score, not IMDb or Rotten Tomatoes -- see the Rating
+        // chip's tooltip.
+        sorted.sort((a, b) => {
+            const ar = typeof a.rating === 'number', br = typeof b.rating === 'number';
+            if (ar && br) return sortDir * (b.rating - a.rating) || byTitle(a, b);
+            if (ar !== br) return ar ? -1 : 1;
+            return byTitle(a, b);
+        });
+    } else {
+        sorted.sort((a, b) => sortDir * byTitle(a, b));
+    }
+    return sorted;
+}
+
 function rowSub(items) {
     let d = 0, f = 0, sc = 0, bk = 0;
     for (const i of items) {
@@ -765,13 +872,13 @@ function allItems(c) {
     c.items.forEach((it, i) => out.push(tag(it, 'm' + i)));
     c.videoOnly.forEach((v, i) => out.push(tag({
         title: v.title, year: v.year, kind: v.files > 1 ? 'series' : 'film',
-        genres: v.genres || [], poster: v.poster, fileCount: v.files,
+        genres: v.genres || [], poster: v.poster, rating: v.rating, voteCount: v.voteCount, fileCount: v.files,
         videos: [{ path: v.path, name: v.name, size: v.size, play: v.play, episode: null }],
         scripts: [],
     }, 'v' + i)));
     c.scriptOnly.forEach((x, i) => out.push(tag({
         title: x.title, year: x.year, kind: 'film',
-        genres: x.genres || [], poster: x.poster,
+        genres: x.genres || [], poster: x.poster, rating: x.rating, voteCount: x.voteCount,
         videos: [],
         scripts: [{ path: x.path, name: x.name, size: x.size, episode: null, kind: x.kind }],
     }, 's' + i)));
@@ -784,35 +891,45 @@ function render() {
     const c = CATALOG;
     byUid.clear();
 
-    const shown = allItems(c).filter(visible);
+    const shown = sortItems(allItems(c).filter(visible));
 
     // Watch & Read leads, because it is the row that can do something the
     // other rows cannot -- but it is a category now, not the whole premise.
     const dual = shown.filter(i => availabilityOf(i) === 'dual');
 
-    // A title lands in a row for each genre it carries, the way a streaming
-    // shelf repeats a film across Comedy and Romance. Untagged titles are not
-    // silently dropped; they get their own row at the bottom.
-    const buckets = new Map();
-    const unsorted = [];
-    for (const it of shown) {
-        const gs = (it.genres && it.genres.length) ? it.genres : null;
-        if (!gs) { unsorted.push(it); continue; }
-        for (const g of gs) {
-            if (!buckets.has(g)) buckets.set(g, []);
-            buckets.get(g).push(it);
-        }
-    }
-    // Biggest shelves first, so the rows you will actually browse are near the
-    // top and the one-off genres settle at the bottom.
-    const genreRows = Array.from(buckets.entries())
-        .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
-
     let html = rowHtml('⚡ Watch & Read', rowSub(dual) + ' · both on disk', dual,
         filter || avail !== 'all' ? '' : 'No title has both a screenplay and a film yet.');
-    for (const [g, items] of genreRows) html += rowHtml(g, rowSub(items), items, '');
-    if (unsorted.length) {
-        html += rowHtml('Unsorted', rowSub(unsorted) + ' · no genre tag yet', unsorted, '');
+
+    // The Genres toggle decides whether the rest of the page is shelves or one
+    // sorted list. Grouped mode repeats a title across every genre it carries,
+    // the way a streaming service repeats a film across Comedy and Romance --
+    // which is exactly what a sort order can't survive, since each shelf sorts
+    // on its own. Flat mode is the other side of that trade: one list, so the
+    // chosen sort actually reads top to bottom across the whole library.
+    let genreRows = [];
+    if (groupByGenre) {
+        // A title lands in a row for each genre it carries. Untagged titles
+        // are not silently dropped; they get their own row at the bottom.
+        const buckets = new Map();
+        const unsorted = [];
+        for (const it of shown) {
+            const gs = (it.genres && it.genres.length) ? it.genres : null;
+            if (!gs) { unsorted.push(it); continue; }
+            for (const g of gs) {
+                if (!buckets.has(g)) buckets.set(g, []);
+                buckets.get(g).push(it);
+            }
+        }
+        // Biggest shelves first, so the rows you will actually browse are near
+        // the top and the one-off genres settle at the bottom.
+        genreRows = Array.from(buckets.entries())
+            .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+        for (const [g, items] of genreRows) html += rowHtml(g, rowSub(items), items, '');
+        if (unsorted.length) {
+            html += rowHtml('Unsorted', rowSub(unsorted) + ' · no genre tag yet', unsorted, '');
+        }
+    } else {
+        html += rowHtml('All Titles', rowSub(shown), shown, '');
     }
     if (!shown.length) {
         html = '<div class="row"><div class="row-empty">Nothing in the library matches that.</div></div>';
@@ -825,7 +942,8 @@ function render() {
     else if (shown.length) setSpotlight(shown[0]);
 
     const totalTitles = c.items.length + c.videoOnly.length + c.scriptOnly.length;
-    let count = shown.length + ' of ' + totalTitles + ' titles · ' + genreRows.length + ' genres';
+    let count = shown.length + ' of ' + totalTitles + ' titles'
+        + (groupByGenre ? ' · ' + genreRows.length + ' genres' : ' · flat list');
     if (coverMode) {
         const withArt = shown.filter(i => i.poster).length;
         count += withArt
@@ -902,6 +1020,48 @@ document.querySelectorAll('#viewmode .chip').forEach(btn => {
 try { setMode(localStorage.getItem('fd-hub-view') === 'cover' ? 'cover' : 'tile', false); }
 catch (e) { setMode('tile', false); }
 
+// Which order you like a shelf browsed in outlives the tab too. Sets the mode
+// and direction directly -- no toggling here, so restoring from storage on
+// load can't flip a direction that was never clicked this session.
+function applySort(mode, dir, remember) {
+    sortBy = mode === 'date' || mode === 'rating' ? mode : 'name';
+    sortDir = dir === -1 ? -1 : 1;
+    document.querySelectorAll('#sortmode .chip').forEach(b => {
+        const active = b.dataset.sort === sortBy;
+        b.classList.toggle('active', active);
+        const arrow = b.querySelector('.dir');
+        if (arrow) arrow.textContent = active ? (sortDir === 1 ? '▾' : '▴') : '';
+    });
+    if (remember) { try { localStorage.setItem('fd-hub-sort', sortBy + ':' + sortDir); } catch (e) { } }
+    if (CATALOG) render();
+}
+// Clicking the chip that's already active is what actually reverses it;
+// clicking a different one switches key and resets to that key's own default
+// direction (baked into the sign choices inside sortItems()).
+document.querySelectorAll('#sortmode .chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const mode = btn.dataset.sort;
+        applySort(mode, mode === sortBy ? -sortDir : 1, true);
+    });
+});
+try {
+    const [savedMode, savedDir] = (localStorage.getItem('fd-hub-sort') || 'name:1').split(':');
+    applySort(savedMode, Number(savedDir), false);
+} catch (e) { applySort('name', 1, false); }
+
+// Genre shelves vs one flat sorted list -- see the comment in render().
+function setGroup(mode, remember) {
+    groupByGenre = mode !== 'flat';
+    document.querySelectorAll('#groupmode .chip').forEach(b => b.classList.toggle('active', b.dataset.group === mode));
+    if (remember) { try { localStorage.setItem('fd-hub-group', mode); } catch (e) { } }
+    if (CATALOG) render();
+}
+document.querySelectorAll('#groupmode .chip').forEach(btn => {
+    btn.addEventListener('click', () => setGroup(btn.dataset.group, true));
+});
+try { setGroup(localStorage.getItem('fd-hub-group') === 'flat' ? 'flat' : 'genre', false); }
+catch (e) { setGroup('genre', false); }
+
 $('btn-rescan').addEventListener('click', async () => {
     const b = $('btn-rescan');
     b.disabled = true; b.textContent = '↻ Scanning…';
@@ -931,6 +1091,9 @@ load(false).catch(err => {
     $('bb-meta').innerHTML = esc(err.message)
         + '<br>Start the server with <code>node scripts/serve.js</code> and open this page over http://127.0.0.1, not from the file system.';
 });
+// Independent of the catalog load -- re-render once it lands so "Saved" flags
+// show up even if this resolves after the first paint.
+loadProjects().then(() => { if (CATALOG) render(); });
 </script>
 </body>
 </html>
