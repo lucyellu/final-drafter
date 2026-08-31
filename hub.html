@@ -335,6 +335,7 @@ body.modal-open { overflow: hidden; }
     <button class="chip" data-avail="dual">&#9889; Watch &amp; Read</button>
     <button class="chip" data-avail="film">&#127916; Films</button>
     <button class="chip" data-avail="script">&#128220; Screenplays</button>
+    <button class="chip" data-avail="book">&#128218; Books</button>
     <span id="chip-count"></span>
     <span id="viewmode">
         <button class="chip active" data-mode="tile" title="Colour tiles, with the screenplay's title page showing through">&#9638; Tiles</button>
@@ -554,19 +555,24 @@ function setSpotlight(item) {
 
     $('bb-title').textContent = item.title;
 
+    const isBook = script && script.kind === 'book';
+
     const bits = [];
     if (video) bits.push('<b>' + esc(fmtSize(video.size)) + '</b> film');
     if (item.videos && item.videos.length > 1) bits.push(item.videos.length + ' files');
-    if (script) bits.push('<b>' + esc(fmtSize(script.size)) + '</b> screenplay PDF');
+    if (script) bits.push('<b>' + esc(fmtSize(script.size)) + '</b> ' + (isBook ? 'book' : 'screenplay PDF'));
     $('bb-meta').innerHTML = bits.join(' &nbsp;·&nbsp; ');
 
     const files = [];
-    if (script) files.push('<div><span class="fl">SCRIPT</span> ' + esc(baseName(script.path)) + '</div>');
+    if (script) files.push('<div><span class="fl">' + (isBook ? 'BOOK&nbsp;&nbsp;' : 'SCRIPT') + '</span> ' + esc(baseName(script.path)) + '</div>');
     if (video) files.push('<div><span class="fl">FILM&nbsp;&nbsp;</span> ' + esc(baseName(video.path)) + '</div>');
     $('bb-files').innerHTML = files.join('');
 
     const acts = [];
-    if (script && video) {
+    // A book isn't screenplay-formatted, so it never goes into the Final
+    // Drafter script editor -- the dual workspace stays screenplay-only, and
+    // a matched book gets its own "Open book" action instead.
+    if (script && video && !isBook) {
         acts.push('<button class="btn primary" onclick="openDual(currentItem())">⚡ Open Dual Workspace</button>');
     }
     if (video) {
@@ -577,7 +583,11 @@ function setSpotlight(item) {
         }
     }
     if (script) {
-        acts.push('<button class="btn" onclick="openScriptOnly(currentItem().scripts[0].path, currentItem().title)">📜 Read screenplay</button>');
+        if (isBook) {
+            acts.push('<button class="btn" onclick="openExternal(currentItem().scripts[0].path)">📖 Open book</button>');
+        } else {
+            acts.push('<button class="btn" onclick="openScriptOnly(currentItem().scripts[0].path, currentItem().title)">📜 Read screenplay</button>');
+        }
     }
     if (item.videos && item.videos.length > 1) {
         acts.push('<button class="btn" onclick="showEpisodes(currentItem())">🎞 All ' + item.videos.length + ' files</button>');
@@ -595,28 +605,39 @@ function cardHtml(item) {
     const video = item.videos && item.videos[0];
     const play = video && video.play ? video.play : null;
 
+    const isBook = script && script.kind === 'book';
+
     const flags = [];
     if (script && video) flags.push('<span class="flag matched">Dual</span>');
-    else if (script) flags.push('<span class="flag">Script</span>');
+    else if (script) flags.push('<span class="flag">' + (isBook ? 'Book' : 'Script') + '</span>');
     else if (video) flags.push('<span class="flag">Film</span>');
     if (play && play.level === 'external') flags.push('<span class="flag warn">' + esc((video.name.split('.').pop() || '').toUpperCase()) + '</span>');
     const fileCount = item.fileCount || item.videos.length;
     if (fileCount > 1) flags.push('<span class="flag">' + fileCount + (item.kind === 'series' ? ' eps' : ' files') + '</span>');
 
     const actions = [];
-    if (script && video) actions.push('<button class="mini primary" onclick="event.stopPropagation(); openByUid(\'' + item._uid + '\')">⚡ Dual</button>');
+    if (script && video) {
+        // A book can't drive the synced dual editor -- offer Play and Open
+        // as two plain actions instead of the combined workspace button.
+        if (isBook) actions.push('<button class="mini" onclick="event.stopPropagation(); openVideoByUid(\'' + item._uid + '\')">▶ Play</button>');
+        else actions.push('<button class="mini primary" onclick="event.stopPropagation(); openByUid(\'' + item._uid + '\')">⚡ Dual</button>');
+    }
     if (video && !(script && video)) {
         if (play && play.level === 'external') actions.push('<button class="mini" onclick="event.stopPropagation(); openExternalByUid(\'' + item._uid + '\')">▶ Player</button>');
         else actions.push('<button class="mini" onclick="event.stopPropagation(); openVideoByUid(\'' + item._uid + '\')">▶ Play</button>');
     }
-    if (script && !(script && video)) actions.push('<button class="mini" onclick="event.stopPropagation(); openScriptByUid(\'' + item._uid + '\')">📜 Read</button>');
+    if (script && !(script && video)) {
+        if (isBook) actions.push('<button class="mini" onclick="event.stopPropagation(); openExternalScriptByUid(\'' + item._uid + '\')">📖 Open</button>');
+        else actions.push('<button class="mini" onclick="event.stopPropagation(); openScriptByUid(\'' + item._uid + '\')">📜 Read</button>');
+    }
 
     // Cover mode prefers real artwork; where there is none it falls back to
     // the screenplay's own title page, untinted, which is the closest thing
     // to a cover the library actually holds. Only with neither does it drop
-    // back to the colour tile.
+    // back to the colour tile. Posters render via pdf.js, so only a real PDF
+    // qualifies -- an EPUB/TXT/MD book falls straight to the colour tile.
     const cover = coverMode && item.poster ? item.poster : '';
-    const pdfPoster = cover ? '' : (script ? script.path : '');
+    const pdfPoster = cover ? '' : (script && /\.pdf$/i.test(script.path) ? script.path : '');
     const bare = coverMode && !cover && !pdfPoster;
 
     return '<div class="card' + (cover ? ' has-cover' : '') + '" data-uid="' + item._uid + '" data-poster="' + esc(pdfPoster) + '" onclick="selectByUid(\'' + item._uid + '\')" title="' + esc(item.title) + '">'
@@ -645,6 +666,7 @@ function openByUid(uid) { const i = byUid.get(uid); if (i) openDual(i); }
 function openVideoByUid(uid) { const i = byUid.get(uid); if (i) openVideoOnly(i.videos[0].path, i.title); }
 function openScriptByUid(uid) { const i = byUid.get(uid); if (i) openScriptOnly(i.scripts[0].path, i.title); }
 function openExternalByUid(uid) { const i = byUid.get(uid); if (i) openExternal(i.videos[0].path); }
+function openExternalScriptByUid(uid) { const i = byUid.get(uid); if (i) openExternal(i.scripts[0].path); }
 
 // -------------------------------------------------------------- episodes
 function showEpisodes(item) {
@@ -712,7 +734,7 @@ function availabilityOf(item) {
     const v = item.videos && item.videos.length;
     if (s && v) return 'dual';
     if (v) return 'film';
-    return 'script';
+    return (s && item.scripts[0].kind === 'book') ? 'book' : 'script';
 }
 
 function visible(item) {
@@ -721,15 +743,16 @@ function visible(item) {
 }
 
 function rowSub(items) {
-    let d = 0, f = 0, sc = 0;
+    let d = 0, f = 0, sc = 0, bk = 0;
     for (const i of items) {
         const a = availabilityOf(i);
-        if (a === 'dual') d++; else if (a === 'film') f++; else sc++;
+        if (a === 'dual') d++; else if (a === 'film') f++; else if (a === 'book') bk++; else sc++;
     }
     const bits = [items.length + (items.length === 1 ? ' title' : ' titles')];
     if (d) bits.push(d + ' with both');
     if (f) bits.push(f + (f === 1 ? ' film' : ' films'));
     if (sc) bits.push(sc + (sc === 1 ? ' screenplay' : ' screenplays'));
+    if (bk) bits.push(bk + (bk === 1 ? ' book' : ' books'));
     return bits.join(' · ');
 }
 
@@ -750,7 +773,7 @@ function allItems(c) {
         title: x.title, year: x.year, kind: 'film',
         genres: x.genres || [], poster: x.poster,
         videos: [],
-        scripts: [{ path: x.path, name: x.name, size: x.size, episode: null }],
+        scripts: [{ path: x.path, name: x.name, size: x.size, episode: null, kind: x.kind }],
     }, 's' + i)));
     return out;
 
@@ -813,9 +836,11 @@ function render() {
 
     $('footer-counts').textContent =
         c.counts.matched + ' paired · ' + c.counts.videoTitles + ' film titles · '
-        + c.counts.scripts + ' screenplays · ' + (c.counts.untagged || 0) + ' untagged'
+        + c.counts.scripts + ' screenplays · ' + (c.counts.books || 0) + ' books · '
+        + (c.counts.untagged || 0) + ' untagged'
         + ' · scanned ' + new Date(c.generatedAt).toLocaleString();
-    $('footer-scripts-root').textContent = c.roots.scripts;
+    $('footer-scripts-root').textContent = c.roots.scripts
+        + (c.roots.books ? ' + ' + c.roots.books.length + ' book folder(s)' : '');
     $('footer-videos-root').textContent = c.roots.videos;
 }
 

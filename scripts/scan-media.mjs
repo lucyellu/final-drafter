@@ -22,6 +22,17 @@ const OUT = path.join(ROOT, 'media-catalog.json');
 const SCRIPT_ROOT = 'L:\\Media\\Text\\Screenplays';
 const VIDEO_ROOT = 'L:\\Media\\Video';
 
+// General text -- prose books, illustrated guides, papers -- kept apart from
+// SCRIPT_ROOT because it isn't screenplay-formatted: matched titles still
+// pair with a video by name/year like a script would, but the hub opens them
+// externally instead of loading them into the screenplay editor.
+const BOOK_ROOTS = [
+    'L:\\Media\\Text\\Books',
+    'L:\\Media\\Text\\Illustrated',
+    'L:\\Media\\Text\\Papers',
+];
+const BOOK_EXT = new Set(['.pdf', '.epub', '.txt', '.md']);
+
 const VIDEO_EXT = new Set(['.mkv', '.mp4', '.avi', '.m4v', '.webm', '.mov']);
 
 // Release-scene noise. Most of it sits after the year and is cut away with it;
@@ -147,6 +158,58 @@ function scanScripts() {
                 year,
                 episode: extractEpisode(base),
                 key: matchKey(title),
+                kind: 'screenplay',
+            };
+        })
+        .filter(s => s.key.length >= 3);
+}
+
+// ------------------------------------------------------------------- books
+// Junk filenames that ride along in scanned book folders -- torrent notes,
+// donation pleas, readmes -- which would otherwise show up as bogus "titles".
+const JUNK_BOOK_NAME = /torrent|please\s*(support|consider)|donation|audiobook|^read\s*me\b|^readme$|^notes$|^info$|www\.[a-z0-9-]+\.(com|eu|online|net)/i;
+
+function walkBooks(dir, out) {
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
+    for (const e of entries) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) { walkBooks(p, out); continue; }
+        const ext = path.extname(e.name).toLowerCase();
+        if (!BOOK_EXT.has(ext)) continue;
+        const base = e.name.replace(/\.[^.]+$/, '');
+        if (JUNK_BOOK_NAME.test(base)) continue;
+        out.push({ path: p, name: e.name, parent: path.basename(dir) });
+    }
+    return out;
+}
+
+// Books arrive as "Title by Author.epub" or "Title (Year).pdf" -- the
+// screenplays' release-noise stripping still helps, but there is no
+// SCRIPT_ROOT-style "one flat folder" to lean on, so titles come straight off
+// the filename, falling back to the parent folder for a generic name like
+// "book.epub" sitting inside "Some Title/".
+function scanBooks() {
+    const files = BOOK_ROOTS.flatMap(root => walkBooks(root, []));
+    return files
+        .map(f => {
+            let base = f.name.replace(/\.[^.]+$/, '');
+            if (['book', 'index', 'main', 'text', 'document'].includes(base.toLowerCase())) {
+                base = f.parent;
+            }
+            let { title, year } = normalizeTitle(base);
+            let size = 0;
+            try { size = fs.statSync(f.path).size; } catch { }
+            return {
+                file: f.name,
+                path: f.path,
+                size,
+                rawTitle: base,
+                title: stripEpisodeCode(title),
+                year,
+                episode: extractEpisode(base),
+                key: matchKey(title),
+                kind: 'book',
             };
         })
         .filter(s => s.key.length >= 3);
@@ -253,19 +316,23 @@ function slug(s) {
 
 // --------------------------------------------------------------------- build
 const scripts = scanScripts();
+const books = scanBooks();
+const texts = scripts.concat(books);
 const videos = scanVideos();
 
 const yearsAgree = (a, b) => a == null || b == null || Math.abs(a - b) <= 1;
 
+// Keyed by full path, not just the filename -- pooling screenplays with books
+// makes filename collisions ("index.epub" in two different folders) real.
 const usedScripts = new Set();
 const usedVideos = new Set();
 const items = [];
 
 for (const v of videos) {
-    const hits = scripts.filter(s => s.key === v.key && yearsAgree(s.year, v.year));
+    const hits = texts.filter(s => s.key === v.key && yearsAgree(s.year, v.year));
     if (!hits.length) continue;
 
-    hits.forEach(s => usedScripts.add(s.file));
+    hits.forEach(s => usedScripts.add(s.path));
     usedVideos.add(v.group);
 
     // A season folder paired with per-episode scripts: line each script up with
@@ -291,6 +358,7 @@ for (const v of videos) {
             name: s.file,
             size: s.size,
             episode: s.episode,
+            kind: s.kind,
         })),
     });
 }
@@ -299,19 +367,20 @@ items.sort((a, b) => a.title.localeCompare(b.title));
 
 const catalog = {
     generatedAt: new Date().toISOString(),
-    roots: { scripts: SCRIPT_ROOT, videos: VIDEO_ROOT },
+    roots: { scripts: SCRIPT_ROOT, books: BOOK_ROOTS, videos: VIDEO_ROOT },
     counts: {
         scripts: scripts.length,
+        books: books.length,
         videoTitles: videos.length,
         matched: items.length,
     },
     items,
     // Kept so the hub can offer a "what is missing its counterpart" view
     // without a second scan.
-    scriptOnly: scripts.filter(s => !usedScripts.has(s.file))
+    scriptOnly: texts.filter(s => !usedScripts.has(s.path))
         .map(s => ({
             title: titleCase(s.title), year: s.year, genres: genresFor(s.title),
-            name: s.file, path: s.path, size: s.size,
+            name: s.file, path: s.path, size: s.size, kind: s.kind,
         })),
     videoOnly: videos.filter(v => !usedVideos.has(v.group))
         .map(v => ({
@@ -340,6 +409,7 @@ stampPosters(catalog);
 fs.writeFileSync(OUT, JSON.stringify(catalog, null, 2));
 
 console.log('Screenplays: ' + catalog.counts.scripts);
+console.log('Books: ' + catalog.counts.books);
 console.log('Video titles: ' + catalog.counts.videoTitles);
 console.log('Matched IPs: ' + catalog.counts.matched);
 for (const it of items) {
@@ -352,7 +422,7 @@ console.log('Wrote ' + OUT);
 if (process.argv.includes('--report')) {
     console.log('\nUnmatched videos (' + catalog.videoOnly.length + '):');
     catalog.videoOnly.forEach(v => console.log('  ' + v.title + ' (' + v.year + ')'));
-    console.log('\nUnmatched scripts (' + catalog.scriptOnly.length + '):');
+    console.log('\nUnmatched scripts/books (' + catalog.scriptOnly.length + '):');
     catalog.scriptOnly.forEach(s => console.log('  ' + s.title + ' (' + s.year + ')'));
 
     console.log('');

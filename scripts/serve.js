@@ -18,14 +18,18 @@ const ROOT = path.resolve(__dirname, '..');
 const START_PORT = Number(process.argv[2]) || 8743;
 const MAX_PORT_ATTEMPTS = 20;
 
-// The Studio Hub (hub.html) reads screenplays and films that live outside the
-// repo, so those two folders -- and nothing else on the disk -- are readable
-// through /media. See serveMedia() for how a request is checked against them.
+// The Studio Hub (hub.html) reads screenplays, books, and films that live
+// outside the repo, so those folders -- and nothing else on the disk -- are
+// readable through /media. See serveMedia() for how a request is checked
+// against them. Keep in sync with SCRIPT_ROOT/BOOK_ROOTS in scan-media.mjs.
 const MEDIA_ROOTS = [
     'L:\\Media\\Text\\Screenplays',
+    'L:\\Media\\Text\\Books',
+    'L:\\Media\\Text\\Illustrated',
+    'L:\\Media\\Text\\Papers',
     'L:\\Media\\Video',
 ];
-const MEDIA_EXT = new Set(['.pdf', '.mkv', '.mp4', '.avi', '.m4v', '.webm', '.mov', '.srt', '.vtt']);
+const MEDIA_EXT = new Set(['.pdf', '.epub', '.txt', '.md', '.mkv', '.mp4', '.avi', '.m4v', '.webm', '.mov', '.srt', '.vtt']);
 const CATALOG_FILE = path.join(ROOT, 'media-catalog.json');
 const SCANNER = path.join(ROOT, 'scripts', 'scan-media.mjs');
 // Nothing in this single-file app fetches anything from the server after

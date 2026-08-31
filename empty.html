@@ -333,6 +333,46 @@
             scrollbar-width: none;
         }
         #action-ribbon::-webkit-scrollbar { display: none; }
+        #action-ribbon.hidden, #action-ribbon.clean-hidden { display: none; }
+
+        .shelf-tabs {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+            padding-right: 8px;
+            margin-right: 4px;
+            border-right: 1px solid var(--color-border);
+        }
+        .shelf-tabs.hidden { display: none; }
+        .shelf-tab {
+            background: transparent;
+            border: 1px solid var(--color-border);
+            color: var(--color-text-dim);
+            padding: 4px 10px;
+            border-radius: 9999px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 600;
+            font-family: var(--font-body);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .shelf-tab.active {
+            background: var(--color-accent);
+            border-color: var(--color-accent);
+            color: var(--color-on-accent);
+        }
+        .shelf-tab.hidden { display: none; }
+
+        .shelf-content {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .shelf-content.active {
+            display: flex;
+        }
 
         .ribbon-group {
             display: flex;
@@ -405,6 +445,18 @@
         .dropdown div:hover {
             background: var(--color-chrome-active);
             color: var(--color-accent-vivid);
+        }
+        .dropdown div.active {
+            color: var(--color-accent-vivid);
+            font-weight: 700;
+        }
+        .dropdown-check {
+            visibility: hidden;
+            margin-left: 16px;
+            color: var(--color-accent-vivid);
+        }
+        .dropdown div.active .dropdown-check {
+            visibility: visible;
         }
 
         .toolbar {
@@ -1285,13 +1337,11 @@
         }
         .doc-pane.hidden { display: none !important; }
 
-        /* Clean Panel View: Hides panel headers & all internal toolbars/control strips for pure content viewing */
+        /* Clean Panel View: Hides panel headers & remaining in-pane control strips for
+           pure content viewing. Panel toolbars now live in the action-ribbon shelf
+           (hidden separately -- see FDPanels.syncCleanPanelsState()). */
         #editor-wrapper.clean-panel-view .pane-header,
-        #editor-wrapper.clean-panel-view .storyboard-toolbar,
-        #editor-wrapper.clean-panel-view .media-source-bar,
-        #editor-wrapper.clean-panel-view .media-controls-bar,
         #editor-wrapper.clean-panel-view .media-bookmarks-bar,
-        #editor-wrapper.clean-panel-view .ref-category-bar,
         #editor-wrapper.clean-panel-view .hub-sub-header {
             display: none !important;
         }
@@ -3578,12 +3628,36 @@
                         <div onclick="setLayoutMode('quad-4')"><span>4-Pane Quad Studio</span></div>
                     </div>
                 </div>
-                <button id="view-btn-hub" onclick="togglePanelType('studio-hub')" title="Show/hide Netflix-style Studio Catalog Hub">📺 Studio Hub</button>
-                <button id="view-btn-media" onclick="togglePanelType('media-player')" title="Show/hide Video & Live Action player">🎬 Video</button>
-                <button id="view-btn-storyboard" onclick="togglePanelType('storyboard')" title="Show/hide Storyboards & Visual Beats">🎨 Storyboards</button>
-                <button id="view-btn-references" onclick="togglePanelType('reference-board')" title="Show/hide Moodboard & References">📌 References</button>
-                <button id="view-btn-exact" onclick="togglePane('exact')" title="Show/hide Screenplay Print view">🖨️ Print</button>
-                <button id="view-btn-editable" onclick="togglePane('editable')" title="Show/hide the editable screenplay">📝 Edit</button>
+                <div class="menu-item mode-menu-btn" tabindex="0" title="Switch script view mode — also swaps the toolbar shelf below to match" style="padding: 3px 10px; font-size: 0.76rem;">
+                    <span>🎛️ Mode</span>
+                    <span style="font-size: 0.65rem; opacity: 0.7;">▼</span>
+                    <div class="dropdown" style="min-width: 210px;">
+                        <div id="view-btn-editable" onclick="togglePane('editable')" title="Show/hide the editable screenplay" style="display:flex; align-items:center; justify-content:space-between;">
+                            <span>📝 Edit</span><span class="dropdown-check">✓</span>
+                        </div>
+                        <div id="view-btn-exact" onclick="togglePane('exact')" title="Show/hide Screenplay Print view" style="display:flex; align-items:center; justify-content:space-between;">
+                            <span>🖨️ Print</span><span class="dropdown-check">✓</span>
+                        </div>
+                        <div id="view-btn-media" onclick="togglePanelType('media-player')" title="Show/hide Video & Live Action player" style="display:flex; align-items:center; justify-content:space-between;">
+                            <span>🎬 Video</span><span class="dropdown-check">✓</span>
+                        </div>
+                        <div id="view-btn-storyboard" onclick="togglePanelType('storyboard')" title="Show/hide Storyboards & Visual Beats" style="display:flex; align-items:center; justify-content:space-between;">
+                            <span>🎨 Storyboards</span><span class="dropdown-check">✓</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="menu-item panels-menu-btn" tabindex="0" title="Show or hide panels" style="padding: 3px 10px; font-size: 0.76rem;">
+                    <span>👁️ Panels</span>
+                    <span style="font-size: 0.65rem; opacity: 0.7;">▼</span>
+                    <div class="dropdown" style="min-width: 210px;">
+                        <div id="view-btn-hub" onclick="togglePanelType('studio-hub')" title="Show/hide Netflix-style Studio Catalog Hub" style="display:flex; align-items:center; justify-content:space-between;">
+                            <span>📺 Studio Hub</span><span class="dropdown-check">✓</span>
+                        </div>
+                        <div id="view-btn-references" onclick="togglePanelType('reference-board')" title="Show/hide Moodboard & References" style="display:flex; align-items:center; justify-content:space-between;">
+                            <span>📌 References</span><span class="dropdown-check">✓</span>
+                        </div>
+                    </div>
+                </div>
                 <button id="view-btn-clean-panels" onclick="FDPanels.toggleCleanPanels()" title="Hide panel menu headers for an unimpeded view of panel contents (Alt+Z)">👁️ Clean Panels</button>
                 <button id="view-btn-sync" onclick="syncPanes()" title="Highlight the matching line in both script panes — and, with a film loaded in the Video panel, seek it to the same spot (Ctrl+M)">Match ⇔</button>
                 <button id="view-btn-swap" onclick="swapPanes()" title="Swap the left and right panes">⇄</button>
@@ -3623,51 +3697,234 @@
         </div>
     </div>
 
-    <!-- Tier 2 Action Ribbon: Block Formats + Highlighter + Variations -->
+    <!-- Tier 2 Action Ribbon: every panel type gets its own tool "shelf" here; tabs
+         appear for whichever panels are open and switch which shelf shows -- Maya-style
+         shelves. See FDPanels.SHELF_TYPES / updateActionRibbon() / setActiveShelf(). -->
     <div id="action-ribbon">
-        <div class="toolbar" id="format-toolbar">
-            <button data-type="scene-heading" title="Scene Heading (INT. / EXT.)">Scene Heading</button>
-            <button data-type="action" title="Action / Description">Action</button>
-            <button data-type="character" title="Character Cue">Character</button>
-            <button data-type="dialogue" title="Dialogue Block">Dialogue</button>
-            <button data-type="parenthetical" title="Parenthetical Direction">Parenthetical</button>
-            <button data-type="transition" title="Transition (CUT TO:, FADE IN:)">Transition</button>
+        <div id="shelf-tabs" class="shelf-tabs hidden">
+            <button class="shelf-tab active" data-shelf="script-edit" onclick="FDPanels.setActiveShelf('script-edit')">📜 Screenplay</button>
+            <button class="shelf-tab" data-shelf="studio-hub" onclick="FDPanels.setActiveShelf('studio-hub')">📺 Studio Hub</button>
+            <button class="shelf-tab" data-shelf="media-player" onclick="FDPanels.setActiveShelf('media-player')">🎬 Video</button>
+            <button class="shelf-tab" data-shelf="storyboard" onclick="FDPanels.setActiveShelf('storyboard')">🎨 Storyboards</button>
+            <button class="shelf-tab" data-shelf="reference-board" onclick="FDPanels.setActiveShelf('reference-board')">📌 References</button>
+            <button class="shelf-tab" data-shelf="script-render" onclick="FDPanels.setActiveShelf('script-render')">🖨️ Print</button>
         </div>
 
-        <div class="ribbon-divider"></div>
+        <div id="shelf-script-edit" class="shelf-content active">
+            <div class="toolbar" id="format-toolbar">
+                <button data-type="scene-heading" title="Scene Heading (INT. / EXT.)">Scene Heading</button>
+                <button data-type="action" title="Action / Description">Action</button>
+                <button data-type="character" title="Character Cue">Character</button>
+                <button data-type="dialogue" title="Dialogue Block">Dialogue</button>
+                <button data-type="parenthetical" title="Parenthetical Direction">Parenthetical</button>
+                <button data-type="transition" title="Transition (CUT TO:, FADE IN:)">Transition</button>
+            </div>
 
-        <div class="ribbon-group">
-            <div class="hl-tool" id="hl-tool">
-                <button id="btn-highlighter" class="hl-tool-btn" onclick="toggleHighlighterTool()"
-                        title="Highlighter (Alt+H) — arm it, then select text or click a block or scene to color it permanently. Right-click any highlight, any time, to delete just that one. Click again, or Esc, to put the tool away.">🖍️ Highlight</button>
-                <div id="hl-popover" class="hl-popover hidden">
-                    <div class="hl-swatches">
-                        <button class="hl-swatch" style="background:#fff176" title="Yellow" onclick="setHighlighterColor('#fff176')"></button>
-                        <button class="hl-swatch" style="background:#a5d6a7" title="Green" onclick="setHighlighterColor('#a5d6a7')"></button>
-                        <button class="hl-swatch" style="background:#90caf9" title="Blue" onclick="setHighlighterColor('#90caf9')"></button>
-                        <button class="hl-swatch" style="background:#f48fb1" title="Pink" onclick="setHighlighterColor('#f48fb1')"></button>
-                        <button class="hl-swatch" style="background:#ffcc80" title="Orange" onclick="setHighlighterColor('#ffcc80')"></button>
-                        <button class="hl-swatch" style="background:#ce93d8" title="Purple" onclick="setHighlighterColor('#ce93d8')"></button>
-                        <input type="color" id="hl-custom-color" class="hl-custom" title="Custom color" value="#fff176" oninput="setHighlighterColor(this.value)">
-                        <button class="hl-swatch hl-eraser" title="Remove highlight" onclick="setHighlighterColor(null)">✕</button>
+            <div class="ribbon-divider"></div>
+
+            <div class="ribbon-group">
+                <div class="hl-tool" id="hl-tool">
+                    <button id="btn-highlighter" class="hl-tool-btn" onclick="toggleHighlighterTool()"
+                            title="Highlighter (Alt+H) — arm it, then select text or click a block or scene to color it permanently. Right-click any highlight, any time, to delete just that one. Click again, or Esc, to put the tool away.">🖍️ Highlight</button>
+                    <div id="hl-popover" class="hl-popover hidden">
+                        <div class="hl-swatches">
+                            <button class="hl-swatch" style="background:#fff176" title="Yellow" onclick="setHighlighterColor('#fff176')"></button>
+                            <button class="hl-swatch" style="background:#a5d6a7" title="Green" onclick="setHighlighterColor('#a5d6a7')"></button>
+                            <button class="hl-swatch" style="background:#90caf9" title="Blue" onclick="setHighlighterColor('#90caf9')"></button>
+                            <button class="hl-swatch" style="background:#f48fb1" title="Pink" onclick="setHighlighterColor('#f48fb1')"></button>
+                            <button class="hl-swatch" style="background:#ffcc80" title="Orange" onclick="setHighlighterColor('#ffcc80')"></button>
+                            <button class="hl-swatch" style="background:#ce93d8" title="Purple" onclick="setHighlighterColor('#ce93d8')"></button>
+                            <input type="color" id="hl-custom-color" class="hl-custom" title="Custom color" value="#fff176" oninput="setHighlighterColor(this.value)">
+                            <button class="hl-swatch hl-eraser" title="Remove highlight" onclick="setHighlighterColor(null)">✕</button>
+                        </div>
+                    </div>
+                </div>
+                <button id="btn-toggle-highlights" onclick="toggleHighlightsVisibility()"
+                        title="Hide all permanent highlights (doesn't delete them)">👁 Highlights</button>
+                <button id="btn-deselect-highlights" onclick="deselectAllHighlights()"
+                        title="Clear every Navigator highlight -- character/location word marks and open scenes (Ctrl+D)">Deselect All</button>
+                <button id="btn-toggle-stacks" onclick="toggleStacksVisibility()"
+                        title="Hide the variation tint/markers in the script (doesn't delete them)">👁 Variations</button>
+            </div>
+
+            <div class="ribbon-divider"></div>
+
+            <div class="ribbon-group">
+                <button id="btn-add-variation" onclick="addVariation()"
+                        title="Add a variation (Ctrl+Shift+V)&#10;Nothing selected: varies the scene the cursor is in.&#10;Text selected: varies exactly that passage."><span class="stack-glyph"></span>+ Variation</button>
+                <button id="btn-open-deck" onclick="toggleDeckAtCursor()" disabled
+                        title="Fan out the stack the cursor is in"><span class="stack-glyph"></span><span id="btn-deck-count">0</span></button>
+            </div>
+        </div>
+
+        <div id="shelf-studio-hub" class="shelf-content">
+            <div class="ribbon-group">
+                <button onclick="FDStudioHub.loadCatalog().then(() => FDStudioHub.render())"
+                        title="Re-scan the library folders and refresh the catalog">🔄 Refresh Catalog</button>
+                <button onclick="window.open('hub.html', '_blank')"
+                        title="Open the full-screen Studio Library in a new tab">📺 Open Full Library</button>
+            </div>
+        </div>
+
+        <div id="shelf-media-player" class="shelf-content">
+            <div class="media-source-bar">
+                <button class="media-btn" onclick="document.getElementById('media-file-input').click()" title="Open a local video/movie file (MP4, WebM, MOV, MKV)">
+                    📁 Open Video File
+                </button>
+                <input type="file" id="media-file-input" style="display:none;" accept="video/*,audio/*" onchange="FDMediaPlayer.handleFileSelect(event)">
+
+                <input type="text" id="media-url-input" class="media-url-input" placeholder="Paste YouTube link or video URL..." onkeydown="if(event.key==='Enter')FDMediaPlayer.loadFromInput()">
+                <button class="media-btn" onclick="FDMediaPlayer.loadFromInput()">▶ Load URL</button>
+                <span id="media-source-badge" style="font-size:0.72rem; font-weight:700; color:var(--color-accent); margin-left:auto; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:200px;">No Media Loaded</span>
+            </div>
+
+            <div class="media-controls-bar">
+                <div class="media-scrubber-row">
+                    <input type="range" id="media-scrubber" class="media-scrubber" min="0" max="100" step="0.01" value="0" oninput="FDMediaPlayer.onScrubInput(this.value)" onchange="FDMediaPlayer.onScrubChange(this.value)">
+                    <div class="media-timecode" id="media-timecode">00:00:00.00 / 00:00:00.00</div>
+                </div>
+                <div class="media-buttons-row">
+                    <div class="media-btn-group">
+                        <button class="media-btn" id="media-play-btn" onclick="FDMediaPlayer.togglePlay()" title="Play/Pause (Space)">▶ Play</button>
+                        <button class="media-btn" onclick="FDMediaPlayer.stepFrame(-1)" title="Step back 1 frame">◀ -1f</button>
+                        <button class="media-btn" onclick="FDMediaPlayer.stepSeconds(-1)" title="Step back 1 sec">◀ -1s</button>
+                        <button class="media-btn" onclick="FDMediaPlayer.stepSeconds(1)" title="Step forward 1 sec">+1s ▶</button>
+                        <button class="media-btn" onclick="FDMediaPlayer.stepFrame(1)" title="Step forward 1 frame">+1f ▶</button>
+                    </div>
+
+                    <div class="media-btn-group">
+                        <span style="font-size:0.72rem; color:var(--color-text-dim);">Speed:</span>
+                        <select class="shot-spec-select" id="media-speed-select" onchange="FDMediaPlayer.setSpeed(this.value)">
+                            <option value="0.25">0.25x</option>
+                            <option value="0.5">0.5x</option>
+                            <option value="0.75">0.75x</option>
+                            <option value="1" selected>1.0x</option>
+                            <option value="1.25">1.25x</option>
+                            <option value="1.5">1.5x</option>
+                            <option value="2">2.0x</option>
+                        </select>
+                        <button class="media-btn" onclick="FDMediaPlayer.toggleFullscreen()" title="Fullscreen Video">⛶</button>
+                    </div>
+
+                    <div class="media-btn-group">
+                        <span style="font-size:0.72rem; color:var(--color-text-dim);">Match ⇔:</span>
+                        <button class="media-btn" onclick="FDMediaPlayer.tagActiveScene()" title="Pin this frame to the script line you're on. Two pins calibrate the whole script — everything in between is interpolated.">📌 Pin Sync Point</button>
+                        <button class="media-btn" onclick="FDMediaPlayer.matchScriptHere()" title="Jump the script to whatever the film is showing right now (Ctrl+M with the player focused)">⇔ Match Script</button>
+                        <button class="media-btn" id="media-follow-btn" onclick="FDMediaPlayer.toggleFollow()" title="Keep the script scrolling along with the film as it plays">🔗 Follow</button>
+                        <button class="media-btn" id="media-link-btn" onclick="FDMediaPlayer.toggleMatchLink()" title="Whether Match ⇔ involves the film at all">🔗 Linked</button>
+                    </div>
+
+                    <div class="media-btn-group">
+                        <span style="font-size:0.72rem; color:var(--color-text-dim);">Subs:</span>
+                        <input type="file" id="media-sub-input" style="display:none;" accept=".srt,.vtt,.sbv,.txt" onchange="FDMediaPlayer.handleSubtitleSelect(event)">
+                        <button class="media-btn" onclick="document.getElementById('media-sub-input').click()" title="Open this cut's subtitle file (.srt or .vtt). Every line it contains gets matched against the script's dialogue — or just drop the file on the video.">💬 Load Subtitles</button>
+                        <button class="media-btn" id="media-cc-btn" onclick="FDMediaPlayer.toggleSubtitles()" title="Show or hide subtitles over the film">CC</button>
+                        <button class="media-btn" id="media-align-btn" onclick="FDMediaPlayer.alignSubtitles()" title="Match every subtitle line against the script's dialogue and recalibrate from whatever lines up">⚡ Align to Script</button>
+                        <input type="text" id="media-line-search" class="media-line-search" placeholder="Find a line…" onkeydown="if(event.key==='Enter')FDMediaPlayer.findLine()" title="Type a line of dialogue — near enough will do — to jump both the film and the script to it">
                     </div>
                 </div>
             </div>
-            <button id="btn-toggle-highlights" onclick="toggleHighlightsVisibility()"
-                    title="Hide all permanent highlights (doesn't delete them)">👁 Highlights</button>
-            <button id="btn-deselect-highlights" onclick="deselectAllHighlights()"
-                    title="Clear every Navigator highlight -- character/location word marks and open scenes (Ctrl+D)">Deselect All</button>
-            <button id="btn-toggle-stacks" onclick="toggleStacksVisibility()"
-                    title="Hide the variation tint/markers in the script (doesn't delete them)">👁 Variations</button>
         </div>
 
-        <div class="ribbon-divider"></div>
+        <div id="shelf-storyboard" class="shelf-content">
+            <div class="storyboard-toolbar">
+                <div class="storyboard-toolbar-group">
+                    <button class="media-btn" onclick="FDStoryboard.autoPopulateFromScript()" title="Scan script scene headings and generate storyboard shot cards for each scene">
+                        ⚡ Auto-Populate from Script
+                    </button>
+                    <button class="media-btn" onclick="FDStoryboard.addNewShot()" title="Add a new custom shot card">
+                        + Add Shot
+                    </button>
+                    <button class="media-btn" id="sb-batch-gen-btn" onclick="FDStoryboardBatch.open()" title="Open batch options: pick which shots, which provider, how fast — with live progress and a cancel button">
+                        ✨ Batch Generate
+                    </button>
+                    <button class="media-btn" id="sb-open-folder-btn" onclick="FDStoryboard.openStoryboardFolder()" title="Open the local folder where storyboard images are saved on your computer (final-drafter/storyboards)">
+                        📂 Open Folder
+                    </button>
+                </div>
+                <div class="storyboard-toolbar-group">
+                    <span style="font-size:0.72rem; color:var(--color-text-dim);">Aspect:</span>
+                    <div class="storyboard-view-pills" id="sb-aspect-pills" title="Reframes every shot card at once">
+                        <button class="sb-view-btn" data-ar="16:9" onclick="FDStoryboard.setAspectRatio('16:9')" title="16:9 Widescreen">16:9</button>
+                        <button class="sb-view-btn" data-ar="2.39:1" onclick="FDStoryboard.setAspectRatio('2.39:1')" title="2.39:1 Cinemascope">2.39:1</button>
+                        <button class="sb-view-btn" data-ar="4:3" onclick="FDStoryboard.setAspectRatio('4:3')" title="4:3 Classic">4:3</button>
+                        <button class="sb-view-btn" data-ar="1:1" onclick="FDStoryboard.setAspectRatio('1:1')" title="1:1 Square">1:1</button>
+                        <button class="sb-view-btn" data-ar="9:16" onclick="FDStoryboard.setAspectRatio('9:16')" title="9:16 Vertical">9:16</button>
+                    </div>
+                    <button class="media-btn" id="sb-reshoot-ar-btn" onclick="FDStoryboard.reshootAllAtAspect()" title="Re-generate every frame at the current aspect ratio">&#8635; Re-shoot all</button>
+                    <button class="media-btn" id="sb-fit-btn" onclick="FDStoryboard.toggleImageFit()" title="Fit: the whole frame is shown. Click for Fill.">&#9974; Fit</button>
+                    <span style="font-size:0.72rem; color:var(--color-text-dim);">Style:</span>
+                    <button class="media-btn" id="sb-style-btn" onclick="FDStyleLibrary.open()" title="Pick a look - directors &amp; cinematographers, graphic novelists, storyboard artists">&#127912; Cinematic 35mm</button>
+                    <div class="storyboard-toolbar-group" id="sb-card-size-group" style="display:inline-flex; align-items:center; gap:4px;" title="Adjust card size / density (how many shots fit on screen)">
+                        <span style="font-size:0.72rem; color:var(--color-text-dim);">Size:</span>
+                        <input type="range" id="sb-card-size-slider" class="sb-card-size-slider" min="60" max="480" step="5" value="60" oninput="FDStoryboard.setCardSize(this.value)">
+                        <span id="sb-card-size-label" style="font-size:0.7rem; color:var(--color-text-dim); min-width:32px;">60px</span>
+                    </div>
+                    <div class="storyboard-view-pills" id="sb-display-mode-pills">
+                        <button class="sb-view-btn" id="sb-view-full-btn" onclick="FDStoryboard.setDisplayMode('full')" title="Full View: Visual frames, specs, take tabs & beats">📋 Full</button>
+                        <button class="sb-view-btn active" id="sb-view-image-btn" onclick="FDStoryboard.setDisplayMode('image')" title="Image View: Pure visual frames & shot names">🖼️ Image</button>
+                        <button class="sb-view-btn" id="sb-view-text-btn" onclick="FDStoryboard.setDisplayMode('text')" title="Text View: Beat breakdown & shot specs (no images)">📝 Text</button>
+                    </div>
+                    <button class="media-btn" id="sb-view-mode-btn" onclick="FDStoryboard.toggleViewMode()" title="Toggle between Grid and Filmstrip view">
+                        ▤ Filmstrip
+                    </button>
+                </div>
+            </div>
+        </div>
 
-        <div class="ribbon-group">
-            <button id="btn-add-variation" onclick="addVariation()"
-                    title="Add a variation (Ctrl+Shift+V)&#10;Nothing selected: varies the scene the cursor is in.&#10;Text selected: varies exactly that passage."><span class="stack-glyph"></span>+ Variation</button>
-            <button id="btn-open-deck" onclick="toggleDeckAtCursor()" disabled
-                    title="Fan out the stack the cursor is in"><span class="stack-glyph"></span><span id="btn-deck-count">0</span></button>
+        <div id="shelf-script-render" class="shelf-content">
+            <div class="ribbon-group">
+                <span style="font-size:0.72rem; color:var(--color-text-dim);">Zoom:</span>
+                <input type="range" id="zoom-slider-print" min="20" max="200" value="100" style="width:140px" oninput="updateZoomPrint()">
+                <span id="zoom-val-print" style="font-size:0.72rem; color:var(--color-text-dim); min-width:32px;">100%</span>
+            </div>
+            <div class="ribbon-divider"></div>
+            <div class="ribbon-group">
+                <span style="font-size:0.72rem; color:var(--color-text-dim);">Scene numbers:</span>
+                <select class="shot-spec-select" id="scene-number-mode-print" onchange="setSceneNumberMode(this.value)" title="Prints into the left margin, e.g. S004.V002. Off by default — a script you send out usually shouldn't carry them.">
+                    <option value="off">Off</option>
+                    <option value="scene">Scene — S004</option>
+                    <option value="draft">Scene + variation — S004.V002</option>
+                </select>
+            </div>
+            <div class="ribbon-divider"></div>
+            <div class="ribbon-group">
+                <button class="media-btn" onclick="window.print()" title="Print or Export as PDF">🖨️ Export as PDF</button>
+                <button class="media-btn" onclick="exportMD()">📝 Export as Markdown</button>
+                <button class="media-btn" onclick="exportTXT()">📑 Export as Text</button>
+            </div>
+        </div>
+
+        <div id="shelf-reference-board" class="shelf-content">
+            <div class="ref-category-bar">
+                <div class="ref-category-pills">
+                    <button class="ref-cat-btn active" onclick="FDReferences.setCategory('all')">All</button>
+                    <button class="ref-cat-btn" onclick="FDReferences.setCategory('characters')">Characters</button>
+                    <button class="ref-cat-btn" onclick="FDReferences.setCategory('locations')">Locations</button>
+                    <button class="ref-cat-btn" onclick="FDReferences.setCategory('lighting')">Lighting &amp; Color</button>
+                    <button class="ref-cat-btn" onclick="FDReferences.setCategory('costumes')">Costumes</button>
+                    <button class="ref-cat-btn" onclick="FDReferences.setCategory('directing')">Directing Notes</button>
+                    <button class="ref-cat-btn" onclick="FDReferences.setCategory('pinterest')">📌 Pinterest</button>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <button class="media-btn" onclick="document.getElementById('ref-file-input').click()" title="Upload image reference file">
+                        🖼️ + Image
+                    </button>
+                    <input type="file" id="ref-file-input" style="display:none;" accept="image/*" multiple onchange="FDReferences.handleImageUpload(event)">
+                    <button class="media-btn" onclick="FDReferences.promptAddPinterest()" title="Link a Pinterest board or pin share URL">
+                        📌 + Pinterest
+                    </button>
+                    <button class="media-btn" onclick="FDReferences.promptAddLink()" title="Add reference from URL (ArtStation, YouTube, web page, image URL)">
+                        🔗 + Link
+                    </button>
+                    <button class="media-btn" onclick="FDReferences.promptAddPalette()" title="Generate color palette swatch">
+                        🎨 + Palette
+                    </button>
+                    <button class="media-btn" onclick="FDReferences.promptAddNote()" title="Add directing note">
+                        📝 + Note
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -3857,17 +4114,6 @@
             <!-- 4. Video & Live Action Media Player Component -->
             <div id="component-media-player" class="panel-content-view">
                 <div class="media-player-container" id="media-player-container">
-                    <div class="media-source-bar">
-                        <button class="media-btn" onclick="document.getElementById('media-file-input').click()" title="Open a local video/movie file (MP4, WebM, MOV, MKV)">
-                            📁 Open Video File
-                        </button>
-                        <input type="file" id="media-file-input" style="display:none;" accept="video/*,audio/*" onchange="FDMediaPlayer.handleFileSelect(event)">
-                        
-                        <input type="text" id="media-url-input" class="media-url-input" placeholder="Paste YouTube link or video URL..." onkeydown="if(event.key==='Enter')FDMediaPlayer.loadFromInput()">
-                        <button class="media-btn" onclick="FDMediaPlayer.loadFromInput()">▶ Load URL</button>
-                        <span id="media-source-badge" style="font-size:0.72rem; font-weight:700; color:var(--color-accent); margin-left:auto; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:200px;">No Media Loaded</span>
-                    </div>
-
                     <div class="media-video-wrapper" id="media-video-wrapper" ondragover="FDMediaPlayer.onDragOver(event)" ondragleave="FDMediaPlayer.onDragLeave(event)" ondrop="FDMediaPlayer.onDrop(event)">
                         <div class="media-drop-zone" id="media-drop-zone">Drop a movie here — or a subtitle file (.srt / .vtt) to match it to the script</div>
                         <video id="media-html5-video" controlsList="nodownload" playsinline ontimeupdate="FDMediaPlayer.onTimeUpdate()" onloadedmetadata="FDMediaPlayer.onLoadedMetadata()"><track id="media-sub-track" kind="subtitles" srclang="en" label="Subtitles"></video>
@@ -3880,53 +4126,6 @@
                             <button class="media-btn" onclick="document.getElementById('media-file-input').click()" style="margin-top: 6px; padding: 6px 14px; font-weight: 600;">
                                 Select Video File
                             </button>
-                        </div>
-                    </div>
-
-                    <div class="media-controls-bar">
-                        <div class="media-scrubber-row">
-                            <input type="range" id="media-scrubber" class="media-scrubber" min="0" max="100" step="0.01" value="0" oninput="FDMediaPlayer.onScrubInput(this.value)" onchange="FDMediaPlayer.onScrubChange(this.value)">
-                            <div class="media-timecode" id="media-timecode">00:00:00.00 / 00:00:00.00</div>
-                        </div>
-                        <div class="media-buttons-row">
-                            <div class="media-btn-group">
-                                <button class="media-btn" id="media-play-btn" onclick="FDMediaPlayer.togglePlay()" title="Play/Pause (Space)">▶ Play</button>
-                                <button class="media-btn" onclick="FDMediaPlayer.stepFrame(-1)" title="Step back 1 frame">◀ -1f</button>
-                                <button class="media-btn" onclick="FDMediaPlayer.stepSeconds(-1)" title="Step back 1 sec">◀ -1s</button>
-                                <button class="media-btn" onclick="FDMediaPlayer.stepSeconds(1)" title="Step forward 1 sec">+1s ▶</button>
-                                <button class="media-btn" onclick="FDMediaPlayer.stepFrame(1)" title="Step forward 1 frame">+1f ▶</button>
-                            </div>
-
-                            <div class="media-btn-group">
-                                <span style="font-size:0.72rem; color:var(--color-text-dim);">Speed:</span>
-                                <select class="shot-spec-select" id="media-speed-select" onchange="FDMediaPlayer.setSpeed(this.value)">
-                                    <option value="0.25">0.25x</option>
-                                    <option value="0.5">0.5x</option>
-                                    <option value="0.75">0.75x</option>
-                                    <option value="1" selected>1.0x</option>
-                                    <option value="1.25">1.25x</option>
-                                    <option value="1.5">1.5x</option>
-                                    <option value="2">2.0x</option>
-                                </select>
-                                <button class="media-btn" onclick="FDMediaPlayer.toggleFullscreen()" title="Fullscreen Video">⛶</button>
-                            </div>
-
-                            <div class="media-btn-group">
-                                <span style="font-size:0.72rem; color:var(--color-text-dim);">Match ⇔:</span>
-                                <button class="media-btn" onclick="FDMediaPlayer.tagActiveScene()" title="Pin this frame to the script line you're on. Two pins calibrate the whole script — everything in between is interpolated.">📌 Pin Sync Point</button>
-                                <button class="media-btn" onclick="FDMediaPlayer.matchScriptHere()" title="Jump the script to whatever the film is showing right now (Ctrl+M with the player focused)">⇔ Match Script</button>
-                                <button class="media-btn" id="media-follow-btn" onclick="FDMediaPlayer.toggleFollow()" title="Keep the script scrolling along with the film as it plays">🔗 Follow</button>
-                                <button class="media-btn" id="media-link-btn" onclick="FDMediaPlayer.toggleMatchLink()" title="Whether Match ⇔ involves the film at all">🔗 Linked</button>
-                            </div>
-
-                            <div class="media-btn-group">
-                                <span style="font-size:0.72rem; color:var(--color-text-dim);">Subs:</span>
-                                <input type="file" id="media-sub-input" style="display:none;" accept=".srt,.vtt,.sbv,.txt" onchange="FDMediaPlayer.handleSubtitleSelect(event)">
-                                <button class="media-btn" onclick="document.getElementById('media-sub-input').click()" title="Open this cut's subtitle file (.srt or .vtt). Every line it contains gets matched against the script's dialogue — or just drop the file on the video.">💬 Load Subtitles</button>
-                                <button class="media-btn" id="media-cc-btn" onclick="FDMediaPlayer.toggleSubtitles()" title="Show or hide subtitles over the film">CC</button>
-                                <button class="media-btn" id="media-align-btn" onclick="FDMediaPlayer.alignSubtitles()" title="Match every subtitle line against the script's dialogue and recalibrate from whatever lines up">⚡ Align to Script</button>
-                                <input type="text" id="media-line-search" class="media-line-search" placeholder="Find a line…" onkeydown="if(event.key==='Enter')FDMediaPlayer.findLine()" title="Type a line of dialogue — near enough will do — to jump both the film and the script to it">
-                            </div>
                         </div>
                     </div>
 
@@ -3946,50 +4145,6 @@
             <!-- 5. Storyboard & Visual Beats Component -->
             <div id="component-storyboard" class="panel-content-view">
                 <div class="storyboard-container">
-                    <div class="storyboard-toolbar">
-                        <div class="storyboard-toolbar-group">
-                            <button class="media-btn" onclick="FDStoryboard.autoPopulateFromScript()" title="Scan script scene headings and generate storyboard shot cards for each scene">
-                                ⚡ Auto-Populate from Script
-                            </button>
-                            <button class="media-btn" onclick="FDStoryboard.addNewShot()" title="Add a new custom shot card">
-                                + Add Shot
-                            </button>
-                            <button class="media-btn" id="sb-batch-gen-btn" onclick="FDStoryboardBatch.open()" title="Open batch options: pick which shots, which provider, how fast — with live progress and a cancel button">
-                                ✨ Batch Generate
-                            </button>
-                            <button class="media-btn" id="sb-open-folder-btn" onclick="FDStoryboard.openStoryboardFolder()" title="Open the local folder where storyboard images are saved on your computer (final-drafter/storyboards)">
-                                📂 Open Folder
-                            </button>
-                        </div>
-                        <div class="storyboard-toolbar-group">
-                            <span style="font-size:0.72rem; color:var(--color-text-dim);">Aspect:</span>
-                            <div class="storyboard-view-pills" id="sb-aspect-pills" title="Reframes every shot card at once">
-                                <button class="sb-view-btn" data-ar="16:9" onclick="FDStoryboard.setAspectRatio('16:9')" title="16:9 Widescreen">16:9</button>
-                                <button class="sb-view-btn" data-ar="2.39:1" onclick="FDStoryboard.setAspectRatio('2.39:1')" title="2.39:1 Cinemascope">2.39:1</button>
-                                <button class="sb-view-btn" data-ar="4:3" onclick="FDStoryboard.setAspectRatio('4:3')" title="4:3 Classic">4:3</button>
-                                <button class="sb-view-btn" data-ar="1:1" onclick="FDStoryboard.setAspectRatio('1:1')" title="1:1 Square">1:1</button>
-                                <button class="sb-view-btn" data-ar="9:16" onclick="FDStoryboard.setAspectRatio('9:16')" title="9:16 Vertical">9:16</button>
-                            </div>
-                            <button class="media-btn" id="sb-reshoot-ar-btn" onclick="FDStoryboard.reshootAllAtAspect()" title="Re-generate every frame at the current aspect ratio">&#8635; Re-shoot all</button>
-                            <button class="media-btn" id="sb-fit-btn" onclick="FDStoryboard.toggleImageFit()" title="Fit: the whole frame is shown. Click for Fill.">&#9974; Fit</button>
-                            <span style="font-size:0.72rem; color:var(--color-text-dim);">Style:</span>
-                            <button class="media-btn" id="sb-style-btn" onclick="FDStyleLibrary.open()" title="Pick a look - directors &amp; cinematographers, graphic novelists, storyboard artists">&#127912; Cinematic 35mm</button>
-                            <div class="storyboard-toolbar-group" id="sb-card-size-group" style="display:inline-flex; align-items:center; gap:4px;" title="Adjust card size / density (how many shots fit on screen)">
-                                <span style="font-size:0.72rem; color:var(--color-text-dim);">Size:</span>
-                                <input type="range" id="sb-card-size-slider" class="sb-card-size-slider" min="60" max="480" step="5" value="60" oninput="FDStoryboard.setCardSize(this.value)">
-                                <span id="sb-card-size-label" style="font-size:0.7rem; color:var(--color-text-dim); min-width:32px;">60px</span>
-                            </div>
-                            <div class="storyboard-view-pills" id="sb-display-mode-pills">
-                                <button class="sb-view-btn" id="sb-view-full-btn" onclick="FDStoryboard.setDisplayMode('full')" title="Full View: Visual frames, specs, take tabs & beats">📋 Full</button>
-                                <button class="sb-view-btn active" id="sb-view-image-btn" onclick="FDStoryboard.setDisplayMode('image')" title="Image View: Pure visual frames & shot names">🖼️ Image</button>
-                                <button class="sb-view-btn" id="sb-view-text-btn" onclick="FDStoryboard.setDisplayMode('text')" title="Text View: Beat breakdown & shot specs (no images)">📝 Text</button>
-                            </div>
-                            <button class="media-btn" id="sb-view-mode-btn" onclick="FDStoryboard.toggleViewMode()" title="Toggle between Grid and Filmstrip view">
-                                ▤ Filmstrip
-                            </button>
-                        </div>
-                    </div>
-
                     <div id="storyboard-card-container" class="storyboard-grid">
                         <!-- Storyboard shot cards dynamically rendered here -->
                     </div>
@@ -3999,36 +4154,6 @@
             <!-- 6. Reference Library & Moodboard Component -->
             <div id="component-reference-board" class="panel-content-view">
                 <div class="ref-board-container">
-                    <div class="ref-category-bar">
-                        <div class="ref-category-pills">
-                            <button class="ref-cat-btn active" onclick="FDReferences.setCategory('all')">All</button>
-                            <button class="ref-cat-btn" onclick="FDReferences.setCategory('characters')">Characters</button>
-                            <button class="ref-cat-btn" onclick="FDReferences.setCategory('locations')">Locations</button>
-                            <button class="ref-cat-btn" onclick="FDReferences.setCategory('lighting')">Lighting &amp; Color</button>
-                            <button class="ref-cat-btn" onclick="FDReferences.setCategory('costumes')">Costumes</button>
-                            <button class="ref-cat-btn" onclick="FDReferences.setCategory('directing')">Directing Notes</button>
-                            <button class="ref-cat-btn" onclick="FDReferences.setCategory('pinterest')">📌 Pinterest</button>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                            <button class="media-btn" onclick="document.getElementById('ref-file-input').click()" title="Upload image reference file">
-                                🖼️ + Image
-                            </button>
-                            <input type="file" id="ref-file-input" style="display:none;" accept="image/*" multiple onchange="FDReferences.handleImageUpload(event)">
-                            <button class="media-btn" onclick="FDReferences.promptAddPinterest()" title="Link a Pinterest board or pin share URL">
-                                📌 + Pinterest
-                            </button>
-                            <button class="media-btn" onclick="FDReferences.promptAddLink()" title="Add reference from URL (ArtStation, YouTube, web page, image URL)">
-                                🔗 + Link
-                            </button>
-                            <button class="media-btn" onclick="FDReferences.promptAddPalette()" title="Generate color palette swatch">
-                                🎨 + Palette
-                            </button>
-                            <button class="media-btn" onclick="FDReferences.promptAddNote()" title="Add directing note">
-                                📝 + Note
-                            </button>
-                        </div>
-                    </div>
-
                     <div class="ref-grid" id="ref-card-grid" ondragover="FDReferences.onDragOver(event)" ondragleave="FDReferences.onDragLeave(event)" ondrop="FDReferences.onDrop(event)">
                         <!-- Reference cards dynamically rendered here -->
                     </div>
@@ -4137,6 +4262,7 @@
                 quadColRatio: 0.5,
                 quadRowRatio: 0.5,
                 cleanPanels: false,
+                activeShelf: 'script-edit', // which action-ribbon shelf (by panel type) is showing
                 slots: [
                     { id: 'slot-1', type: 'script-edit' },
                     { id: 'slot-2', type: 'script-render' },
@@ -4313,14 +4439,18 @@
             applyAppTheme();
             document.getElementById('zoom-slider').value = settings.zoom;
             document.getElementById('zoom-slider-modal').value = settings.zoom;
+            document.getElementById('zoom-slider-print').value = settings.zoom;
             document.getElementById('zoom-val').innerText = settings.zoom;
             document.getElementById('zoom-val-modal').innerText = settings.zoom + '%';
+            document.getElementById('zoom-val-print').innerText = settings.zoom + '%';
             document.getElementById('editor-page').style.zoom = settings.zoom / 100;
             document.getElementById('pdf-viewer').style.zoom = settings.zoom / 100;
             document.getElementById('script-render-page').style.zoom = settings.zoom / 100;
 
             const sceneNumSel = document.getElementById('scene-number-mode');
             sceneNumSel.value = settings.sceneNumberMode;
+            const sceneNumSelPrint = document.getElementById('scene-number-mode-print');
+            if (sceneNumSelPrint) sceneNumSelPrint.value = settings.sceneNumberMode;
             sceneNumberMode = settings.sceneNumberMode;
 
             const reuseToggle = document.getElementById('reuse-last-insertion-toggle');
@@ -5065,6 +5195,12 @@
             updateZoom();
             document.getElementById('zoom-val-modal').innerText = val + '%';
         }
+        function updateZoomPrint() {
+            const val = document.getElementById('zoom-slider-print').value;
+            document.getElementById('zoom-slider').value = val;
+            updateZoom();
+            document.getElementById('zoom-val-print').innerText = val + '%';
+        }
         function toggleReuseLastInsertion() {
             settings.reuseLastInsertion = document.getElementById('reuse-last-insertion-toggle').checked;
             saveSettings();
@@ -5185,6 +5321,10 @@
             document.getElementById('editor-page').style.zoom = val / 100;
             document.getElementById('pdf-viewer').style.zoom = val / 100;
             document.getElementById('script-render-page').style.zoom = val / 100;
+            const zsp = document.getElementById('zoom-slider-print');
+            if (zsp && zsp.value !== val) zsp.value = val;
+            const zvp = document.getElementById('zoom-val-print');
+            if (zvp) zvp.innerText = val + '%';
             settings.zoom = Number(val);
             saveSettings();
         }
@@ -6492,6 +6632,8 @@
             sceneNumberMode = mode;
             const sel = document.getElementById('scene-number-mode');
             if (sel && sel.value !== mode) sel.value = mode;
+            const selPrint = document.getElementById('scene-number-mode-print');
+            if (selPrint && selPrint.value !== mode) selPrint.value = mode;
             settings.sceneNumberMode = mode;
             saveSettings();
             buildToc();
@@ -7872,6 +8014,7 @@
                 this.mountComponent(slotId, newType);
                 this.syncLegacyPaneState();
                 this.updateTopbarButtons();
+                this.setActiveShelf(newType);
                 saveState();
             },
 
@@ -7888,6 +8031,8 @@
                 if (foundIndex >= 0) {
                     if (visibleSlots.length > 1) {
                         this.setLayoutMode('single');
+                    } else {
+                        this.setActiveShelf(type);
                     }
                     return;
                 }
@@ -7901,6 +8046,7 @@
                     this.syncLegacyPaneState();
                     this.updateTopbarButtons();
                 }
+                this.setActiveShelf(type);
             },
 
             getVisibleSlots() {
@@ -7937,6 +8083,57 @@
                 if (btnSb) btnSb.classList.toggle('active', isSb);
                 if (btnRef) btnRef.classList.toggle('active', isRef);
                 this.syncCleanPanelsState();
+                this.updateActionRibbon();
+            },
+
+            // Every panel type gets its own shelf of tools in the Tier-2 action ribbon.
+            // The ribbon shows tabs for whichever panels are actually open right now,
+            // and clicking a tab (or FDPanels.setActiveShelf) swaps which shelf shows --
+            // Maya-style shelves, but scoped to what's actually on screen.
+            SHELF_TYPES: [
+                { type: 'script-edit', label: '📜 Screenplay' },
+                { type: 'studio-hub', label: '📺 Studio Hub' },
+                { type: 'media-player', label: '🎬 Video' },
+                { type: 'storyboard', label: '🎨 Storyboards' },
+                { type: 'reference-board', label: '📌 References' },
+                { type: 'script-render', label: '🖨️ Print' },
+            ],
+
+            updateActionRibbon() {
+                const visible = this.getVisibleSlots();
+                const openTypes = this.SHELF_TYPES.map(s => s.type).filter(t => visible.some(s => s.type === t));
+
+                const ribbon = document.getElementById('action-ribbon');
+                if (!ribbon) return;
+
+                if (openTypes.length === 0) {
+                    ribbon.classList.add('hidden');
+                    return;
+                }
+                ribbon.classList.remove('hidden');
+
+                if (!openTypes.includes(layoutState.activeShelf)) {
+                    layoutState.activeShelf = openTypes[0];
+                }
+                const active = layoutState.activeShelf;
+
+                const tabs = document.getElementById('shelf-tabs');
+                if (tabs) tabs.classList.toggle('hidden', openTypes.length < 2);
+
+                document.querySelectorAll('.shelf-tab').forEach(el => {
+                    const isOpen = openTypes.includes(el.dataset.shelf);
+                    el.classList.toggle('hidden', !isOpen);
+                    el.classList.toggle('active', el.dataset.shelf === active);
+                });
+                document.querySelectorAll('.shelf-content').forEach(el => {
+                    el.classList.toggle('active', el.id === 'shelf-' + active);
+                });
+            },
+
+            setActiveShelf(type) {
+                layoutState.activeShelf = type;
+                this.updateActionRibbon();
+                saveState();
             },
 
             toggleCleanPanels() {
@@ -7959,6 +8156,8 @@
                         ? 'Panel menu headers are hidden. Click to show panel headers and dropdowns (Alt+Z).'
                         : 'Hide panel menu headers for an unimpeded view of panel contents (Alt+Z)';
                 }
+                const ribbon = document.getElementById('action-ribbon');
+                if (ribbon) ribbon.classList.toggle('clean-hidden', isClean);
             },
 
             setupSplitters() {
@@ -8135,13 +8334,16 @@
             }
 
             if (visible) {
+                const type = (which === 'exact' ? 'script-render' : 'script-edit');
                 if (layoutState.mode === 'single') {
-                    layoutState.slots[1].type = (which === 'exact' ? 'script-render' : 'script-edit');
+                    layoutState.slots[1].type = type;
                     FDPanels.setLayoutMode('split-h');
                 } else {
-                    layoutState.slots[1].type = (which === 'exact' ? 'script-render' : 'script-edit');
-                    FDPanels.mountComponent('slot-2', layoutState.slots[1].type);
+                    layoutState.slots[1].type = type;
+                    FDPanels.mountComponent('slot-2', type);
+                    FDPanels.updateTopbarButtons();
                 }
+                FDPanels.setActiveShelf(type);
             } else {
                 if (layoutState.mode !== 'single') {
                     FDPanels.setLayoutMode('single');
