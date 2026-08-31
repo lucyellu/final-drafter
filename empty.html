@@ -1270,6 +1270,154 @@
             color: var(--color-on-accent);
         }
         .headshot-fetch-btn.loading { opacity: 0.6; pointer-events: none; }
+
+        .loc-region-note {
+            font-size: 0.72rem;
+            color: var(--color-text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        /* The inferred container, beside the name in the Locations list. Quiet
+           on purpose -- it's a reading of the slugline, not a fact the writer
+           typed. */
+        .item-region {
+            font-size: 0.62rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--color-text-muted);
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            padding: 1px 4px;
+            margin-left: 6px;
+            /* Yields before the location's own name does -- the chip is
+               context, the name is the thing being named. */
+            flex-shrink: 1;
+            min-width: 0;
+            max-width: 64px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .item-name { min-width: 3.5em; }
+
+        /* ---- Location map (FDMap) ---------------------------------------- */
+        #map-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1200;
+            background: var(--color-scrim);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            flex-direction: column;
+            padding: 22px;
+        }
+        #map-overlay.open { display: flex; }
+        .map-frame {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-border-hover);
+            border-radius: 18px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.65);
+            overflow: hidden;
+        }
+        .map-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--color-border);
+            background: var(--color-chrome);
+            flex-shrink: 0;
+        }
+        .map-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--color-text);
+            margin-right: 2px;
+        }
+        .map-sub {
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+            margin-right: auto;
+        }
+        .map-toolbar button, .map-skin-group button {
+            background: var(--color-bg-elevated);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-dim);
+            border-radius: 8px;
+            padding: 5px 10px;
+            font-size: 0.76rem;
+            font-family: var(--font-body);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .map-toolbar button:hover, .map-skin-group button:hover {
+            background: var(--color-chrome-active);
+            color: var(--color-text);
+            border-color: var(--color-border-hover);
+        }
+        .map-toolbar button.active {
+            background: var(--color-chrome-active);
+            color: var(--color-on-chrome-active);
+            border-color: var(--color-border-hover);
+        }
+        .map-skin-group { display: flex; gap: 0; }
+        .map-skin-group button { border-radius: 0; }
+        .map-skin-group button:first-child { border-radius: 8px 0 0 8px; }
+        .map-skin-group button:last-child { border-radius: 0 8px 8px 0; border-left: none; }
+        .map-skin-group button.active {
+            background: var(--color-chrome-active);
+            color: var(--color-on-chrome-active);
+            border-color: var(--color-border-hover);
+        }
+        .map-canvas-wrap {
+            flex: 1 1 auto;
+            min-height: 0;
+            position: relative;
+            overflow: hidden;
+        }
+        #map-svg { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+        #map-svg.dragging { cursor: grabbing; }
+        .map-empty {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-align: center;
+            color: var(--color-text-muted);
+            font-size: 0.85rem;
+            padding: 30px;
+        }
+        .map-empty.show { display: flex; }
+        .map-tip {
+            position: absolute;
+            pointer-events: none;
+            z-index: 3;
+            display: none;
+            max-width: 260px;
+            background: var(--color-chrome-elevated);
+            border: 1px solid var(--color-border-hover);
+            border-radius: 10px;
+            padding: 8px 11px;
+            font-size: 0.76rem;
+            line-height: 1.45;
+            color: var(--color-text);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+        }
+        .map-tip.show { display: block; }
+        .map-tip b { font-weight: 700; }
+        .map-tip .map-tip-meta { color: var(--color-text-muted); }
+        .map-node { cursor: pointer; }
+        .map-node text { pointer-events: none; user-select: none; }
         .char-avatar {
             width: 22px; height: 22px;
             border-radius: 50%;
@@ -4226,6 +4374,11 @@
             <!-- Locations: auto-populated from .scene-heading blocks. -->
             <div id="tab-locations" class="tab-content">
                 <div class="rs-panel-header">Locations</div>
+                <div class="char-list-toolbar">
+                    <span class="loc-region-note" id="loc-region-note"></span>
+                    <button class="headshot-fetch-btn" onclick="FDMap.open()"
+                        title="Draw these locations as a map -- regions come from the containers your sluglines name, routes from the cuts between scenes">🗺 Map</button>
+                </div>
                 <ul class="list-items" id="locations-list"></ul>
             </div>
         </div>
@@ -4591,6 +4744,172 @@
             return m ? `hsla(${m[1]}, ${m[2]}%, ${m[3]}%, ${alpha})` : color;
         }
 
+        // --- Scene-heading geography -------------------------------------
+        // A slugline states more than a name. "INT. SERVICE CORRIDOR - CINNA
+        // ESTATE - NIGHT" says the corridor is *inside* the estate. The
+        // dash-separated tail is the only structural geography a screenplay
+        // ever writes down outright, and it used to be parsed off and thrown
+        // away; it's what the location map is built from.
+
+        // Trailing segments that qualify *when*, not *where*. Dropped before
+        // the rest of the tail is read as a containment chain.
+        const HEADING_TIME_WORDS = new Set([
+            'DAY', 'NIGHT', 'MORNING', 'EVENING', 'AFTERNOON', 'DAWN', 'DUSK',
+            'NOON', 'MIDNIGHT', 'SUNRISE', 'SUNSET', 'MAGIC HOUR', 'GOLDEN HOUR',
+            'PRE-DAWN', 'EARLY MORNING', 'LATE MORNING', 'LATE AFTERNOON',
+            'LATE NIGHT', 'CONTINUOUS', 'SAME', 'SAME TIME', 'MOMENTS LATER',
+            'SECONDS LATER', 'MINUTES LATER', 'HOURS LATER', 'LATER', 'EARLIER',
+            'LATER THAT DAY', 'LATER THAT NIGHT', 'THAT NIGHT', 'NEXT DAY',
+            'FLASHBACK', 'FLASH BACK', 'FLASHFORWARD', 'FLASH FORWARD', 'DREAM',
+            'DREAM SEQUENCE', 'MEMORY', 'PRESENT DAY', 'THE PAST', 'THE FUTURE',
+            'INTERCUT', 'MONTAGE', 'SERIES OF SHOTS', 'ESTABLISHING'
+        ]);
+        // "10:15 PM", "11:59:50 PM", "1984", "DAY 3".
+        const HEADING_CLOCK = /^(\d{1,2}:\d{2}(:\d{2})?\s*(A\.?M\.?|P\.?M\.?)?|\d{4}|(DAY|NIGHT|WEEK|YEAR)\s+\d+)$/;
+
+        function isHeadingQualifier(seg) {
+            const s = seg.trim();
+            return HEADING_TIME_WORDS.has(s) || HEADING_CLOCK.test(s);
+        }
+
+        // Splits a slugline into { intExt, name, parents, softParents }.
+        // `parents` runs nearest-container-first, so "BUNK - SUBMARINE -
+        // PACIFIC" yields ['SUBMARINE', 'PACIFIC'].
+        //
+        // The dash split deliberately requires whitespace on both sides, so a
+        // hyphenated name ("LOW-GRID DINER") survives intact.
+        function parseSceneHeading(raw) {
+            let t = (raw || '').trim().toUpperCase();
+            t = t.replace(/\s*#[^#]*#\s*$/, '');   // trailing scene number
+            const m = t.match(/^(INT\.?\/EXT\.?|EXT\.?\/INT\.?|I\.?\/E\.?|INT\.?|EXT\.?)[\s.]+(.*)$/);
+            let intExt = 'unknown';
+            if (m) {
+                const p = m[1].replace(/\./g, '');
+                intExt = p === 'INT' ? 'int' : p === 'EXT' ? 'ext' : 'both';
+            }
+            const body = (m ? m[2] : t).trim();
+            const segs = body.split(/\s+[-–—]+\s+/).map(s => s.trim()).filter(Boolean);
+            while (segs.length > 1 && isHeadingQualifier(segs[segs.length - 1])) segs.pop();
+            if (!segs.length) return { intExt, name: '', parents: [], softParents: [] };
+
+            const name = segs[0];
+            // "KIRKLAND HOUSE/LOBBY" is the other way a slugline writes
+            // containment, and it is weaker evidence than a dash -- "KITCHEN/
+            // DINING ROOM" is two rooms side by side, not one inside the other.
+            // So the name is left exactly as the writer typed it and the prefix
+            // is only *offered* as a container, to be taken up only if it turns
+            // out to gather more than one place. See buildLocationGraph().
+            const parts = name.split('/').map(s => s.trim()).filter(Boolean);
+            const softParents = [];
+            for (let i = parts.length - 2; i >= 0; i--) softParents.push(parts[i]);
+
+            return { intExt, name, parents: segs.slice(1), softParents };
+        }
+
+        // Which of a location's candidate containers is the real one. "SERVICE
+        // CORRIDOR" is written under both "CINNA ESTATE" (a place) and "GATSBY
+        // GALA" (an event happening at that place), and the prose doesn't tell
+        // them apart. Reach does: a region gathers many different rooms, an
+        // event qualifier usually trails one or two. Most distinct children
+        // wins; raw mentions break ties.
+        function chooseRegion(candidates, childrenByParent) {
+            let best = null, bestReach = -1, bestMentions = -1;
+            candidates.forEach((mentions, parent) => {
+                const reach = (childrenByParent.get(parent) || new Set()).size;
+                if (reach > bestReach || (reach === bestReach && mentions > bestMentions)) {
+                    bestReach = reach; bestMentions = mentions; best = parent;
+                }
+            });
+            return best;
+        }
+
+        // Derived, never persisted: rebuilt from the script on every
+        // extractEntities(), so a project saved before the map existed still
+        // gets one the moment it opens.
+        let locationGraph = { nodes: [], regions: [], edges: [], sceneCount: 0 };
+
+        function buildLocationGraph() {
+            const blocks = getBlocks();
+            const byName = new Map();
+            const childrenByParent = new Map();
+            const explicitParents = new Set();  // named after a dash, not a slash
+            const order = [];               // location per scene, in script order
+
+            let cur = null;
+            blocks.forEach(b => {
+                if (b.classList.contains('scene-heading')) {
+                    const p = parseSceneHeading(b.innerText);
+                    if (!p.name) { cur = null; return; }
+                    let rec = byName.get(p.name);
+                    if (!rec) {
+                        rec = {
+                            name: p.name, intExt: p.intExt, count: 0, headings: [],
+                            characters: new Set(), candidates: new Map(), region: null
+                        };
+                        byName.set(p.name, rec);
+                    }
+                    rec.count++;
+                    rec.headings.push(b);
+                    // A location written INT. in one scene and EXT. in another
+                    // is genuinely both; 'unknown' only yields to real evidence.
+                    if (rec.intExt === 'unknown') rec.intExt = p.intExt;
+                    else if (p.intExt !== 'unknown' && p.intExt !== rec.intExt) rec.intExt = 'both';
+                    p.parents.forEach(par => explicitParents.add(par));
+                    p.parents.concat(p.softParents).forEach(par => {
+                        if (par === p.name) return;
+                        rec.candidates.set(par, (rec.candidates.get(par) || 0) + 1);
+                        if (!childrenByParent.has(par)) childrenByParent.set(par, new Set());
+                        childrenByParent.get(par).add(p.name);
+                    });
+                    order.push(p.name);
+                    cur = rec;
+                } else if (cur && b.classList.contains('character')) {
+                    const nm = b.innerText.replace(/\s*\(.*?\)/g, '').trim().toUpperCase();
+                    if (nm) cur.characters.add(nm);
+                }
+            });
+
+            // A container the writer spelled out after a dash is taken at its
+            // word even if it holds one room. One merely implied by a slash has
+            // to earn it by gathering two.
+            const eligible = new Set();
+            childrenByParent.forEach((kids, name) => {
+                if (explicitParents.has(name) || kids.size > 1) eligible.add(name);
+            });
+            byName.forEach(rec => {
+                const cands = new Map();
+                rec.candidates.forEach((n, par) => { if (eligible.has(par)) cands.set(par, n); });
+                const r = chooseRegion(cands, childrenByParent);
+                rec.region = (r && r !== rec.name) ? r : null;
+            });
+
+            const regions = [];
+            childrenByParent.forEach((_kids, name) => {
+                const members = [];
+                byName.forEach(rec => { if (rec.region === name) members.push(rec.name); });
+                if (members.length) regions.push({ name, members });
+            });
+            regions.sort((a, b) => b.members.length - a.members.length);
+
+            // Cuts between consecutive scenes. A scene continuing in the same
+            // location is not a move, so it makes no edge.
+            const tally = new Map();
+            for (let i = 1; i < order.length; i++) {
+                if (order[i] === order[i - 1]) continue;
+                const key = order[i - 1] + '\u0000' + order[i];
+                tally.set(key, (tally.get(key) || 0) + 1);
+            }
+            const edges = [];
+            tally.forEach((weight, key) => {
+                const [from, to] = key.split('\u0000');
+                edges.push({ from, to, weight });
+            });
+
+            const nodes = [...byName.values()].sort((a, b) => b.count - a.count);
+            locationGraph = { nodes, regions, edges, sceneCount: order.length };
+            return locationGraph;
+        }
+
         function extractEntities() {
             dynamicCounts = { characters: {}, locations: {} };
             const entityNodes = { characters: {}, locations: {} };
@@ -4615,9 +4934,9 @@
             
             let locIdx = 0;
             document.querySelectorAll('#editor-page .scene-heading').forEach(node => {
-                let text = node.innerText.trim().toUpperCase();
-                let match = text.match(/^(?:INT\.|EXT\.|I\/E\.|INT\/EXT\.)\s+(.*?)(?:\s+-\s+.*)?$/);
-                let name = match ? match[1].trim() : text;
+                // Same parse the map is built from, so the sidebar and the map
+                // can never disagree about what a location is called.
+                const name = parseSceneHeading(node.innerText).name;
                 if (!name) return;
                 dynamicCounts.locations[name] = (dynamicCounts.locations[name] || 0) + 1;
                 
@@ -4632,8 +4951,10 @@
             
             appState.characters.sort((a, b) => (dynamicCounts.characters[b.name] || 0) - (dynamicCounts.characters[a.name] || 0));
             appState.locations.sort((a, b) => (dynamicCounts.locations[b.name] || 0) - (dynamicCounts.locations[a.name] || 0));
-            
+
+            buildLocationGraph();
             renderLists(entityNodes);
+            if (window.FDMap) FDMap.onScriptChanged();
         }
 
         function renderLists(entityNodes) {
@@ -4672,8 +4993,17 @@
             const showAvatar = type === 'characters' && !!settings.showHeadshots;
             const left = document.createElement('div');
             left.className = 'list-item-left';
+            // The container a slugline puts this location inside, when it names
+            // one ("SERVICE CORRIDOR - CINNA ESTATE"). Inferred, so it's shown
+            // as a quiet chip rather than folded into the name.
+            const geo = type === 'locations'
+                ? locationGraph.nodes.find(n => n.name === item.name)
+                : null;
+            const regionChip = geo && geo.region
+                ? `<span class="item-region" title="Inside ${geo.region}">${geo.region}</span>`
+                : '';
             left.innerHTML = `<span class="toggle-arrow">▶</span> <span class="list-item-color${showAvatar ? ' color-dot-hidden' : ''}" style="background-color: ${item.color}"></span>
-                              <span class="item-name" title="${item.name}">${item.name}</span>
+                              <span class="item-name" title="${item.name}">${item.name}</span>${regionChip}
                               <span class="item-count">${count}</span>`;
 
             if (showAvatar) {
@@ -14468,6 +14798,651 @@
             }
         });
 
+        // --- FDMap: the script's geography ---------------------------------
+        // A screenplay states no coordinates, so nothing here invents any. What
+        // it does state is containment (the slugline tail), adjacency (which
+        // scene cuts to which) and weight (how many scenes sit in a place).
+        // Those three settle a layout, and that one layout gets painted two
+        // ways -- as an atlas or as a schematic. It is a diagram wearing a
+        // map's clothes, which is why it carries no compass and no scale bar:
+        // claiming a direction or a distance the text never gave would be a
+        // lie the reader has no way to check.
+        const FDMap = {
+            skin: 'atlas',
+            showLabels: true,
+            showRoutes: true,
+            positions: new Map(),
+            view: null,
+            _laidOut: '',
+            _bound: false,
+
+            // What the layout is a layout *of*. Re-settling the map on every
+            // keystroke would move places around under the reader's cursor, so
+            // positions are kept until the cast of locations actually changes.
+            _signature() {
+                const g = locationGraph;
+                return g.nodes.map(n => n.name + '\u0001' + n.count + '\u0001' + (n.region || '')).join('\u0002')
+                     + '\u0003' + g.edges.map(e => e.from + '\u0001' + e.to + '\u0001' + e.weight).join('\u0002');
+            },
+
+            _esc(s) {
+                return String(s).replace(/[&<>"']/g, c =>
+                    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            },
+
+            // Deterministic PRNG (FNV-1a seed, mulberry32 stream). The map has
+            // to come out the same every time it is opened for the same script.
+            _rng(seed) {
+                let h = 2166136261 >>> 0;
+                for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+                return () => {
+                    h = (h + 0x6D2B79F5) >>> 0;
+                    let t = h;
+                    t = Math.imul(t ^ (t >>> 15), t | 1);
+                    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+                    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+                };
+            },
+
+            // Theme tokens resolved to literal colours, so an exported SVG
+            // still looks like the map that was on screen.
+            _palette() {
+                const cs = getComputedStyle(document.documentElement);
+                const v = (n, fb) => (cs.getPropertyValue(n) || '').trim() || fb;
+                return {
+                    sea: v('--color-bg-sunken', '#161619'),
+                    land: v('--color-bg-elevated', '#242428'),
+                    ink: v('--color-text', '#e2e2e6'),
+                    muted: v('--color-text-muted', '#8a8a90'),
+                    line: v('--color-border-hover', 'rgba(255,255,255,0.22)'),
+                    accent: v('--color-accent', '#8ea4c8')
+                };
+            },
+
+            // A map is not a legend of 74 hues. Seventy-four random colours
+            // encode nothing and cost the reader everything, so places are
+            // drawn in one ink and told apart by size, mark and position --
+            // the way a map does it. The sidebar's own colour is spent on the
+            // one thing it actually means here: this location is currently
+            // highlighted in the script.
+            _nodePaint(name, P) {
+                const it = appState.locations.find(l => l.name === name);
+                const lit = it && activeHighlights.has(it.id);
+                return { ink: lit ? it.color : P.accent, lit: !!lit };
+            },
+
+            // Andrew's monotone chain.
+            _hull(pts) {
+                if (pts.length < 3) return pts.slice();
+                const P = pts.slice().sort((a, b) => a.x - b.x || a.y - b.y);
+                const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+                const lower = [];
+                for (const p of P) {
+                    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+                    lower.push(p);
+                }
+                const upper = [];
+                for (let i = P.length - 1; i >= 0; i--) {
+                    const p = P[i];
+                    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+                    upper.push(p);
+                }
+                lower.pop(); upper.pop();
+                return lower.concat(upper);
+            },
+
+            // Roughens a hull into something that reads as a shoreline: resample
+            // each edge, then push every sample in or out by a seeded wobble.
+            _coast(hull, rnd, amp) {
+                let cx = 0, cy = 0;
+                hull.forEach(p => { cx += p.x; cy += p.y; });
+                cx /= hull.length; cy /= hull.length;
+                const out = [];
+                for (let i = 0; i < hull.length; i++) {
+                    const a = hull[i], b = hull[(i + 1) % hull.length];
+                    for (let s = 0; s < 3; s++) {
+                        const t = s / 3;
+                        const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t;
+                        const k = 1 + (rnd() - 0.35) * amp;
+                        out.push({ x: cx + (x - cx) * k, y: cy + (y - cy) * k });
+                    }
+                }
+                return out;
+            },
+
+            // Closed Catmull-Rom, emitted as cubics.
+            _closedPath(pts) {
+                const n = pts.length;
+                if (!n) return '';
+                if (n < 3) return 'M' + pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L') + 'Z';
+                let d = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
+                for (let i = 0; i < n; i++) {
+                    const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+                    const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+                    const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+                    d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+                }
+                return d + 'Z';
+            },
+
+            layout(salt) {
+                const g = locationGraph;
+                this.positions = new Map();
+                if (!g.nodes.length) { this._laidOut = this._signature(); return; }
+
+                const rnd = this._rng('fdmap|' + (salt || '') + '|' + this._signature());
+                const pts = g.nodes.map(n => ({
+                    name: n.name, region: n.region,
+                    r: 10 + 7 * Math.sqrt(n.count), x: 0, y: 0
+                }));
+                const at = new Map(pts.map((p, i) => [p.name, i]));
+
+                // Seed each region into its own sector of a ring, so the
+                // simulation starts sorted instead of untangling itself.
+                const groups = new Map();
+                pts.forEach(p => {
+                    const k = p.region || '\u0000loose';
+                    if (!groups.has(k)) groups.set(k, []);
+                    groups.get(k).push(p);
+                });
+                const keys = [...groups.keys()];
+                const R = 70 + 34 * Math.sqrt(pts.length);
+                keys.forEach((k, gi) => {
+                    const members = groups.get(k);
+                    const base = (gi / keys.length) * Math.PI * 2;
+                    const spread = (Math.PI * 2 / keys.length) * 0.8;
+                    members.forEach((p, mi) => {
+                        const a = base + (members.length > 1 ? (mi / (members.length - 1) - 0.5) * spread : 0);
+                        const rr = R * (0.55 + rnd() * 0.5);
+                        p.x = Math.cos(a) * rr;
+                        p.y = Math.sin(a) * rr;
+                    });
+                });
+
+                const edges = g.edges
+                    .map(e => ({ a: at.get(e.from), b: at.get(e.to), w: e.weight }))
+                    .filter(e => e.a !== undefined && e.b !== undefined && e.a !== e.b);
+
+                const STEPS = pts.length > 120 ? 200 : 420;
+                for (let step = 0; step < STEPS; step++) {
+                    const cool = 1 - step / STEPS;
+
+                    for (let i = 0; i < pts.length; i++) {
+                        for (let j = i + 1; j < pts.length; j++) {
+                            const A = pts[i], B = pts[j];
+                            let dx = B.x - A.x, dy = B.y - A.y;
+                            let d2 = dx * dx + dy * dy;
+                            if (d2 < 1e-4) { dx = rnd() - 0.5; dy = rnd() - 0.5; d2 = dx * dx + dy * dy + 1e-4; }
+                            const d = Math.sqrt(d2);
+                            const ux = dx / d, uy = dy / d;
+                            // Places in different regions want visible water
+                            // between them; siblings sit close.
+                            const want = A.r + B.r + (A.region && A.region === B.region ? 30 : 78);
+                            if (d < want) {
+                                const push = (want - d) * 0.5;
+                                A.x -= ux * push; A.y -= uy * push;
+                                B.x += ux * push; B.y += uy * push;
+                            } else {
+                                const f = Math.min(6, 900 / d2) * cool;
+                                A.x -= ux * f; A.y -= uy * f;
+                                B.x += ux * f; B.y += uy * f;
+                            }
+                        }
+                    }
+
+                    edges.forEach(e => {
+                        const A = pts[e.a], B = pts[e.b];
+                        const dx = B.x - A.x, dy = B.y - A.y;
+                        const d = Math.hypot(dx, dy) || 1;
+                        const want = A.r + B.r + 95;
+                        const k = 0.022 * Math.min(3, Math.log2(1 + e.w)) * cool;
+                        const f = (d - want) * k;
+                        const ux = dx / d, uy = dy / d;
+                        A.x += ux * f; A.y += uy * f;
+                        B.x -= ux * f; B.y -= uy * f;
+                    });
+
+                    groups.forEach((members, k) => {
+                        if (k === '\u0000loose' || members.length < 2) return;
+                        let cx = 0, cy = 0;
+                        members.forEach(p => { cx += p.x; cy += p.y; });
+                        cx /= members.length; cy /= members.length;
+                        // Cohesion has to beat the route springs, or a room
+                        // gets dragged out of its own building by whatever it
+                        // cuts to and the region draws as a smear, not an
+                        // island.
+                        members.forEach(p => {
+                            p.x += (cx - p.x) * 0.16 * cool;
+                            p.y += (cy - p.y) * 0.16 * cool;
+                        });
+                    });
+
+                    let mx = 0, my = 0;
+                    pts.forEach(p => { mx += p.x; my += p.y; });
+                    mx /= pts.length; my /= pts.length;
+                    pts.forEach(p => { p.x -= mx * 0.5; p.y -= my * 0.5; });
+                }
+
+                pts.forEach(p => this.positions.set(p.name, p));
+                this._laidOut = this._signature();
+            },
+
+            render() {
+                const svg = document.getElementById('map-svg');
+                const empty = document.getElementById('map-empty');
+                const sub = document.getElementById('map-sub');
+                if (!svg) return;
+                const g = locationGraph;
+
+                if (!g.nodes.length) {
+                    svg.innerHTML = '';
+                    if (empty) {
+                        empty.classList.add('show');
+                        empty.textContent = 'No scene headings yet. The map draws itself from sluglines — write one and it appears.';
+                    }
+                    if (sub) sub.textContent = '';
+                    return;
+                }
+                if (empty) empty.classList.remove('show');
+                if (this._laidOut !== this._signature()) this.layout();
+                // Framing has to be settled before painting, because label
+                // sizing and collision both depend on the current scale.
+                if (!this.view) this.fit();
+
+                const P = this._palette();
+                const rnd = this._rng('paint|' + this._signature());
+                const atlas = this.skin === 'atlas';
+                const wrap = document.getElementById('map-canvas-wrap');
+                // World units per screen pixel at the current framing.
+                const k = (wrap && wrap.clientWidth) ? this.view.w / wrap.clientWidth : 1;
+                const serif = "Georgia, 'Iowan Old Style', 'Times New Roman', serif";
+                const mono = "'Space Grotesk', Consolas, 'SF Mono', monospace";
+                const FAR = 100000;
+
+                // Ground textures are screen furniture, not terrain, so they
+                // hold their pitch as you zoom rather than growing with the map.
+                const gr = (19 * k).toFixed(1), gd = (44 * k).toFixed(1);
+                const defs =
+                    `<defs>` +
+                    `<pattern id="map-grain" width="${gr}" height="${gr}" patternUnits="userSpaceOnUse">` +
+                    `<circle cx="${(3 * k).toFixed(1)}" cy="${(4 * k).toFixed(1)}" r="${(0.7 * k).toFixed(2)}" fill="${P.line}" opacity="0.55"/>` +
+                    `<circle cx="${(12 * k).toFixed(1)}" cy="${(11 * k).toFixed(1)}" r="${(0.6 * k).toFixed(2)}" fill="${P.line}" opacity="0.35"/>` +
+                    `</pattern>` +
+                    `<pattern id="map-grid" width="${gd}" height="${gd}" patternUnits="userSpaceOnUse">` +
+                    `<path d="M${gd} 0 L0 0 0 ${gd}" fill="none" stroke="${P.line}" stroke-width="${(0.6 * k).toFixed(2)}" opacity="0.32"/>` +
+                    `</pattern>` +
+                    `</defs>`;
+
+                const sheet = `<rect x="${-FAR}" y="${-FAR}" width="${FAR * 2}" height="${FAR * 2}"`;
+                const bg = sheet + ` fill="${P.sea}"/>` +
+                           sheet + ` fill="url(#${atlas ? 'map-grain' : 'map-grid'})"/>`;
+
+                // Regions. Drawn under everything, with their names set large
+                // and faint across the landmass the way an atlas sets an ocean.
+                let regionLayer = '';
+                g.regions.forEach(reg => {
+                    const ring = [];
+                    reg.members.forEach(nm => {
+                        const p = this.positions.get(nm);
+                        if (!p) return;
+                        const pad = p.r + (atlas ? 36 : 22);
+                        for (let a = 0; a < 12; a++) {
+                            const t = (a / 12) * Math.PI * 2;
+                            ring.push({ x: p.x + Math.cos(t) * pad, y: p.y + Math.sin(t) * pad });
+                        }
+                    });
+                    if (!ring.length) return;
+                    const hull = this._hull(ring);
+                    let cx = 0, cy = 0;
+                    hull.forEach(p => { cx += p.x; cy += p.y; });
+                    cx /= hull.length; cy /= hull.length;
+                    const name = this._esc(reg.name);
+
+                    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+                    hull.forEach(p => {
+                        x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y);
+                        x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
+                    });
+
+                    if (atlas) {
+                        const d = this._closedPath(this._coast(hull, rnd, 0.13));
+                        const s = 1.05;
+                        // Set across the landmass the way an atlas sets an
+                        // ocean -- capped to the island's own width, so a small
+                        // region never gets a name wider than the land it names.
+                        const rfs = Math.min(22 * k, (x1 - x0) / Math.max(5, reg.name.length * 0.62));
+                        regionLayer +=
+                            `<path d="${d}" fill="${P.land}" stroke="${P.line}" stroke-width="${(1.6 * k).toFixed(2)}"/>` +
+                            `<path d="${d}" fill="none" stroke="${P.line}" stroke-width="${(0.9 * k).toFixed(2)}" opacity="0.32" ` +
+                            `stroke-dasharray="${(3 * k).toFixed(1)} ${(5 * k).toFixed(1)}" ` +
+                            `transform="translate(${(cx * (1 - s)).toFixed(1)},${(cy * (1 - s)).toFixed(1)}) scale(${s})"/>` +
+                            `<text x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" text-anchor="middle" font-family="${serif}" ` +
+                            `font-size="${rfs.toFixed(2)}" letter-spacing="${(rfs * 0.3).toFixed(2)}" fill="${P.ink}" opacity="0.28">${name}</text>`;
+                    } else {
+                        const rfs = 10 * k;
+                        regionLayer +=
+                            `<rect x="${x0.toFixed(1)}" y="${y0.toFixed(1)}" width="${(x1 - x0).toFixed(1)}" height="${(y1 - y0).toFixed(1)}" ` +
+                            `rx="${(14 * k).toFixed(1)}" fill="${P.land}" fill-opacity="0.55" stroke="${P.line}" ` +
+                            `stroke-width="${k.toFixed(2)}" stroke-dasharray="${(6 * k).toFixed(1)} ${(5 * k).toFixed(1)}"/>` +
+                            `<text x="${(x0 + 10 * k).toFixed(1)}" y="${(y0 + 18 * k).toFixed(1)}" font-family="${mono}" ` +
+                            `font-size="${rfs.toFixed(2)}" letter-spacing="${(rfs * 0.25).toFixed(2)}" fill="${P.muted}">${name}</text>`;
+                    }
+                });
+
+                // Routes: one per pair of locations the script cuts between,
+                // weighted by how often it makes that cut.
+                let routeLayer = '';
+                if (this.showRoutes) {
+                    g.edges.forEach(e => {
+                        const A = this.positions.get(e.from), B = this.positions.get(e.to);
+                        if (!A || !B) return;
+                        const w = ((0.7 + Math.min(3, Math.log2(1 + e.weight))) * k).toFixed(2);
+                        if (atlas) {
+                            const dx = B.x - A.x, dy = B.y - A.y;
+                            const qx = (A.x + B.x) / 2 - dy * 0.11, qy = (A.y + B.y) / 2 + dx * 0.11;
+                            routeLayer += `<path d="M${A.x.toFixed(1)},${A.y.toFixed(1)} Q${qx.toFixed(1)},${qy.toFixed(1)} ${B.x.toFixed(1)},${B.y.toFixed(1)}" ` +
+                                `fill="none" stroke="${P.ink}" stroke-width="${w}" opacity="0.2" stroke-linecap="round" ` +
+                                `stroke-dasharray="${(7 * k).toFixed(1)} ${(6 * k).toFixed(1)}"/>`;
+                        } else {
+                            routeLayer += `<line x1="${A.x.toFixed(1)}" y1="${A.y.toFixed(1)}" x2="${B.x.toFixed(1)}" y2="${B.y.toFixed(1)}" ` +
+                                `stroke="${P.accent}" stroke-width="${w}" opacity="0.3"/>`;
+                        }
+                    });
+                }
+
+                // Places. INT. is a filled settlement, EXT. an open ring, and a
+                // location written both ways gets both marks -- the one piece of
+                // notation the sluglines really do hand over.
+                // Type is sized in world units, so it would shrink to nothing
+                // as you zoom out. Scaling it by the current units-per-pixel
+                // keeps every label the same size on screen, and means zooming
+                // in genuinely buys you more of them (see the wheel handler,
+                // which repaints once the zoom settles).
+                const fs = (atlas ? 12.5 : 11) * k;
+
+                // Greedy label placement, biggest place first: a label that
+                // would land on something already drawn is simply left off, and
+                // its location keeps its mark and its tooltip. Overlapping
+                // names are worse than absent ones -- they make both
+                // unreadable. Every mark is reserved before any name is set, so
+                // a name may be dropped but is never written across a place.
+                const taken = [];
+                g.nodes.forEach(n => {
+                    const p = this.positions.get(n.name);
+                    if (p) taken.push({ x0: p.x - p.r, x1: p.x + p.r, y0: p.y - p.r, y1: p.y + p.r });
+                });
+                const fits = box => !taken.some(t =>
+                    box.x0 < t.x1 && box.x1 > t.x0 && box.y0 < t.y1 && box.y1 > t.y0);
+
+                let nodeLayer = '';
+                g.nodes.forEach(n => {
+                    const p = this.positions.get(n.name);
+                    if (!p) return;
+                    const { ink, lit } = this._nodePaint(n.name, P);
+                    const nm = this._esc(n.name);
+                    let glyph;
+                    if (atlas) {
+                        if (n.intExt === 'ext') {
+                            glyph = `<circle r="${p.r.toFixed(1)}" fill="${P.sea}" stroke="${ink}" stroke-width="${(2.6 * k).toFixed(2)}"/>` +
+                                    `<circle r="${(p.r * 0.3).toFixed(1)}" fill="${ink}"/>`;
+                        } else if (n.intExt === 'both') {
+                            glyph = `<circle r="${p.r.toFixed(1)}" fill="${ink}" fill-opacity="0.4" stroke="${ink}" stroke-width="${(2.4 * k).toFixed(2)}"/>` +
+                                    `<circle r="${(p.r * 0.48).toFixed(1)}" fill="${ink}"/>`;
+                        } else {
+                            glyph = `<circle r="${p.r.toFixed(1)}" fill="${ink}" stroke="${P.sea}" stroke-width="${(1.8 * k).toFixed(2)}"/>`;
+                        }
+                    } else {
+                        const d = (p.r * 2).toFixed(1);
+                        glyph = `<rect x="${(-p.r).toFixed(1)}" y="${(-p.r).toFixed(1)}" width="${d}" height="${d}" rx="${(3 * k).toFixed(1)}" ` +
+                                `fill="${n.intExt === 'ext' ? 'none' : ink}" fill-opacity="${n.intExt === 'both' ? 0.4 : 1}" ` +
+                                `stroke="${ink}" stroke-width="${(2 * k).toFixed(2)}"/>`;
+                    }
+
+                    let label = '';
+                    if (this.showLabels) {
+                        // Uppercase advance in these faces runs ~0.62em, plus
+                        // the tracking; underestimating it is what lets two
+                        // names sit on top of each other.
+                        const w = n.name.length * fs * 0.65, h = fs * 1.25;
+                        const gap = fs * 0.55;
+                        // Below, then above, then out to either side. Without
+                        // the alternatives the busiest places -- crowded by
+                        // definition, and the ones a reader most wants named --
+                        // are exactly the ones that lose their labels.
+                        const spots = [
+                            { x: 0, y: p.r + fs * 1.35, anchor: 'middle', l: -w / 2, r: w / 2 },
+                            { x: 0, y: -(p.r + gap), anchor: 'middle', l: -w / 2, r: w / 2 },
+                            { x: p.r + gap, y: fs * 0.35, anchor: 'start', l: p.r + gap, r: p.r + gap + w },
+                            { x: -(p.r + gap), y: fs * 0.35, anchor: 'end', l: -(p.r + gap) - w, r: -(p.r + gap) }
+                        ];
+                        const spot = spots.find(s => fits({
+                            x0: p.x + s.l, x1: p.x + s.r,
+                            y0: p.y + s.y - h * 0.8, y1: p.y + s.y + h * 0.3
+                        }));
+                        if (spot) {
+                            taken.push({
+                                x0: p.x + spot.l, x1: p.x + spot.r,
+                                y0: p.y + spot.y - h * 0.8, y1: p.y + spot.y + h * 0.3
+                            });
+                            label = `<text x="${spot.x.toFixed(1)}" y="${spot.y.toFixed(1)}" text-anchor="${spot.anchor}" ` +
+                                `font-size="${fs.toFixed(2)}" font-family="${atlas ? serif : mono}"` +
+                                `${atlas ? ' font-style="italic"' : ''} letter-spacing="${(fs * 0.03).toFixed(2)}" ` +
+                                `fill="${lit ? ink : P.ink}" stroke="${P.sea}" stroke-width="${(fs * 0.28).toFixed(2)}" ` +
+                                `paint-order="stroke">${nm}</text>`;
+                        }
+                    }
+                    nodeLayer += `<g class="map-node" data-loc="${nm}" transform="translate(${p.x.toFixed(1)},${p.y.toFixed(1)})">${glyph}${label}</g>`;
+                });
+
+                svg.innerHTML = defs + bg + regionLayer + routeLayer + nodeLayer;
+
+                if (sub) {
+                    const r = g.regions.length;
+                    sub.textContent = `${g.nodes.length} locations · ${g.sceneCount} scenes · ` +
+                        (r ? `${r} region${r === 1 ? '' : 's'} inferred from sluglines` : 'no containers named in sluglines');
+                }
+                document.getElementById('map-skin-atlas').classList.toggle('active', atlas);
+                document.getElementById('map-skin-console').classList.toggle('active', !atlas);
+                document.getElementById('map-labels-btn').classList.toggle('active', this.showLabels);
+                document.getElementById('map-routes-btn').classList.toggle('active', this.showRoutes);
+                this._applyView();
+            },
+
+            _applyView() {
+                const svg = document.getElementById('map-svg');
+                if (!svg || !this.view) return;
+                const v = this.view;
+                svg.setAttribute('viewBox', `${v.x.toFixed(1)} ${v.y.toFixed(1)} ${v.w.toFixed(1)} ${v.h.toFixed(1)}`);
+            },
+
+            fit() {
+                const wrap = document.getElementById('map-canvas-wrap');
+                if (!wrap || !this.positions.size) return;
+                let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+                this.positions.forEach(p => {
+                    x0 = Math.min(x0, p.x - p.r); y0 = Math.min(y0, p.y - p.r);
+                    x1 = Math.max(x1, p.x + p.r); y1 = Math.max(y1, p.y + p.r);
+                });
+                const pad = 110;
+                x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
+                let w = x1 - x0, h = y1 - y0;
+                const aspect = (wrap.clientWidth || 1000) / (wrap.clientHeight || 700);
+                if (w / h < aspect) { const nw = h * aspect; x0 -= (nw - w) / 2; w = nw; }
+                else { const nh = w / aspect; y0 -= (nh - h) / 2; h = nh; }
+                this.view = { x: x0, y: y0, w, h };
+                this._applyView();
+            },
+
+            // fit() only reframes. Repainting after it is what re-sizes the
+            // type and re-runs label collision for the new scale.
+            fitAndRender() { this.fit(); this.render(); },
+
+            setSkin(skin) { this.skin = skin; this.render(); },
+            toggleLabels() { this.showLabels = !this.showLabels; this.render(); },
+            toggleRoutes() { this.showRoutes = !this.showRoutes; this.render(); },
+
+            // A different seeded start, for when the settled layout happens to
+            // read badly. Same data, another arrangement of it.
+            relayout() {
+                this.layout('r' + Date.now());
+                this.view = null;
+                this.render();
+            },
+
+            exportSVG() {
+                const svg = document.getElementById('map-svg');
+                if (!svg || !this.view) return;
+                const clone = svg.cloneNode(true);
+                clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                clone.setAttribute('width', Math.round(this.view.w));
+                clone.setAttribute('height', Math.round(this.view.h));
+                const blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n' + clone.outerHTML],
+                    { type: 'image/svg+xml' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = ((docMeta.title || 'script').replace(/[^\w -]+/g, '').trim() || 'script') + ' - location map.svg';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+            },
+
+            _bind() {
+                if (this._bound) return;
+                this._bound = true;
+                const svg = document.getElementById('map-svg');
+                const wrap = document.getElementById('map-canvas-wrap');
+                const tip = document.getElementById('map-tip');
+                if (!svg || !wrap) return;
+
+                let dragging = false, lastX = 0, lastY = 0, moved = 0;
+
+                svg.addEventListener('pointerdown', e => {
+                    dragging = true; moved = 0;
+                    lastX = e.clientX; lastY = e.clientY;
+                    svg.classList.add('dragging');
+                    svg.setPointerCapture(e.pointerId);
+                });
+                svg.addEventListener('pointermove', e => {
+                    const g = e.target.closest ? e.target.closest('.map-node') : null;
+                    if (!dragging && g && tip) {
+                        const rec = locationGraph.nodes.find(n => n.name === g.dataset.loc);
+                        if (rec) {
+                            const cast = [...rec.characters].slice(0, 6).join(', ');
+                            const kind = rec.intExt === 'both' ? 'INT. and EXT.'
+                                : rec.intExt === 'ext' ? 'EXT.' : rec.intExt === 'int' ? 'INT.' : 'unmarked';
+                            tip.innerHTML =
+                                `<b>${this._esc(rec.name)}</b><br>` +
+                                `<span class="map-tip-meta">${rec.count} scene${rec.count === 1 ? '' : 's'} · ${kind}` +
+                                (rec.region ? ` · inside ${this._esc(rec.region)}` : '') + `</span>` +
+                                (cast ? `<br><span class="map-tip-meta">${this._esc(cast)}` +
+                                    (rec.characters.size > 6 ? ` +${rec.characters.size - 6} more` : '') + `</span>` : '') +
+                                `<br><span class="map-tip-meta">Click to jump to the first scene here.</span>`;
+                            const r = wrap.getBoundingClientRect();
+                            tip.style.left = Math.min(e.clientX - r.left + 14, r.width - 275) + 'px';
+                            tip.style.top = Math.min(e.clientY - r.top + 14, r.height - 90) + 'px';
+                            tip.classList.add('show');
+                        }
+                    } else if (tip && !g) {
+                        tip.classList.remove('show');
+                    }
+                    if (!dragging || !this.view) return;
+                    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+                    moved += Math.abs(dx) + Math.abs(dy);
+                    lastX = e.clientX; lastY = e.clientY;
+                    const scale = this.view.w / (wrap.clientWidth || 1);
+                    this.view.x -= dx * scale;
+                    this.view.y -= dy * scale;
+                    this._applyView();
+                });
+                const endDrag = e => {
+                    if (!dragging) return;
+                    dragging = false;
+                    svg.classList.remove('dragging');
+                    try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
+                };
+                svg.addEventListener('pointerup', endDrag);
+                svg.addEventListener('pointercancel', endDrag);
+                svg.addEventListener('pointerleave', () => { if (tip) tip.classList.remove('show'); });
+
+                svg.addEventListener('click', e => {
+                    if (moved > 5) return;            // that was a pan, not a pick
+                    const g = e.target.closest ? e.target.closest('.map-node') : null;
+                    if (!g) return;
+                    const rec = locationGraph.nodes.find(n => n.name === g.dataset.loc);
+                    if (!rec || !rec.headings.length) return;
+                    this.close();
+                    scrollToBlock(rec.headings[0], 'center');
+                    const node = rec.headings[0];
+                    const old = node.style.backgroundColor;
+                    node.style.backgroundColor = 'rgba(255,255,0,0.5)';
+                    setTimeout(() => { node.style.backgroundColor = old; }, 900);
+                });
+
+                svg.addEventListener('wheel', e => {
+                    if (!this.view) return;
+                    e.preventDefault();
+                    const r = wrap.getBoundingClientRect();
+                    const fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height;
+                    const k = e.deltaY > 0 ? 1.12 : 1 / 1.12;
+                    const nw = Math.max(80, Math.min(60000, this.view.w * k));
+                    const nh = nw * (this.view.h / this.view.w);
+                    // Keep the point under the cursor pinned while zooming.
+                    this.view.x += (this.view.w - nw) * fx;
+                    this.view.y += (this.view.h - nh) * fy;
+                    this.view.w = nw; this.view.h = nh;
+                    this._applyView();
+                    // The viewBox change is instant; the repaint that re-sizes
+                    // the type and re-runs label collision waits for the wheel
+                    // to stop, so a fast scroll costs one render, not thirty.
+                    clearTimeout(this._zoomTimer);
+                    this._zoomTimer = setTimeout(() => {
+                        if (this.isOpen()) this.render();
+                    }, 160);
+                }, { passive: false });
+
+                document.addEventListener('keydown', e => {
+                    if (e.key === 'Escape' && document.getElementById('map-overlay').classList.contains('open')) {
+                        e.stopPropagation();
+                        this.close();
+                    }
+                }, true);
+            },
+
+            open() {
+                const ov = document.getElementById('map-overlay');
+                if (!ov) return;
+                this._bind();
+                ov.classList.add('open');
+                this.view = null;          // always open framed on the whole map
+                this.render();
+            },
+
+            close() {
+                const ov = document.getElementById('map-overlay');
+                if (ov) ov.classList.remove('open');
+                const tip = document.getElementById('map-tip');
+                if (tip) tip.classList.remove('show');
+            },
+
+            isOpen() {
+                const ov = document.getElementById('map-overlay');
+                return !!ov && ov.classList.contains('open');
+            },
+
+            // Called from extractEntities() on every edit. Repainting a closed
+            // overlay would be wasted work on every keystroke.
+            onScriptChanged() {
+                const note = document.getElementById('loc-region-note');
+                if (note) {
+                    const r = locationGraph.regions.length;
+                    note.textContent = r ? `${r} region${r === 1 ? '' : 's'} inferred` : '';
+                }
+                if (this.isOpen()) this.render();
+            }
+        };
+        window.FDMap = FDMap;
+
         window.onload = () => {
             setupFormatButtons();
             applySettings(); // Restores zoom, scene-number mode, reuse-insertion from last session
@@ -14491,6 +15466,33 @@
             FDLibrary.bootFromQuery();
         };
     </script>
+
+    <!-- Location map: the script's own geography, drawn from sluglines. -->
+    <div id="map-overlay">
+        <div class="map-frame">
+            <div class="map-toolbar">
+                <span class="map-title">Location Map</span>
+                <span class="map-sub" id="map-sub"></span>
+                <div class="map-skin-group">
+                    <button id="map-skin-atlas" onclick="FDMap.setSkin('atlas')"
+                        title="Regions drawn as landmasses, routes as roads">Atlas</button>
+                    <button id="map-skin-console" onclick="FDMap.setSkin('console')"
+                        title="Same layout, drawn as a schematic">Schematic</button>
+                </div>
+                <button onclick="FDMap.toggleLabels()" id="map-labels-btn" title="Show or hide location names">Labels</button>
+                <button onclick="FDMap.toggleRoutes()" id="map-routes-btn" title="Show or hide the cuts between scenes">Routes</button>
+                <button onclick="FDMap.fitAndRender()" title="Frame everything">Fit</button>
+                <button onclick="FDMap.relayout()" title="Settle the layout again from a fresh start">Reshuffle</button>
+                <button onclick="FDMap.exportSVG()" title="Save this map as an SVG file">Export</button>
+                <button class="close-btn" onclick="FDMap.close()" title="Close (Esc)">✕</button>
+            </div>
+            <div class="map-canvas-wrap" id="map-canvas-wrap">
+                <svg id="map-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+                <div class="map-empty" id="map-empty"></div>
+                <div class="map-tip" id="map-tip"></div>
+            </div>
+        </div>
+    </div>
 
     <!-- Right-click menu for the formatting toolbar -->
     <div id="suggest-menu" class="suggest-menu"></div>
