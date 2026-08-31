@@ -338,11 +338,14 @@
         .shelf-tabs {
             display: flex;
             gap: 4px;
-            flex-shrink: 0;
+            min-width: 0;
             padding-right: 8px;
             margin-right: 4px;
             border-right: 1px solid var(--color-border);
+            overflow-x: auto;
+            scrollbar-width: none;
         }
+        .shelf-tabs::-webkit-scrollbar { display: none; }
         .shelf-tabs.hidden { display: none; }
         .shelf-tab {
             background: transparent;
@@ -356,6 +359,13 @@
             font-family: var(--font-body);
             white-space: nowrap;
             flex-shrink: 0;
+        }
+        /* Open: this panel type is currently mounted in a visible slot (its tools
+           have something to act on). Active: it's the shelf showing right now --
+           tabs are always clickable regardless of either state. */
+        .shelf-tab.open {
+            border-color: var(--color-accent);
+            color: var(--color-text);
         }
         .shelf-tab.active {
             background: var(--color-accent);
@@ -1579,39 +1589,6 @@
             height: 100%;
             border: none;
         }
-        .media-center-play {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 56px; height: 56px;
-            border-radius: 50%;
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid rgba(255, 255, 255, 0.85);
-            color: #ffffff;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.5rem;
-            cursor: pointer;
-            z-index: 25;
-            pointer-events: auto;
-            transition: opacity 0.2s, transform 0.15s, background 0.15s;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-        }
-        .media-center-play span {
-            margin-left: 3px;
-        }
-        .media-center-play:hover {
-            background: var(--color-accent);
-            border-color: #ffffff;
-            transform: translate(-50%, -50%) scale(1.1);
-        }
-        .media-center-play.playing {
-            opacity: 0;
-            pointer-events: none;
-        }
-        .media-video-wrapper:hover .media-center-play.playing {
-            opacity: 0.6;
-            pointer-events: auto;
-        }
         .media-empty-placeholder {
             display: flex;
             flex-direction: column;
@@ -1841,20 +1818,15 @@
             flex: 0 0 auto;
             display: flex;
             align-items: center;
-            justify-content: space-between;
             gap: 8px;
-            padding: 8px 12px;
-            background: var(--color-chrome);
-            border: 1px solid var(--color-border);
-            border-radius: 8px;
-            flex-wrap: wrap;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            flex-wrap: nowrap;
         }
         .storyboard-toolbar-group {
             display: flex;
             align-items: center;
             gap: 6px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            flex-shrink: 0;
         }
         .storyboard-grid {
             flex: 1 1 auto;
@@ -3616,6 +3588,17 @@
         </div>
 
         <div class="top-bar-right">
+            <!-- Maya-style shelf tabs: pure tool-shelf switcher, scoped to whichever
+                 panel types are actually open right now. Doesn't touch panel content --
+                 each pane's own header dropdown decides that. See FDPanels.updateActionRibbon(). -->
+            <div id="shelf-tabs" class="shelf-tabs">
+                <button class="shelf-tab active" data-shelf="script-edit" onclick="FDPanels.setActiveShelf('script-edit')" title="Screenplay Editor tools">📜 Screenplay</button>
+                <button class="shelf-tab" data-shelf="media-player" onclick="FDPanels.setActiveShelf('media-player')" title="Video player tools">🎬 Video</button>
+                <button class="shelf-tab" data-shelf="storyboard" onclick="FDPanels.setActiveShelf('storyboard')" title="Storyboard tools">🎨 Storyboards</button>
+                <button class="shelf-tab" data-shelf="reference-board" onclick="FDPanels.setActiveShelf('reference-board')" title="Reference board tools">📌 References</button>
+                <button class="shelf-tab" data-shelf="script-render" onclick="FDPanels.setActiveShelf('script-render')" title="Screenplay Print tools">🖨️ Print</button>
+            </div>
+
             <div class="view-toggle" id="view-toggle">
                 <div class="menu-item layout-menu-btn" tabindex="0" title="Workspace Layout Mode" style="padding: 3px 8px; font-size: 0.76rem;">
                     <span id="topbar-layout-icon">⊞</span>
@@ -3626,36 +3609,6 @@
                         <div onclick="setLayoutMode('split-v')"><span>2-Pane (Stacked)</span></div>
                         <div onclick="setLayoutMode('studio-3')"><span>3-Pane Studio</span></div>
                         <div onclick="setLayoutMode('quad-4')"><span>4-Pane Quad Studio</span></div>
-                    </div>
-                </div>
-                <div class="menu-item mode-menu-btn" tabindex="0" title="Switch script view mode — also swaps the toolbar shelf below to match" style="padding: 3px 10px; font-size: 0.76rem;">
-                    <span>🎛️ Mode</span>
-                    <span style="font-size: 0.65rem; opacity: 0.7;">▼</span>
-                    <div class="dropdown" style="min-width: 210px;">
-                        <div id="view-btn-editable" onclick="togglePane('editable')" title="Show/hide the editable screenplay" style="display:flex; align-items:center; justify-content:space-between;">
-                            <span>📝 Edit</span><span class="dropdown-check">✓</span>
-                        </div>
-                        <div id="view-btn-exact" onclick="togglePane('exact')" title="Show/hide Screenplay Print view" style="display:flex; align-items:center; justify-content:space-between;">
-                            <span>🖨️ Print</span><span class="dropdown-check">✓</span>
-                        </div>
-                        <div id="view-btn-media" onclick="togglePanelType('media-player')" title="Show/hide Video & Live Action player" style="display:flex; align-items:center; justify-content:space-between;">
-                            <span>🎬 Video</span><span class="dropdown-check">✓</span>
-                        </div>
-                        <div id="view-btn-storyboard" onclick="togglePanelType('storyboard')" title="Show/hide Storyboards & Visual Beats" style="display:flex; align-items:center; justify-content:space-between;">
-                            <span>🎨 Storyboards</span><span class="dropdown-check">✓</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="menu-item panels-menu-btn" tabindex="0" title="Show or hide panels" style="padding: 3px 10px; font-size: 0.76rem;">
-                    <span>👁️ Panels</span>
-                    <span style="font-size: 0.65rem; opacity: 0.7;">▼</span>
-                    <div class="dropdown" style="min-width: 210px;">
-                        <div id="view-btn-hub" onclick="togglePanelType('studio-hub')" title="Show/hide Netflix-style Studio Catalog Hub" style="display:flex; align-items:center; justify-content:space-between;">
-                            <span>📺 Studio Hub</span><span class="dropdown-check">✓</span>
-                        </div>
-                        <div id="view-btn-references" onclick="togglePanelType('reference-board')" title="Show/hide Moodboard & References" style="display:flex; align-items:center; justify-content:space-between;">
-                            <span>📌 References</span><span class="dropdown-check">✓</span>
-                        </div>
                     </div>
                 </div>
                 <button id="view-btn-clean-panels" onclick="FDPanels.toggleCleanPanels()" title="Hide panel menu headers for an unimpeded view of panel contents (Alt+Z)">👁️ Clean Panels</button>
@@ -3697,19 +3650,11 @@
         </div>
     </div>
 
-    <!-- Tier 2 Action Ribbon: every panel type gets its own tool "shelf" here; tabs
-         appear for whichever panels are open and switch which shelf shows -- Maya-style
-         shelves. See FDPanels.SHELF_TYPES / updateActionRibbon() / setActiveShelf(). -->
+    <!-- Tier 2 Action Ribbon: every panel type gets its own tool "shelf" here; the tabs
+         that switch between shelves now live in the top bar (#shelf-tabs) but work exactly
+         as before -- pure tool-shelf switching, scoped to whichever panels are open.
+         See FDPanels.SHELF_TYPES / updateActionRibbon() / setActiveShelf(). -->
     <div id="action-ribbon">
-        <div id="shelf-tabs" class="shelf-tabs hidden">
-            <button class="shelf-tab active" data-shelf="script-edit" onclick="FDPanels.setActiveShelf('script-edit')">📜 Screenplay</button>
-            <button class="shelf-tab" data-shelf="studio-hub" onclick="FDPanels.setActiveShelf('studio-hub')">📺 Studio Hub</button>
-            <button class="shelf-tab" data-shelf="media-player" onclick="FDPanels.setActiveShelf('media-player')">🎬 Video</button>
-            <button class="shelf-tab" data-shelf="storyboard" onclick="FDPanels.setActiveShelf('storyboard')">🎨 Storyboards</button>
-            <button class="shelf-tab" data-shelf="reference-board" onclick="FDPanels.setActiveShelf('reference-board')">📌 References</button>
-            <button class="shelf-tab" data-shelf="script-render" onclick="FDPanels.setActiveShelf('script-render')">🖨️ Print</button>
-        </div>
-
         <div id="shelf-script-edit" class="shelf-content active">
             <div class="toolbar" id="format-toolbar">
                 <button data-type="scene-heading" title="Scene Heading (INT. / EXT.)">Scene Heading</button>
@@ -3779,19 +3724,7 @@
             </div>
 
             <div class="media-controls-bar">
-                <div class="media-scrubber-row">
-                    <input type="range" id="media-scrubber" class="media-scrubber" min="0" max="100" step="0.01" value="0" oninput="FDMediaPlayer.onScrubInput(this.value)" onchange="FDMediaPlayer.onScrubChange(this.value)">
-                    <div class="media-timecode" id="media-timecode">00:00:00.00 / 00:00:00.00</div>
-                </div>
                 <div class="media-buttons-row">
-                    <div class="media-btn-group">
-                        <button class="media-btn" id="media-play-btn" onclick="FDMediaPlayer.togglePlay()" title="Play/Pause (Space)">▶ Play</button>
-                        <button class="media-btn" onclick="FDMediaPlayer.stepFrame(-1)" title="Step back 1 frame">◀ -1f</button>
-                        <button class="media-btn" onclick="FDMediaPlayer.stepSeconds(-1)" title="Step back 1 sec">◀ -1s</button>
-                        <button class="media-btn" onclick="FDMediaPlayer.stepSeconds(1)" title="Step forward 1 sec">+1s ▶</button>
-                        <button class="media-btn" onclick="FDMediaPlayer.stepFrame(1)" title="Step forward 1 frame">+1f ▶</button>
-                    </div>
-
                     <div class="media-btn-group">
                         <span style="font-size:0.72rem; color:var(--color-text-dim);">Speed:</span>
                         <select class="shot-spec-select" id="media-speed-select" onchange="FDMediaPlayer.setSpeed(this.value)">
@@ -3844,13 +3777,13 @@
                 </div>
                 <div class="storyboard-toolbar-group">
                     <span style="font-size:0.72rem; color:var(--color-text-dim);">Aspect:</span>
-                    <div class="storyboard-view-pills" id="sb-aspect-pills" title="Reframes every shot card at once">
-                        <button class="sb-view-btn" data-ar="16:9" onclick="FDStoryboard.setAspectRatio('16:9')" title="16:9 Widescreen">16:9</button>
-                        <button class="sb-view-btn" data-ar="2.39:1" onclick="FDStoryboard.setAspectRatio('2.39:1')" title="2.39:1 Cinemascope">2.39:1</button>
-                        <button class="sb-view-btn" data-ar="4:3" onclick="FDStoryboard.setAspectRatio('4:3')" title="4:3 Classic">4:3</button>
-                        <button class="sb-view-btn" data-ar="1:1" onclick="FDStoryboard.setAspectRatio('1:1')" title="1:1 Square">1:1</button>
-                        <button class="sb-view-btn" data-ar="9:16" onclick="FDStoryboard.setAspectRatio('9:16')" title="9:16 Vertical">9:16</button>
-                    </div>
+                    <select class="shot-spec-select" id="sb-aspect-select" onchange="FDStoryboard.setAspectRatio(this.value)" title="Reframes every shot card at once">
+                        <option value="16:9">16:9 Widescreen</option>
+                        <option value="2.39:1">2.39:1 Cinemascope</option>
+                        <option value="4:3">4:3 Classic</option>
+                        <option value="1:1">1:1 Square</option>
+                        <option value="9:16">9:16 Vertical</option>
+                    </select>
                     <button class="media-btn" id="sb-reshoot-ar-btn" onclick="FDStoryboard.reshootAllAtAspect()" title="Re-generate every frame at the current aspect ratio">&#8635; Re-shoot all</button>
                     <button class="media-btn" id="sb-fit-btn" onclick="FDStoryboard.toggleImageFit()" title="Fit: the whole frame is shown. Click for Fill.">&#9974; Fit</button>
                     <span style="font-size:0.72rem; color:var(--color-text-dim);">Style:</span>
@@ -4117,7 +4050,6 @@
                     <div class="media-video-wrapper" id="media-video-wrapper" ondragover="FDMediaPlayer.onDragOver(event)" ondragleave="FDMediaPlayer.onDragLeave(event)" ondrop="FDMediaPlayer.onDrop(event)">
                         <div class="media-drop-zone" id="media-drop-zone">Drop a movie here — or a subtitle file (.srt / .vtt) to match it to the script</div>
                         <video id="media-html5-video" controlsList="nodownload" playsinline ontimeupdate="FDMediaPlayer.onTimeUpdate()" onloadedmetadata="FDMediaPlayer.onLoadedMetadata()"><track id="media-sub-track" kind="subtitles" srclang="en" label="Subtitles"></video>
-                        <div class="media-center-play" id="media-center-play" onclick="event.stopPropagation(); FDMediaPlayer.togglePlay()" title="Click to Play/Pause (Space)"><span>▶</span></div>
                         <div id="media-yt-container" style="width:100%; height:100%; display:none;"></div>
                         <div class="media-empty-placeholder" id="media-empty-placeholder">
                             <span style="font-size: 2.2rem; opacity: 0.7;">🎬</span>
@@ -4127,6 +4059,19 @@
                                 Select Video File
                             </button>
                         </div>
+                    </div>
+
+                    <div class="media-scrubber-row" id="media-scrubber-row" style="padding:6px 10px 0; background:var(--color-chrome); border-top:1px solid var(--color-border);">
+                        <input type="range" id="media-scrubber" class="media-scrubber" min="0" max="100" step="0.01" value="0" oninput="FDMediaPlayer.onScrubInput(this.value)" onchange="FDMediaPlayer.onScrubChange(this.value)">
+                    </div>
+
+                    <div class="media-btn-group media-inline-transport" id="media-inline-transport" style="justify-content:center; padding:6px 10px; background:var(--color-chrome); position:relative;">
+                        <button class="media-btn" onclick="FDMediaPlayer.stepFrame(-1)" title="Step back 1 frame">◀ -1f</button>
+                        <button class="media-btn" onclick="FDMediaPlayer.stepSeconds(-1)" title="Step back 1 sec">◀ -1s</button>
+                        <button class="media-btn" id="media-play-btn" onclick="FDMediaPlayer.togglePlay()" title="Play/Pause (Space)">▶ Play</button>
+                        <button class="media-btn" onclick="FDMediaPlayer.stepSeconds(1)" title="Step forward 1 sec">+1s ▶</button>
+                        <button class="media-btn" onclick="FDMediaPlayer.stepFrame(1)" title="Step forward 1 frame">+1f ▶</button>
+                        <div class="media-timecode" id="media-timecode" style="position:absolute; right:10px;">00:00:00.00 / 00:00:00.00</div>
                     </div>
 
                     <div class="media-bookmarks-bar" id="media-bookmarks-bar">
@@ -7772,7 +7717,7 @@
             document.getElementById('pdf-viewer').style.display = pdfLoaded ? '' : 'none';
             document.getElementById('script-render-page').style.display = pdfLoaded ? 'none' : '';
             if (!pdfLoaded) refreshScriptRender();
-            const btnExact = document.getElementById('view-btn-exact');
+            const btnExact = document.querySelector('.shelf-tab[data-shelf="script-render"]');
             if (btnExact) {
                 btnExact.title = pdfLoaded
                     ? 'Show/hide the pixel-perfect replica of the source PDF'
@@ -8024,31 +7969,6 @@
                 saveState();
             },
 
-            togglePanel(type) {
-                const visibleSlots = this.getVisibleSlots();
-                const foundIndex = visibleSlots.findIndex(s => s.type === type);
-
-                if (foundIndex >= 0) {
-                    if (visibleSlots.length > 1) {
-                        this.setLayoutMode('single');
-                    } else {
-                        this.setActiveShelf(type);
-                    }
-                    return;
-                }
-
-                if (layoutState.mode === 'single') {
-                    layoutState.slots[1].type = type;
-                    this.setLayoutMode('split-h');
-                } else {
-                    layoutState.slots[1].type = type;
-                    this.mountComponent('slot-2', type);
-                    this.syncLegacyPaneState();
-                    this.updateTopbarButtons();
-                }
-                this.setActiveShelf(type);
-            },
-
             getVisibleSlots() {
                 if (layoutState.mode === 'single') return [layoutState.slots[0]];
                 if (layoutState.mode === 'split-h' || layoutState.mode === 'split-v') return [layoutState.slots[0], layoutState.slots[1]];
@@ -8060,39 +7980,21 @@
                 const visible = this.getVisibleSlots();
                 paneState.editable = visible.some(s => s.type === 'script-edit');
                 paneState.exact = visible.some(s => s.type === 'script-render');
-
-                const btnExact = document.getElementById('view-btn-exact');
-                const btnEditable = document.getElementById('view-btn-editable');
-                if (btnExact) btnExact.classList.toggle('active', paneState.exact);
-                if (btnEditable) btnEditable.classList.toggle('active', paneState.editable);
             },
 
             updateTopbarButtons() {
-                const visible = this.getVisibleSlots();
-                const isHub = visible.some(s => s.type === 'studio-hub');
-                const isMedia = visible.some(s => s.type === 'media-player');
-                const isSb = visible.some(s => s.type === 'storyboard');
-                const isRef = visible.some(s => s.type === 'reference-board');
-
-                const btnHub = document.getElementById('view-btn-hub');
-                const btnMedia = document.getElementById('view-btn-media');
-                const btnSb = document.getElementById('view-btn-storyboard');
-                const btnRef = document.getElementById('view-btn-references');
-                if (btnHub) btnHub.classList.toggle('active', isHub);
-                if (btnMedia) btnMedia.classList.toggle('active', isMedia);
-                if (btnSb) btnSb.classList.toggle('active', isSb);
-                if (btnRef) btnRef.classList.toggle('active', isRef);
                 this.syncCleanPanelsState();
                 this.updateActionRibbon();
             },
 
-            // Every panel type gets its own shelf of tools in the Tier-2 action ribbon.
-            // The ribbon shows tabs for whichever panels are actually open right now,
-            // and clicking a tab (or FDPanels.setActiveShelf) swaps which shelf shows --
-            // Maya-style shelves, but scoped to what's actually on screen.
+            // Every panel type gets its own shelf of tools, and all the tabs (living in
+            // the top bar) are always there to pick from -- even for a panel type that
+            // isn't open anywhere right now, so its tools just won't have anything to
+            // act on yet. Clicking a tab only switches which shelf of tools is showing;
+            // it never opens, closes, or otherwise touches panel content. Each pane's
+            // own header dropdown is what decides what that pane shows.
             SHELF_TYPES: [
                 { type: 'script-edit', label: '📜 Screenplay' },
-                { type: 'studio-hub', label: '📺 Studio Hub' },
                 { type: 'media-player', label: '🎬 Video' },
                 { type: 'storyboard', label: '🎨 Storyboards' },
                 { type: 'reference-board', label: '📌 References' },
@@ -8103,26 +8005,13 @@
                 const visible = this.getVisibleSlots();
                 const openTypes = this.SHELF_TYPES.map(s => s.type).filter(t => visible.some(s => s.type === t));
 
-                const ribbon = document.getElementById('action-ribbon');
-                if (!ribbon) return;
-
-                if (openTypes.length === 0) {
-                    ribbon.classList.add('hidden');
-                    return;
-                }
-                ribbon.classList.remove('hidden');
-
-                if (!openTypes.includes(layoutState.activeShelf)) {
-                    layoutState.activeShelf = openTypes[0];
+                if (!layoutState.activeShelf) {
+                    layoutState.activeShelf = openTypes[0] || this.SHELF_TYPES[0].type;
                 }
                 const active = layoutState.activeShelf;
 
-                const tabs = document.getElementById('shelf-tabs');
-                if (tabs) tabs.classList.toggle('hidden', openTypes.length < 2);
-
                 document.querySelectorAll('.shelf-tab').forEach(el => {
-                    const isOpen = openTypes.includes(el.dataset.shelf);
-                    el.classList.toggle('hidden', !isOpen);
+                    el.classList.toggle('open', openTypes.includes(el.dataset.shelf));
                     el.classList.toggle('active', el.dataset.shelf === active);
                 });
                 document.querySelectorAll('.shelf-content').forEach(el => {
@@ -8317,8 +8206,6 @@
                 FDPanels.setLayoutMode('single');
             }
         }
-        function togglePanelType(type) { FDPanels.togglePanel(type); }
-        function toggleCleanPanels() { FDPanels.toggleCleanPanels(); }
 
         function applyPaneLayout() {
             FDPanels.applyLayout();
@@ -8351,12 +8238,6 @@
             }
             FDPanels.syncLegacyPaneState();
         }
-
-        function togglePane(which) {
-            const isVis = (which === 'exact' ? paneState.exact : paneState.editable);
-            setPaneVisible(which, !isVis);
-        }
-        function closePane(which) { setPaneVisible(which, false); }
 
         function swapPanes() {
             const t1 = layoutState.slots[0].type;
@@ -9058,8 +8939,6 @@
                     mediaState.sourceTitle = 'YouTube: ' + videoId;
                     const badge = document.getElementById('media-source-badge');
                     if (badge) badge.innerText = '▶ YouTube (' + videoId + ')';
-                    const centerPlay = document.getElementById('media-center-play');
-                    if (centerPlay) centerPlay.classList.add('playing');
                     return;
                 }
 
@@ -9077,8 +8956,6 @@
                     mediaState.sourceTitle = 'Vimeo: ' + vimeoId;
                     const badge = document.getElementById('media-source-badge');
                     if (badge) badge.innerText = '▶ Vimeo (' + vimeoId + ')';
-                    const centerPlay = document.getElementById('media-center-play');
-                    if (centerPlay) centerPlay.classList.add('playing');
                     return;
                 }
 
@@ -10789,12 +10666,8 @@
             },
 
             syncToolbarControls() {
-                const pills = document.getElementById('sb-aspect-pills');
-                if (pills) {
-                    pills.querySelectorAll('button[data-ar]').forEach(b => {
-                        b.classList.toggle('active', b.getAttribute('data-ar') === storyboardState.aspectRatio);
-                    });
-                }
+                const aspectSelect = document.getElementById('sb-aspect-select');
+                if (aspectSelect) aspectSelect.value = storyboardState.aspectRatio;
                 const fitBtn = document.getElementById('sb-fit-btn');
                 if (fitBtn) {
                     const filling = storyboardState.imageFit === 'fill';
