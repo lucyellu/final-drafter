@@ -1319,17 +1319,35 @@
             min-height: 0;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+        }
+        /* The travelling map. Flush and chromeless inside a panel, which draws
+           its own frame; a raised card when it is the overlay's contents. */
+        #map-stage {
+            flex: 1 1 auto;
+            min-width: 0;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
             background: var(--color-bg-surface);
+            overflow: hidden;
+        }
+        #map-stage.in-overlay {
             border: 1px solid var(--color-border-hover);
             border-radius: 18px;
             box-shadow: 0 24px 60px rgba(0,0,0,0.65);
-            overflow: hidden;
         }
+        #map-stage .map-only-overlay { display: none; }
+        #map-stage.in-overlay .map-only-overlay { display: flex; }
+        #map-stage.in-overlay .map-only-panel { display: none; }
         .map-toolbar {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
+            gap: 8px;
+            /* A panel can be a quarter of the window wide, so the controls wrap
+               rather than overflowing out of reach. */
+            flex-wrap: wrap;
+            padding: 9px 12px;
             border-bottom: 1px solid var(--color-border);
             background: var(--color-chrome);
             flex-shrink: 0;
@@ -1345,6 +1363,10 @@
             font-size: 0.75rem;
             color: var(--color-text-muted);
             margin-right: auto;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .map-toolbar button, .map-skin-group button {
             background: var(--color-bg-elevated);
@@ -4150,6 +4172,7 @@
                             <option value="media-player">🎬 Media Player</option>
                             <option value="storyboard">🎨 Storyboard &amp; Beats</option>
                             <option value="reference-board">📌 References &amp; Moodboard</option>
+                            <option value="location-map">🗺 Location Map</option>
                         </select>
                         <span class="pane-title" id="pane-title-slot-1" style="display:none;"></span>
                     </div>
@@ -4175,6 +4198,7 @@
                             <option value="media-player">🎬 Media Player</option>
                             <option value="storyboard">🎨 Storyboard &amp; Beats</option>
                             <option value="reference-board">📌 References &amp; Moodboard</option>
+                            <option value="location-map">🗺 Location Map</option>
                         </select>
                         <span class="pane-title" id="pane-title-slot-2" style="display:none;"></span>
                     </div>
@@ -4203,6 +4227,7 @@
                             <option value="media-player">🎬 Media Player</option>
                             <option value="storyboard" selected>🎨 Storyboard &amp; Beats</option>
                             <option value="reference-board">📌 References &amp; Moodboard</option>
+                            <option value="location-map">🗺 Location Map</option>
                         </select>
                         <span class="pane-title" id="pane-title-slot-3" style="display:none;"></span>
                     </div>
@@ -4225,6 +4250,7 @@
                             <option value="media-player">🎬 Media Player</option>
                             <option value="storyboard">🎨 Storyboard &amp; Beats</option>
                             <option value="reference-board" selected>📌 References &amp; Moodboard</option>
+                            <option value="location-map">🗺 Location Map</option>
                         </select>
                         <span class="pane-title" id="pane-title-slot-4" style="display:none;"></span>
                     </div>
@@ -4330,6 +4356,36 @@
                 <div class="ref-board-container">
                     <div class="ref-grid" id="ref-card-grid" ondragover="FDReferences.onDragOver(event)" ondragleave="FDReferences.onDragLeave(event)" ondrop="FDReferences.onDrop(event)">
                         <!-- Reference cards dynamically rendered here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. Location Map Component. #map-stage is the map itself and
+                 travels: it lives here while the map is a panel, and moves into
+                 #map-frame while the overlay is up. See FDMap._host(). -->
+            <div id="component-location-map" class="panel-content-view">
+                <div id="map-stage">
+                    <div class="map-toolbar">
+                        <span class="map-title">Location Map</span>
+                        <span class="map-sub" id="map-sub"></span>
+                        <div class="map-skin-group">
+                            <button id="map-skin-atlas" onclick="FDMap.setSkin('atlas')"
+                                title="Regions drawn as landmasses, routes as roads">Atlas</button>
+                            <button id="map-skin-console" onclick="FDMap.setSkin('console')"
+                                title="Same layout, drawn as a schematic">Schematic</button>
+                        </div>
+                        <button onclick="FDMap.toggleLabels()" id="map-labels-btn" title="Show or hide location names">Labels</button>
+                        <button onclick="FDMap.toggleRoutes()" id="map-routes-btn" title="Show or hide the cuts between scenes">Routes</button>
+                        <button onclick="FDMap.fitAndRender()" title="Frame everything">Fit</button>
+                        <button onclick="FDMap.relayout()" title="Settle the layout again from a fresh start">Reshuffle</button>
+                        <button onclick="FDMap.exportSVG()" title="Save this map as an SVG file">Export</button>
+                        <button class="map-only-panel" onclick="FDMap.open()" title="Show the map full screen">⛶</button>
+                        <button class="close-btn map-only-overlay" onclick="FDMap.close()" title="Close (Esc)">✕</button>
+                    </div>
+                    <div class="map-canvas-wrap" id="map-canvas-wrap">
+                        <svg id="map-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+                        <div class="map-empty" id="map-empty"></div>
+                        <div class="map-tip" id="map-tip"></div>
                     </div>
                 </div>
             </div>
@@ -8496,7 +8552,7 @@
 
                 slotEl.dataset.type = type;
                 bodyEl.classList.toggle('script-body', type === 'script-edit' || type === 'script-render');
-                bodyEl.classList.toggle('flush-body', type === 'media-player' || type === 'studio-hub' || type === 'storyboard' || type === 'reference-board');
+                bodyEl.classList.toggle('flush-body', type === 'media-player' || type === 'studio-hub' || type === 'storyboard' || type === 'reference-board' || type === 'location-map');
 
                 const compEl = document.getElementById('component-' + type);
                 if (compEl && compEl.parentElement !== bodyEl) {
@@ -8514,6 +8570,8 @@
                     FDMediaPlayer.renderBookmarks();
                 } else if (type === 'studio-hub') {
                     FDStudioHub.render();
+                } else if (type === 'location-map') {
+                    FDMap.mountedInPanel();
                 }
             },
 
@@ -8584,6 +8642,11 @@
             },
 
             setActiveShelf(type) {
+                // A panel type with no shelf of its own -- the location map,
+                // whose controls live in its own toolbar -- leaves the ribbon
+                // showing whatever it was showing. Switching to a shelf that
+                // doesn't exist would blank it instead.
+                if (!this.SHELF_TYPES.some(s => s.type === type)) return;
                 layoutState.activeShelf = type;
                 this.updateActionRibbon();
                 saveState();
@@ -15032,6 +15095,10 @@
                 const empty = document.getElementById('map-empty');
                 const sub = document.getElementById('map-sub');
                 if (!svg) return;
+                // Parked in the hidden component pool: nothing to measure, so
+                // nothing worth painting. Mounting or opening repaints it.
+                const host = document.getElementById('map-canvas-wrap');
+                if (!host || !host.clientWidth || !host.clientHeight) return;
                 const g = locationGraph;
 
                 if (!g.nodes.length) {
@@ -15171,8 +15238,17 @@
                     const p = this.positions.get(n.name);
                     if (p) taken.push({ x0: p.x - p.r, x1: p.x + p.r, y0: p.y - p.r, y1: p.y + p.r });
                 });
-                const fits = box => !taken.some(t =>
-                    box.x0 < t.x1 && box.x1 > t.x0 && box.y0 < t.y1 && box.y1 > t.y0);
+                // A name must also fit inside the frame. Growing the frame to
+                // hold it instead can't work: type is sized in screen pixels,
+                // so a wider frame makes every name proportionally wider too,
+                // and in a narrow panel the two chase each other forever. In a
+                // quarter-width pane some names simply don't fit, and the honest
+                // answer is to leave those off and keep the rest readable.
+                const v = this.view, ins = fs * 0.4;
+                const fits = box =>
+                    box.x0 >= v.x + ins && box.x1 <= v.x + v.w - ins &&
+                    box.y0 >= v.y + ins && box.y1 <= v.y + v.h - ins &&
+                    !taken.some(t => box.x0 < t.x1 && box.x1 > t.x0 && box.y0 < t.y1 && box.y1 > t.y0);
 
                 let nodeLayer = '';
                 g.nodes.forEach(n => {
@@ -15248,6 +15324,15 @@
                 this._applyView();
             },
 
+            // Coalesces the repaints that follow a gesture: the viewBox moves
+            // live, the type and the label placement catch up once it stops.
+            _repaintSoon() {
+                clearTimeout(this._zoomTimer);
+                this._zoomTimer = setTimeout(() => {
+                    if (this.isShowing()) this.render();
+                }, 160);
+            },
+
             _applyView() {
                 const svg = document.getElementById('map-svg');
                 if (!svg || !this.view) return;
@@ -15257,16 +15342,20 @@
 
             fit() {
                 const wrap = document.getElementById('map-canvas-wrap');
-                if (!wrap || !this.positions.size) return;
+                if (!wrap || !wrap.clientWidth || !wrap.clientHeight || !this.positions.size) return;
+                // The marks, plus a margin. Names are not accounted for here --
+                // where each one ends up is the painter's decision, not the
+                // framer's -- so _growToFitLabels() measures the result and
+                // widens this afterwards. See fitAndRender().
                 let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
                 this.positions.forEach(p => {
                     x0 = Math.min(x0, p.x - p.r); y0 = Math.min(y0, p.y - p.r);
                     x1 = Math.max(x1, p.x + p.r); y1 = Math.max(y1, p.y + p.r);
                 });
-                const pad = 110;
+                const pad = Math.max(60, (x1 - x0) * 0.06);
                 x0 -= pad; y0 -= pad; x1 += pad; y1 += pad;
                 let w = x1 - x0, h = y1 - y0;
-                const aspect = (wrap.clientWidth || 1000) / (wrap.clientHeight || 700);
+                const aspect = wrap.clientWidth / wrap.clientHeight;
                 if (w / h < aspect) { const nw = h * aspect; x0 -= (nw - w) / 2; w = nw; }
                 else { const nh = w / aspect; y0 -= (nh - h) / 2; h = nh; }
                 this.view = { x: x0, y: y0, w, h };
@@ -15274,7 +15363,7 @@
             },
 
             // fit() only reframes. Repainting after it is what re-sizes the
-            // type and re-runs label collision for the new scale.
+            // type and re-runs label placement for the new scale.
             fitAndRender() { this.fit(); this.render(); },
 
             setSkin(skin) { this.skin = skin; this.render(); },
@@ -15286,7 +15375,7 @@
             relayout() {
                 this.layout('r' + Date.now());
                 this.view = null;
-                this.render();
+                this.fitAndRender();
             },
 
             exportSVG() {
@@ -15309,11 +15398,14 @@
 
             _bind() {
                 if (this._bound) return;
-                this._bound = true;
                 const svg = document.getElementById('map-svg');
                 const wrap = document.getElementById('map-canvas-wrap');
                 const tip = document.getElementById('map-tip');
                 if (!svg || !wrap) return;
+                this._bound = true;
+                // These elements travel between hosts rather than being rebuilt,
+                // so binding once is binding for good.
+                this._observeHost();
 
                 let dragging = false, lastX = 0, lastY = 0, moved = 0;
 
@@ -15360,6 +15452,9 @@
                     dragging = false;
                     svg.classList.remove('dragging');
                     try { svg.releasePointerCapture(e.pointerId); } catch (_) {}
+                    // Panning changes which names have room, the same as
+                    // zooming does, so it repaints on the same delay.
+                    if (moved > 5) this._repaintSoon();
                 };
                 svg.addEventListener('pointerup', endDrag);
                 svg.addEventListener('pointercancel', endDrag);
@@ -15371,7 +15466,10 @@
                     if (!g) return;
                     const rec = locationGraph.nodes.find(n => n.name === g.dataset.loc);
                     if (!rec || !rec.headings.length) return;
-                    this.close();
+                    // The overlay is covering the script, so picking a place has
+                    // to dismiss it. A panel is sitting beside the script, so it
+                    // stays put and the scene simply scrolls into view.
+                    if (this.isOpen()) this.close();
                     scrollToBlock(rec.headings[0], 'center');
                     const node = rec.headings[0];
                     const old = node.style.backgroundColor;
@@ -15393,12 +15491,9 @@
                     this.view.w = nw; this.view.h = nh;
                     this._applyView();
                     // The viewBox change is instant; the repaint that re-sizes
-                    // the type and re-runs label collision waits for the wheel
+                    // the type and re-runs label placement waits for the wheel
                     // to stop, so a fast scroll costs one render, not thirty.
-                    clearTimeout(this._zoomTimer);
-                    this._zoomTimer = setTimeout(() => {
-                        if (this.isOpen()) this.render();
-                    }, 160);
+                    this._repaintSoon();
                 }, { passive: false });
 
                 document.addEventListener('keydown', e => {
@@ -15409,13 +15504,27 @@
                 }, true);
             },
 
+            // There is one map. It shows either in a panel or full screen, and
+            // moving the stage between the two hosts -- rather than keeping two
+            // of everything -- is what makes those the same map: same layout,
+            // same framing, same bound listeners, no state to keep in step.
+            _moveStageTo(hostId) {
+                const stage = document.getElementById('map-stage');
+                const host = document.getElementById(hostId);
+                if (!stage || !host || stage.parentElement === host) return;
+                host.appendChild(stage);
+            },
+
             open() {
                 const ov = document.getElementById('map-overlay');
                 if (!ov) return;
                 this._bind();
+                this._moveStageTo('map-frame');
+                const stage = document.getElementById('map-stage');
+                if (stage) stage.classList.add('in-overlay');
                 ov.classList.add('open');
-                this.view = null;          // always open framed on the whole map
-                this.render();
+                this.view = null;          // reframe for the new host's size
+                this.fitAndRender();
             },
 
             close() {
@@ -15423,6 +15532,13 @@
                 if (ov) ov.classList.remove('open');
                 const tip = document.getElementById('map-tip');
                 if (tip) tip.classList.remove('show');
+                const stage = document.getElementById('map-stage');
+                if (stage) stage.classList.remove('in-overlay');
+                this._moveStageTo('component-location-map');
+                // Back in a panel of a different size, or back in the hidden
+                // pool, where render() will find nothing to measure and bail.
+                this.view = null;
+                this.fitAndRender();
             },
 
             isOpen() {
@@ -15430,15 +15546,59 @@
                 return !!ov && ov.classList.contains('open');
             },
 
-            // Called from extractEntities() on every edit. Repainting a closed
-            // overlay would be wasted work on every keystroke.
+            // FDPanels.mountComponent() calls this when a slot is switched to
+            // the map. The overlay wins if it happens to be up -- the stage is
+            // in it, and closing puts it back here.
+            mountedInPanel() {
+                this._bind();
+                if (this.isOpen()) return;
+                this.view = null;
+                this.fitAndRender();
+            },
+
+            // Showing means measurable: mounted in a slot that is on screen, or
+            // sitting in the open overlay. Parked in the hidden component pool
+            // it has no size, and painting it would be wasted work.
+            isShowing() {
+                if (this.isOpen()) return true;
+                const wrap = document.getElementById('map-canvas-wrap');
+                return !!wrap && wrap.clientWidth > 0 && wrap.clientHeight > 0;
+            },
+
+            // A panel gets resized by every splitter drag and every layout
+            // change. Rather than refit -- which would throw away the reader's
+            // pan and zoom on each one -- hold the centre and the zoom level
+            // and just let the frame take the new shape.
+            _observeHost() {
+                if (this._ro || typeof ResizeObserver !== 'function') return;
+                const wrap = document.getElementById('map-canvas-wrap');
+                if (!wrap) return;
+                this._ro = new ResizeObserver(() => {
+                    clearTimeout(this._roTimer);
+                    this._roTimer = setTimeout(() => {
+                        if (!this.isShowing()) return;
+                        if (this.view && wrap.clientWidth && wrap.clientHeight) {
+                            const cx = this.view.x + this.view.w / 2;
+                            const cy = this.view.y + this.view.h / 2;
+                            this.view.h = this.view.w / (wrap.clientWidth / wrap.clientHeight);
+                            this.view.x = cx - this.view.w / 2;
+                            this.view.y = cy - this.view.h / 2;
+                        }
+                        this.render();
+                    }, 120);
+                });
+                this._ro.observe(wrap);
+            },
+
+            // Called from extractEntities() on every edit. Repainting a map
+            // nobody can see would be wasted work on every keystroke.
             onScriptChanged() {
                 const note = document.getElementById('loc-region-note');
                 if (note) {
                     const r = locationGraph.regions.length;
                     note.textContent = r ? `${r} region${r === 1 ? '' : 's'} inferred` : '';
                 }
-                if (this.isOpen()) this.render();
+                if (this.isShowing()) this.render();
             }
         };
         window.FDMap = FDMap;
@@ -15467,32 +15627,11 @@
         };
     </script>
 
-    <!-- Location map: the script's own geography, drawn from sluglines. -->
-    <div id="map-overlay">
-        <div class="map-frame">
-            <div class="map-toolbar">
-                <span class="map-title">Location Map</span>
-                <span class="map-sub" id="map-sub"></span>
-                <div class="map-skin-group">
-                    <button id="map-skin-atlas" onclick="FDMap.setSkin('atlas')"
-                        title="Regions drawn as landmasses, routes as roads">Atlas</button>
-                    <button id="map-skin-console" onclick="FDMap.setSkin('console')"
-                        title="Same layout, drawn as a schematic">Schematic</button>
-                </div>
-                <button onclick="FDMap.toggleLabels()" id="map-labels-btn" title="Show or hide location names">Labels</button>
-                <button onclick="FDMap.toggleRoutes()" id="map-routes-btn" title="Show or hide the cuts between scenes">Routes</button>
-                <button onclick="FDMap.fitAndRender()" title="Frame everything">Fit</button>
-                <button onclick="FDMap.relayout()" title="Settle the layout again from a fresh start">Reshuffle</button>
-                <button onclick="FDMap.exportSVG()" title="Save this map as an SVG file">Export</button>
-                <button class="close-btn" onclick="FDMap.close()" title="Close (Esc)">✕</button>
-            </div>
-            <div class="map-canvas-wrap" id="map-canvas-wrap">
-                <svg id="map-svg" xmlns="http://www.w3.org/2000/svg"></svg>
-                <div class="map-empty" id="map-empty"></div>
-                <div class="map-tip" id="map-tip"></div>
-            </div>
-        </div>
-    </div>
+    <!-- The map's own frame. Empty markup on purpose: #map-stage is moved in
+         here when the overlay opens and back to its component pool when it
+         closes, so there is only ever one map -- one SVG, one set of bound
+         listeners -- whether it is showing in a panel or full screen. -->
+    <div id="map-overlay"><div class="map-frame" id="map-frame"></div></div>
 
     <!-- Right-click menu for the formatting toolbar -->
     <div id="suggest-menu" class="suggest-menu"></div>

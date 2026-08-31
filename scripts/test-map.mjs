@@ -270,7 +270,126 @@ const jumped = await page.evaluate(async () => {
 ok('a location group is addressable by name', jumped.found, jumped);
 ok('picking a place closes the map', jumped.closed, jumped);
 
-console.log('\n== 7. Empty script ==');
+console.log('\n== 7. The map as a panel ==');
+
+// Reload the script the panel tests need (section 6 left the editor alone,
+// but section 6's click closed the overlay).
+const panel = await page.evaluate(async () => {
+  FDPanels.setSlotType('slot-2', 'location-map');
+  await new Promise(r => setTimeout(r, 500));
+  const stage = document.getElementById('map-stage');
+  const body = document.getElementById('slot-body-2');
+  const svg = document.getElementById('map-svg');
+  return {
+    optionOffered: !!document.querySelector('#slot-2 .pane-type-select option[value="location-map"]'),
+    selectValue: document.querySelector('#slot-2 .pane-type-select').value,
+    stageInPanel: !!body && body.contains(stage),
+    onlyOneStage: document.querySelectorAll('#map-stage').length,
+    onlyOneSvg: document.querySelectorAll('#map-svg').length,
+    flush: !!body && body.classList.contains('flush-body'),
+    drewNodes: svg.querySelectorAll('.map-node').length,
+    overlayShut: !document.getElementById('map-overlay').classList.contains('open'),
+    showing: FDMap.isShowing(),
+    slotType: layoutState.slots.find(s => s.id === 'slot-2').type,
+  };
+});
+ok('Location Map offered in the pane dropdown', panel.optionOffered, panel);
+ok('dropdown reflects the mounted type', panel.selectValue === 'location-map', panel);
+ok('the stage moved into the panel body', panel.stageInPanel, panel);
+ok('there is still exactly one map', panel.onlyOneStage === 1 && panel.onlyOneSvg === 1, panel);
+ok('panel body is flush', panel.flush, panel);
+ok('map painted itself in the panel', panel.drewNodes === graph.nodes, panel);
+ok('no overlay involved', panel.overlayShut, panel);
+ok('isShowing() true when panelled', panel.showing, panel);
+ok('layout state records the type', panel.slotType === 'location-map', panel);
+
+// The ribbon has no shelf for the map; switching to it must not blank the one
+// that is showing.
+const shelf = await page.evaluate(() => ({
+  activeShelf: layoutState.activeShelf,
+  shelvesActive: document.querySelectorAll('.shelf-content.active').length,
+}));
+ok('a shelf is still showing', shelf.shelvesActive === 1, shelf);
+ok('active shelf left on a real one', shelf.activeShelf !== 'location-map', shelf);
+
+// Overlay and panel are the same map: the stage travels, and comes home.
+const travel = await page.evaluate(async () => {
+  FDMap.open();
+  await new Promise(r => setTimeout(r, 400));
+  const inFrame = document.getElementById('map-frame')
+    .contains(document.getElementById('map-stage'));
+  const overlayNodes = document.querySelectorAll('#map-svg .map-node').length;
+  const closeShown = getComputedStyle(document.querySelector('.map-only-overlay')).display !== 'none';
+  FDMap.close();
+  await new Promise(r => setTimeout(r, 400));
+  const home = document.getElementById('slot-body-2')
+    .contains(document.getElementById('map-stage'));
+  return {
+    inFrame, overlayNodes, closeShown, home,
+    stages: document.querySelectorAll('#map-stage').length,
+    backInPanelNodes: document.querySelectorAll('#map-svg .map-node').length,
+    expandShown: getComputedStyle(document.querySelector('.map-only-panel')).display !== 'none',
+  };
+});
+ok('opening moves the stage into the overlay', travel.inFrame, travel);
+ok('overlay shows the close control', travel.closeShown, travel);
+ok('closing returns the stage to its panel', travel.home, travel);
+ok('panel shows the expand control', travel.expandShown, travel);
+ok('still one stage after the round trip', travel.stages === 1, travel);
+ok('map still drawn back in the panel',
+  travel.overlayNodes === graph.nodes && travel.backInPanelNodes === graph.nodes, travel);
+
+// Unmounting parks it in the hidden pool, where it must not try to paint.
+const parked = await page.evaluate(async () => {
+  FDPanels.setSlotType('slot-2', 'script-render');
+  await new Promise(r => setTimeout(r, 400));
+  const pooled = document.getElementById('panel-content-pool')
+    .contains(document.getElementById('map-stage'));
+  const before = document.querySelectorAll('#map-svg .map-node').length;
+  extractEntities();          // the keystroke path
+  return { pooled, showing: FDMap.isShowing(), before };
+});
+ok('unmounting parks the stage in the pool', parked.pooled, parked);
+ok('a parked map reports itself hidden', !parked.showing, parked);
+
+// The frame can't grow to hold a long name: type is sized in screen pixels,
+// so a wider frame widens every name too and the two chase each other. Names
+// that don't fit are left off instead -- which is only right if nothing ever
+// spills over the edge. Checked at both a wide and a very narrow host.
+const spill = await page.evaluate(async () => {
+  const measure = () => {
+    const v = FDMap.view;
+    let out = 0, drawn = 0;
+    document.querySelectorAll('#map-svg .map-node').forEach(g => {
+      const t = g.querySelector('text');
+      if (!t) return;
+      drawn++;
+      const bb = t.getBBox();
+      const m = g.transform.baseVal.consolidate();
+      const e = m ? m.matrix.e : 0, f = m ? m.matrix.f : 0;
+      if (bb.x + e < v.x || bb.x + bb.width + e > v.x + v.w ||
+          bb.y + f < v.y || bb.y + bb.height + f > v.y + v.h) out++;
+    });
+    return { out, drawn };
+  };
+  FDMap.open();
+  await new Promise(r => setTimeout(r, 500));
+  const wide = measure();
+  FDMap.close();
+  FDPanels.setLayoutMode('quad-4');
+  FDPanels.setSlotType('slot-3', 'location-map');
+  await new Promise(r => setTimeout(r, 800));
+  const narrow = measure();
+  return { wide, narrow };
+});
+ok('no label spills out of the frame, full screen',
+  spill.wide.out === 0 && spill.wide.drawn > 10, spill.wide);
+ok('no label spills out of a quarter-width pane',
+  spill.narrow.out === 0 && spill.narrow.drawn > 0, spill.narrow);
+ok('a cramped pane labels fewer places, not none',
+  spill.narrow.drawn < spill.wide.drawn, spill);
+
+console.log('\n== 8. Empty script ==');
 
 const emptyState = await page.evaluate(() => {
   document.getElementById('editor-page').innerHTML =
@@ -284,7 +403,7 @@ const emptyState = await page.evaluate(() => {
 ok('no locations means no graph', emptyState.nodes === 0 && emptyState.regions === 0, emptyState);
 ok('empty state message shown instead of a blank map', emptyState.shown, emptyState);
 
-console.log('\n== 8. No console errors ==');
+console.log('\n== 9. No console errors ==');
 // FDStudioHub.loadCatalog() asks the local server for /api/catalog at boot.
 // Over file:// there is no server, so that one request always fails; it
 // predates this branch and says nothing about the map.
