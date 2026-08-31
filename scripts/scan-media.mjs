@@ -12,6 +12,8 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { genresFor } from './genres.mjs';
+import { stampPosters } from './posters.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -275,6 +277,7 @@ for (const v of videos) {
         title: titleCase(v.title),
         year: v.year || (hits[0] && hits[0].year) || null,
         kind: isSeries ? 'series' : 'film',
+        genres: genresFor(v.title),
         videoFolder: v.group,
         videos: v.files.map(f => ({
             path: f.path,
@@ -306,14 +309,33 @@ const catalog = {
     // Kept so the hub can offer a "what is missing its counterpart" view
     // without a second scan.
     scriptOnly: scripts.filter(s => !usedScripts.has(s.file))
-        .map(s => ({ title: titleCase(s.title), year: s.year, name: s.file, path: s.path, size: s.size })),
+        .map(s => ({
+            title: titleCase(s.title), year: s.year, genres: genresFor(s.title),
+            name: s.file, path: s.path, size: s.size,
+        })),
     videoOnly: videos.filter(v => !usedVideos.has(v.group))
         .map(v => ({
-            title: titleCase(v.title), year: v.year, folder: v.group,
+            title: titleCase(v.title), year: v.year, genres: genresFor(v.title),
+            folder: v.group,
             path: v.files[0].path, name: v.files[0].name, size: v.files[0].size,
             files: v.files.length, play: playability(v.files[0]),
         })),
 };
+
+// Row sizes for the hub, and a standing count of what genres.mjs has not been
+// taught yet -- the number to watch after adding files to either library.
+const genreCounts = {};
+let untagged = 0;
+for (const it of catalog.items.concat(catalog.scriptOnly, catalog.videoOnly)) {
+    if (!it.genres.length) { untagged++; continue; }
+    for (const g of it.genres) genreCounts[g] = (genreCounts[g] || 0) + 1;
+}
+catalog.counts.genres = genreCounts;
+catalog.counts.untagged = untagged;
+
+// Cover art is fetched out of band by scripts/fetch-posters.mjs; carry
+// whatever it has already cached onto this fresh catalog.
+stampPosters(catalog);
 
 fs.writeFileSync(OUT, JSON.stringify(catalog, null, 2));
 
@@ -332,4 +354,15 @@ if (process.argv.includes('--report')) {
     catalog.videoOnly.forEach(v => console.log('  ' + v.title + ' (' + v.year + ')'));
     console.log('\nUnmatched scripts (' + catalog.scriptOnly.length + '):');
     catalog.scriptOnly.forEach(s => console.log('  ' + s.title + ' (' + s.year + ')'));
+
+    console.log('');
+    console.log('Genres:');
+    Object.entries(genreCounts).sort((a, b) => b[1] - a[1])
+        .forEach(([g, n]) => console.log('  ' + String(n).padStart(4) + '  ' + g));
+
+    console.log('');
+    console.log('Untagged (' + untagged + ') -- add these to scripts/genres.mjs:');
+    catalog.items.concat(catalog.videoOnly, catalog.scriptOnly)
+        .filter(it => !it.genres.length)
+        .forEach(it => console.log('  ' + it.title + (it.year ? ' (' + it.year + ')' : '')));
 }

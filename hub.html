@@ -49,7 +49,7 @@ body.modal-open { overflow: hidden; }
     position: sticky; top: 0; z-index: 60;
     display: flex; align-items: center; gap: 18px;
     padding: 14px 42px;
-    background: linear-gradient(180deg, rgba(11,11,15,0.97) 0%, rgba(11,11,15,0.85) 70%, rgba(11,11,15,0) 100%);
+    background: linear-gradient(180deg, rgba(11,11,15,0.98) 0%, var(--bg) 100%);
     backdrop-filter: blur(6px);
 }
 
@@ -84,6 +84,55 @@ body.modal-open { overflow: hidden; }
     cursor: pointer; white-space: nowrap;
 }
 .topbtn:hover { background: rgba(255,255,255,0.14); color: var(--text); }
+
+/* ------------------------------------------------------------------- chips */
+/* Genres are the rows, so the chips filter the other axis: what you actually
+   hold. "All" is the default, because the point of the rebuild is that this
+   is one library rather than three piles. */
+#chips {
+    position: sticky; top: 58px; z-index: 55;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 8px 42px 14px;
+    background: var(--bg);
+    box-shadow: 0 12px 18px -12px rgba(0,0,0,0.95);
+}
+.chip {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-family: var(--font-body); font-size: 0.78rem; font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+}
+.chip:hover { background: rgba(255,255,255,0.12); color: var(--text); }
+.chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+#chip-count { color: var(--text-faint); font-size: 0.76rem; margin-left: 6px; }
+
+/* Tiles vs Covers. A segmented pair rather than one toggle button, because a
+   toggle labelled "Covers" cannot say whether that is the current state or
+   what clicking does. */
+#viewmode { display: flex; gap: 6px; margin-left: auto; }
+#viewmode .chip { padding: 6px 12px; }
+
+/* Cover mode. Real artwork fills the card, so the paper tint comes off and the
+   scrim goes heavier -- a poster is busy where a title page is white space,
+   and the title still has to be readable over it. */
+.card.has-cover .card-art { background-position: center; }
+.card.has-cover .card-scrim {
+    background: linear-gradient(0deg, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.62) 32%, rgba(0,0,0,0) 60%);
+}
+/* No artwork for this one: say so quietly rather than showing a bare tile that
+   looks like a bug. */
+.card-nocover {
+    position: absolute; top: 50%; left: 0; right: 0; transform: translateY(-50%);
+    text-align: center; color: rgba(255,255,255,0.22);
+    font-family: var(--font-display); font-size: 0.7rem; letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+/* The billboard art is greyed and faded to sit behind text; a real poster has
+   earned its colour back. */
+#billboard-poster.is-cover { opacity: 0.85; filter: none; }
 
 /* --------------------------------------------------------------- billboard */
 #billboard {
@@ -281,12 +330,25 @@ body.modal-open { overflow: hidden; }
     </div>
 </div>
 
+<div id="chips">
+    <button class="chip active" data-avail="all">All</button>
+    <button class="chip" data-avail="dual">&#9889; Watch &amp; Read</button>
+    <button class="chip" data-avail="film">&#127916; Films</button>
+    <button class="chip" data-avail="script">&#128220; Screenplays</button>
+    <span id="chip-count"></span>
+    <span id="viewmode">
+        <button class="chip active" data-mode="tile" title="Colour tiles, with the screenplay's title page showing through">&#9638; Tiles</button>
+        <button class="chip" data-mode="cover" title="Poster and cover art where the library has it">&#128444; Covers</button>
+    </span>
+</div>
+
 <div id="rows"></div>
 
 <div id="footer">
     <div id="footer-counts"></div>
     <div>Screenplays: <code id="footer-scripts-root"></code> &nbsp;·&nbsp; Films: <code id="footer-videos-root"></code></div>
-    <div>A title appears in the top row only when both folders hold it — matching is by name and year, so a screenplay filed under a different title than its release will not pair up.</div>
+    <div>Every title in both folders is filed by genre below, whether you hold the film, the screenplay or both — the flag on each card says which. <b>Watch &amp; Read</b> is the row where both are on disk; matching is by name and year, so a screenplay filed under a different title than its release will not pair up.</div>
+    <div>Genres are tagged by hand in <code>scripts/genres.mjs</code>. Anything it has not been taught sits in <b>Unsorted</b> — mostly unproduced spec scripts that no database lists.</div>
 </div>
 
 <div id="modal" onclick="if(event.target===this) closeModal()">
@@ -307,6 +369,8 @@ body.modal-open { overflow: hidden; }
 let CATALOG = null;
 let spotlight = null;      // the item currently filling the billboard
 let filter = '';
+let avail = 'all';         // chip bar: all | dual | film | script
+let coverMode = false;     // false = colour tiles, true = poster art
 
 const $ = id => document.getElementById(id);
 
@@ -468,9 +532,15 @@ function setSpotlight(item) {
 
     const poster = $('billboard-poster');
     poster.style.backgroundImage = '';
-    if (script) queuePoster(script.path, url => {
-        if (spotlight === item) poster.style.backgroundImage = 'url(' + url + ')';
-    });
+    const cover = coverMode && item.poster ? item.poster : '';
+    poster.classList.toggle('is-cover', !!cover);
+    if (cover) {
+        poster.style.backgroundImage = 'url(' + cover + ')';
+    } else if (script) {
+        queuePoster(script.path, url => {
+            if (spotlight === item) poster.style.backgroundImage = 'url(' + url + ')';
+        });
+    }
 
     const badges = [];
     if (script && video) badges.push('<span class="badge matched">Script + Film</span>');
@@ -541,10 +611,24 @@ function cardHtml(item) {
     }
     if (script && !(script && video)) actions.push('<button class="mini" onclick="event.stopPropagation(); openScriptByUid(\'' + item._uid + '\')">📜 Read</button>');
 
-    return '<div class="card" data-uid="' + item._uid + '" data-poster="' + esc(script ? script.path : '') + '" onclick="selectByUid(\'' + item._uid + '\')" title="' + esc(item.title) + '">'
+    // Cover mode prefers real artwork; where there is none it falls back to
+    // the screenplay's own title page, untinted, which is the closest thing
+    // to a cover the library actually holds. Only with neither does it drop
+    // back to the colour tile.
+    const cover = coverMode && item.poster ? item.poster : '';
+    const pdfPoster = cover ? '' : (script ? script.path : '');
+    const bare = coverMode && !cover && !pdfPoster;
+
+    return '<div class="card' + (cover ? ' has-cover' : '') + '" data-uid="' + item._uid + '" data-poster="' + esc(pdfPoster) + '" onclick="selectByUid(\'' + item._uid + '\')" title="' + esc(item.title) + '">'
         + '<div class="card-grad" style="background:' + gradientFor(item.title) + '"></div>'
-        + '<div class="card-art"></div>'
-        + '<div class="card-tint" style="background:' + posterTintFor(item.title) + '"></div>'
+        + (cover
+            ? '<div class="card-art loaded" style="background-image:url(' + esc(cover) + ')"></div>'
+            : '<div class="card-art"></div>')
+        // The tint exists to let a card's colour bleed through white paper. In
+        // cover mode the paper is the point, so it comes off.
+        + (!coverMode && pdfPoster
+            ? '<div class="card-tint" style="background:' + posterTintFor(item.title) + '"></div>' : '')
+        + (bare ? '<div class="card-nocover">no cover</div>' : '')
         + '<div class="card-scrim"></div>'
         + '<div class="card-flags">' + flags.join('') + '</div>'
         + '<div class="card-body">'
@@ -613,55 +697,126 @@ function rowHtml(title, sub, items, emptyNote) {
 
 function matches(item) {
     if (!filter) return true;
-    const hay = (item.title + ' ' + (item.year || '') + ' '
+    const hay = (item.title + ' ' + (item.year || '') + ' ' + (item.genres || []).join(' ') + ' '
         + (item.videos || []).map(v => v.name).join(' ') + ' '
         + (item.scripts || []).map(s => s.name).join(' ')).toLowerCase();
     return hay.includes(filter);
+}
+
+// What you hold for this title. The old layout made this the shape of the
+// whole page -- three rows, one per answer. It is now just a property, shown
+// as a card flag and filterable from the chip bar, which leaves genre free to
+// be the thing that actually organises the library.
+function availabilityOf(item) {
+    const s = item.scripts && item.scripts.length;
+    const v = item.videos && item.videos.length;
+    if (s && v) return 'dual';
+    if (v) return 'film';
+    return 'script';
+}
+
+function visible(item) {
+    if (!matches(item)) return false;
+    return avail === 'all' || availabilityOf(item) === avail;
+}
+
+function rowSub(items) {
+    let d = 0, f = 0, sc = 0;
+    for (const i of items) {
+        const a = availabilityOf(i);
+        if (a === 'dual') d++; else if (a === 'film') f++; else sc++;
+    }
+    const bits = [items.length + (items.length === 1 ? ' title' : ' titles')];
+    if (d) bits.push(d + ' with both');
+    if (f) bits.push(f + (f === 1 ? ' film' : ' films'));
+    if (sc) bits.push(sc + (sc === 1 ? ' screenplay' : ' screenplays'));
+    return bits.join(' · ');
+}
+
+// Every title in the library, as one flat list of the shape the cards expect.
+// videoOnly carries only the largest file per title, plus how many there are
+// -- enough for a card, and it keeps the catalog from listing every episode of
+// every unmatched season.
+function allItems(c) {
+    const out = [];
+    c.items.forEach((it, i) => out.push(tag(it, 'm' + i)));
+    c.videoOnly.forEach((v, i) => out.push(tag({
+        title: v.title, year: v.year, kind: v.files > 1 ? 'series' : 'film',
+        genres: v.genres || [], poster: v.poster, fileCount: v.files,
+        videos: [{ path: v.path, name: v.name, size: v.size, play: v.play, episode: null }],
+        scripts: [],
+    }, 'v' + i)));
+    c.scriptOnly.forEach((x, i) => out.push(tag({
+        title: x.title, year: x.year, kind: 'film',
+        genres: x.genres || [], poster: x.poster,
+        videos: [],
+        scripts: [{ path: x.path, name: x.name, size: x.size, episode: null }],
+    }, 's' + i)));
+    return out;
+
+    function tag(item, uid) { item._uid = uid; byUid.set(uid, item); return item; }
 }
 
 function render() {
     const c = CATALOG;
     byUid.clear();
 
-    const matched = c.items.map((it, i) => tag(it, 'm' + i));
-    // videoOnly carries only the largest file per title, plus how many there
-    // are -- enough for a card, and it keeps the catalog from listing every
-    // episode of every unmatched season.
-    const filmOnly = c.videoOnly.map((v, i) => tag({
-        title: v.title, year: v.year, kind: v.files > 1 ? 'series' : 'film',
-        fileCount: v.files,
-        videos: [{ path: v.path, name: v.name, size: v.size, play: v.play, episode: null }],
-        scripts: [],
-    }, 'v' + i));
-    const scriptOnly = c.scriptOnly.map((s, i) => tag({
-        title: s.title, year: s.year, kind: 'film',
-        videos: [],
-        scripts: [{ path: s.path, name: s.name, size: s.size, episode: null }],
-    }, 's' + i));
+    const shown = allItems(c).filter(visible);
 
-    const fm = matched.filter(matches);
-    const fv = filmOnly.filter(matches);
-    const fs = scriptOnly.filter(matches);
+    // Watch & Read leads, because it is the row that can do something the
+    // other rows cannot -- but it is a category now, not the whole premise.
+    const dual = shown.filter(i => availabilityOf(i) === 'dual');
 
-    $('rows').innerHTML =
-        rowHtml('▶ Ready to Watch & Read', 'both the screenplay and the film are on disk', fm,
-            filter ? 'Nothing matched in the paired titles.' : 'No title has both a screenplay and a film yet.')
-        + rowHtml('🎬 Films waiting on a screenplay', fv.length + ' in the video library', fv, '')
-        + rowHtml('📜 Screenplays waiting on a film', fs.length + ' in the screenplay library', fs, '');
+    // A title lands in a row for each genre it carries, the way a streaming
+    // shelf repeats a film across Comedy and Romance. Untagged titles are not
+    // silently dropped; they get their own row at the bottom.
+    const buckets = new Map();
+    const unsorted = [];
+    for (const it of shown) {
+        const gs = (it.genres && it.genres.length) ? it.genres : null;
+        if (!gs) { unsorted.push(it); continue; }
+        for (const g of gs) {
+            if (!buckets.has(g)) buckets.set(g, []);
+            buckets.get(g).push(it);
+        }
+    }
+    // Biggest shelves first, so the rows you will actually browse are near the
+    // top and the one-off genres settle at the bottom.
+    const genreRows = Array.from(buckets.entries())
+        .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+
+    let html = rowHtml('⚡ Watch & Read', rowSub(dual) + ' · both on disk', dual,
+        filter || avail !== 'all' ? '' : 'No title has both a screenplay and a film yet.');
+    for (const [g, items] of genreRows) html += rowHtml(g, rowSub(items), items, '');
+    if (unsorted.length) {
+        html += rowHtml('Unsorted', rowSub(unsorted) + ' · no genre tag yet', unsorted, '');
+    }
+    if (!shown.length) {
+        html = '<div class="row"><div class="row-empty">Nothing in the library matches that.</div></div>';
+    }
+    $('rows').innerHTML = html;
 
     observePosters();
 
-    if (fm.length) setSpotlight(fm[0]);
-    else if (fv.length) setSpotlight(fv[0]);
-    else if (fs.length) setSpotlight(fs[0]);
+    if (dual.length) setSpotlight(dual[0]);
+    else if (shown.length) setSpotlight(shown[0]);
+
+    const totalTitles = c.items.length + c.videoOnly.length + c.scriptOnly.length;
+    let count = shown.length + ' of ' + totalTitles + ' titles · ' + genreRows.length + ' genres';
+    if (coverMode) {
+        const withArt = shown.filter(i => i.poster).length;
+        count += withArt
+            ? ' · ' + withArt + ' with cover art'
+            : ' · no cover art cached — run node scripts/fetch-posters.mjs';
+    }
+    $('chip-count').textContent = count;
 
     $('footer-counts').textContent =
         c.counts.matched + ' paired · ' + c.counts.videoTitles + ' film titles · '
-        + c.counts.scripts + ' screenplays · scanned ' + new Date(c.generatedAt).toLocaleString();
+        + c.counts.scripts + ' screenplays · ' + (c.counts.untagged || 0) + ' untagged'
+        + ' · scanned ' + new Date(c.generatedAt).toLocaleString();
     $('footer-scripts-root').textContent = c.roots.scripts;
     $('footer-videos-root').textContent = c.roots.videos;
-
-    function tag(item, uid) { item._uid = uid; byUid.set(uid, item); return item; }
 }
 
 // Posters only render for cards that actually come into view -- there are 200+
@@ -700,6 +855,27 @@ $('search').addEventListener('input', e => {
     filter = e.target.value.trim().toLowerCase();
     if (CATALOG) render();
 });
+
+document.querySelectorAll('#chips .chip[data-avail]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        avail = btn.dataset.avail;
+        document.querySelectorAll('#chips .chip[data-avail]').forEach(b => b.classList.toggle('active', b === btn));
+        if (CATALOG) render();
+    });
+});
+
+// Which way you like to browse outlives the tab, so it is worth remembering.
+function setMode(mode, remember) {
+    coverMode = mode === 'cover';
+    document.querySelectorAll('#viewmode .chip').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    if (remember) { try { localStorage.setItem('fd-hub-view', mode); } catch (e) { } }
+    if (CATALOG) render();
+}
+document.querySelectorAll('#viewmode .chip').forEach(btn => {
+    btn.addEventListener('click', () => setMode(btn.dataset.mode, true));
+});
+try { setMode(localStorage.getItem('fd-hub-view') === 'cover' ? 'cover' : 'tile', false); }
+catch (e) { setMode('tile', false); }
 
 $('btn-rescan').addEventListener('click', async () => {
     const b = $('btn-rescan');
