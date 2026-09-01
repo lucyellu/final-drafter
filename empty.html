@@ -904,10 +904,15 @@
             border: 1px solid var(--color-border);
             border-radius: 10px;
             padding: 10px 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 16px;
         }
+        /* #doc-stats's own display:grid is an ID rule, which beats the plain
+           class selector below it on specificity regardless of source order --
+           collapsing the section (toggleSection() only toggles a class on the
+           <h2>) silently did nothing until this rule named the id too. */
+        h2.collapsed + #doc-stats { display: none; }
         .stat-row {
             display: flex;
             justify-content: space-between;
@@ -917,6 +922,13 @@
             color: var(--color-text-dim);
         }
         .stat-row:last-child { border-bottom: none; }
+        .stat-row.stat-total {
+            grid-column: 1 / -1;
+            margin-top: 6px;
+            padding-top: 8px;
+            border-top: 1px dashed rgba(255, 255, 255, 0.08);
+            border-bottom: none;
+        }
         .stat-value {
             font-weight: 700;
             font-family: var(--font-mono);
@@ -4515,7 +4527,7 @@
                     <div class="stat-row"><span>Transitions:</span> <span class="stat-value" id="stat-transitions">0</span></div>
                     <div class="stat-row"><span>Words:</span> <span class="stat-value" id="stat-words">0</span></div>
                     <div class="stat-row"><span>Letters:</span> <span class="stat-value" id="stat-letters">0</span></div>
-                    <div class="stat-row" style="margin-top: 10px;"><span>Est. Runtime:</span> <span class="stat-value" id="stat-runtime">0 min</span></div>
+                    <div class="stat-row stat-total"><span>Est. Runtime:</span> <span class="stat-value" id="stat-runtime">0 min</span></div>
                 </div>
             </div>
 
@@ -5579,6 +5591,7 @@
             
             const li = document.createElement('li');
             li.className = 'list-item main-item';
+            li.dataset.itemId = item.id;
             if (activeHighlights.has(item.id)) {
                 li.classList.add('highlighted');
                 li.style.borderLeftColor = item.color;
@@ -5717,15 +5730,6 @@
                         childrenUl.style.display = 'none';
                         arrow.innerText = '▶';
                         toggleHighlight(item, li, false);
-                    }
-                    // Don't jump panels to show the change -- just update
-                    // whichever open panel can actually reflect it. The map
-                    // already paints a location in its own colour when it's
-                    // in activeHighlights (FDMap._nodePaint); it just needs a
-                    // repaint to pick up the toggle. A panel that can't show
-                    // a location (video player, storyboard...) is left alone.
-                    if (type === 'locations' && typeof FDMap !== 'undefined' && FDMap.isShowing()) {
-                        FDMap.render();
                     }
                 }
             };
@@ -5903,54 +5907,76 @@
         }
 
         // --- CSS Custom Highlight ---
-        function toggleHighlight(item, liElement, forceOn) {
+        // Paints or clears the ::highlight() ranges for one character/location's
+        // name in every text-based panel that can show it -- the editor and,
+        // when it's the active render source, the print preview clone. The
+        // PDF-backed viewer (pdfLoaded) is a canvas with no text nodes to walk,
+        // so it's simply left alone rather than faked.
+        function paintTextHighlight(item, on) {
             if (!window.CSS || !CSS.highlights) return;
-            
-            const id = item.id;
-            const hlName = "hl-" + id.toString().replace('.', '-');
-            
-            if (!forceOn && activeHighlights.has(id)) {
+            const hlName = "hl-" + item.id.toString().replace('.', '-');
+            if (!on) {
                 if (CSS.highlights.has(hlName)) CSS.highlights.delete(hlName);
-                activeHighlights.delete(id);
-                liElement.classList.remove('highlighted');
-                liElement.style.borderLeftColor = 'transparent';
                 return;
             }
-            
-            activeHighlights.add(id);
-            liElement.classList.add('highlighted');
-            liElement.style.borderLeftColor = item.color;
-            
             if (!document.getElementById("style-" + hlName)) {
                 const style = document.createElement('style');
                 style.id = "style-" + hlName;
                 style.innerHTML = `::highlight(${hlName}) { background-color: ${toHighlightColor(item.color, 0.35)}; }`;
                 document.head.appendChild(style);
             }
-            
-            const editor = document.getElementById('editor-page');
-            const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null, false);
-            let node;
-            const ranges = [];
-            
             const safeName = item.name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
             const regex = new RegExp(`\\b${safeName}\\b`, 'gi');
-            
-            while ((node = walker.nextNode())) {
-                let match;
-                const text = node.nodeValue;
-                while ((match = regex.exec(text)) !== null) {
-                    const range = new Range();
-                    range.setStart(node, match.index);
-                    range.setEnd(node, match.index + match[0].length);
-                    ranges.push(range);
+            const ranges = [];
+            const roots = [document.getElementById('editor-page')];
+            if (!pdfLoaded) roots.push(document.getElementById('script-render-page'));
+            roots.forEach(root => {
+                if (!root) return;
+                const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+                let node;
+                while ((node = walker.nextNode())) {
+                    let match;
+                    const text = node.nodeValue;
+                    while ((match = regex.exec(text)) !== null) {
+                        const range = new Range();
+                        range.setStart(node, match.index);
+                        range.setEnd(node, match.index + match[0].length);
+                        ranges.push(range);
+                    }
                 }
+            });
+            if (ranges.length > 0) CSS.highlights.set(hlName, new Highlight(...ranges));
+        }
+
+        // Every sidebar row for this item, matched by id rather than a held
+        // reference, since the same character/location can be rendered into
+        // more than one list.
+        function syncHighlightRows(item, on) {
+            document.querySelectorAll(`.list-item[data-item-id="${item.id}"]`).forEach(row => {
+                row.classList.toggle('highlighted', on);
+                row.style.borderLeftColor = on ? item.color : 'transparent';
+            });
+        }
+
+        // The one place that turns a character/location's highlight on or off.
+        // Text ranges, sidebar rows, activeHighlights bookkeeping, and (for a
+        // location) the map's own colouring all follow from here -- whether the
+        // click came from the Navigator list, the location map, or a reload
+        // replaying saved state. Nothing here opens, closes, or switches a
+        // panel; a panel that can't show a location (video player, storyboard,
+        // reference board...) is simply never touched.
+        function setEntityHighlight(item, on) {
+            if (on) activeHighlights.add(item.id); else activeHighlights.delete(item.id);
+            paintTextHighlight(item, on);
+            syncHighlightRows(item, on);
+            if (typeof FDMap !== 'undefined' && FDMap.isShowing() && appState.locations.some(l => l.id === item.id)) {
+                FDMap.render();
             }
-            
-            if (ranges.length > 0) {
-                const highlight = new Highlight(...ranges);
-                CSS.highlights.set(hlName, highlight);
-            }
+        }
+
+        function toggleHighlight(item, liElement, forceOn) {
+            const nextOn = forceOn ? true : !activeHighlights.has(item.id);
+            setEntityHighlight(item, nextOn);
         }
 
         // --- Undo/Redo State ---
@@ -16623,11 +16649,17 @@
             // Leaflet marker popups, and the fictional-locations strip.
             _jumpTo(rec) {
                 if (!rec || !rec.headings.length) return;
-                // The map sits beside the script rather than over it, so
-                // picking a place leaves the map where it is and the scene
-                // simply scrolls into view in the other pane.
-                scrollToBlock(rec.headings[0], 'center');
+                // Highlight the place everywhere that can show it -- the
+                // editor's text, the map's own colouring -- the same as
+                // clicking it in the Navigator does. Nothing here opens a
+                // panel that wasn't already open: if the editor happens to be
+                // one of the visible panes it scrolls to the first scene, but
+                // a hidden editor stays hidden rather than being conjured to
+                // show off a jump nobody asked to see.
+                const item = appState.locations.find(l => l.name === rec.name);
+                if (item) setEntityHighlight(item, true);
                 const node = rec.headings[0];
+                if (paneState.editable) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 const old = node.style.backgroundColor;
                 node.style.backgroundColor = 'rgba(255,255,0,0.5)';
                 setTimeout(() => { node.style.backgroundColor = old; }, 900);
