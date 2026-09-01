@@ -95,6 +95,76 @@ script with no title page will have a blank, unnumbered page 1 by default
 until 8a lands. Flagged in the item 3/8a sections below; not a bug, just
 the interim tradeoff the original plan called for.
 
+---
+
+## Red pen — margin markup (2026-09-01)
+
+Not on the eleven-item list; asked for separately. Marking up a finished
+draft the way a teacher marks an essay, so the review can be handed to a
+person or a model to write the next draft from.
+
+**Shipped:**
+- **Inline ink.** Strike / circle / squiggle / underline, alongside the
+  existing highlighter, as `<span class="fd-mk" data-mk="...">` wrapped
+  round the marked words. Each button acts on the selection, or on the
+  caret's whole block when there is none, and re-marking the same passage
+  takes the mark off — no armed mode, unlike the highlighter. **Clean**
+  wipes all ink (highlights included) off a selection. Nothing ever edits
+  the words: an automated test asserts each block's `innerText` after
+  every operation.
+- **Notes.** `+ Note` wraps the passage in
+  `<span class="fd-note-anchor" data-note="ntN">` and puts the body text in
+  `markupState.notes[id]` — the variation-stack split (substance in a
+  store, cheap anchor in the document), so a 200-word note stays out of
+  `innerText` and therefore out of stats, export and the Navigator. Colour
+  per note (fix/question/praise/research/idea), ✓ handled, ✕ delete.
+  Numbering is assigned at render time from DOM order and never stored, so
+  cutting note 3 of 5 renumbers rather than leaving a hole.
+- **The margin.** Cards are drawn into `#notes-layer`, absolutely
+  positioned inside `#editor-page` — inside, because `.page` is
+  `overflow:hidden` (a card in the page margin gets clipped) and because
+  living inside the zoomed element means the layer inherits the zoom and
+  scrolls with the pages with no scroll listener and no zoom maths. The
+  gutter is reserved with `padding-right` on `#editor-page`, which shifts
+  the centred pages left rather than touching `.page`. Positions come from
+  walking the `offsetParent` chain, not `getBoundingClientRect`: blocks
+  carry `position:relative` for the stack gutter mark, so a mark's
+  offsetParent is its own block. Cards are stacked by a second measure pass
+  so two notes a line apart can't overlap.
+- **Show/hide.** `👁 Markup` (Alt+M) drops all ink, anchors, cards *and*
+  the highlighter, so "read it clean" means clean. The separate
+  `👁 Highlights` button still works on its own.
+- **Persistence.** Anchors and ink ride in the block's `html` (the
+  existing `entry.html` path, its trigger widened from `mark.fd-hl` to
+  `FDMarkup.MARKUP_SELECTOR`); note bodies ride in a new top-level
+  `markup` key. `harvestBlocks()`/`buildBlockEl()` learned the same trick,
+  so flipping a variation stack no longer rubs out the review pass on the
+  version being folded back in.
+- **Handoff.** `📋 Copy Notes for LLM` / `File ▸ Export Markup Notes…`
+  writes one Markdown brief: only the marked passages, quoted with the ink
+  spelled out (`~~struck~~`, `(circled)`, `<<squiggled>>`, `==highlighted==`),
+  each note under the line it is about, with scene, page and — for dialogue
+  — the speaker. Notes whose passage has since been cut are listed at the
+  end rather than dropped.
+
+**Undo:** note *bodies* are deliberately not part of the undo snapshot
+(the layer is detached for the length of `saveState()`), so undo can't wipe
+what someone wrote. Undoing past a note's creation orphans it; redoing
+re-adopts it by id.
+
+**Tests:** `scripts/test-markup.mjs`, 70 assertions, 0 failures — including
+the two paths that can only break through the UI (a real click on a ribbon
+button, where the contenteditable loses focus and the selection has to be
+remembered; and typing in a card, which must not reach the screenplay's
+`oninput`).
+
+**Known gap:** the note's numbered badge is in the text flow, so adding a
+note can nudge a line and, at a page boundary, repaginate. Taking it out of
+flow means overlapping the next character on a monospace page, which reads
+worse; left as is.
+
+---
+
 **Not started:** Phase 3 (autosave/version history), Phase 4 (OCR), Phase 5
 (Fountain, doc types, structured title page, show bibles). Item 11
 (Navigator third level) is being left —
