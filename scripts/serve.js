@@ -396,6 +396,36 @@ async function fetchUrlMetadata(res, targetUrl) {
     }
 }
 
+// Nominatim's usage policy caps this at ~1 req/sec across the whole app;
+// the server is the one place guaranteed to see every request, so the
+// throttle lives here rather than trusting every client call site.
+let lastGeocodeAt = 0;
+async function fetchGeocode(res, query) {
+    if (!query) { sendJson(res, 400, { error: 'Missing q query parameter' }); return; }
+    const wait = Math.max(0, 1100 - (Date.now() - lastGeocodeAt));
+    if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    lastGeocodeAt = Date.now();
+
+    const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent(query);
+    const headers = {
+        'User-Agent': 'FinalDrafter/1 (local screenplay editor; contact: lucylu.contact@gmail.com)',
+        'Accept-Language': 'en'
+    };
+    try {
+        const r = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
+        const arr = await r.json();
+        if (!Array.isArray(arr) || !arr.length) { sendJson(res, 200, { ok: true, found: false }); return; }
+        const hit = arr[0];
+        sendJson(res, 200, {
+            ok: true, found: true,
+            lat: Number(hit.lat), lon: Number(hit.lon),
+            display: hit.display_name || query
+        });
+    } catch (err) {
+        sendJson(res, 200, { ok: false, error: 'Geocode lookup failed: ' + err.message });
+    }
+}
+
 function proxyImage(req, res, targetUrl) {
     if (!targetUrl) { sendJson(res, 400, { error: 'Missing url query parameter' }); return; }
     try {
@@ -894,6 +924,7 @@ const server = http.createServer((req, res) => {
     if (urlPath === '/api/open-storyboard-folder') { openStoryboardFolder(res); return; }
     if (urlPath === '/api/save-image') { saveCustomImage(req, res); return; }
     if (urlPath === '/api/fetch-meta') { fetchUrlMetadata(res, query.get('url')); return; }
+    if (urlPath === '/api/geocode') { fetchGeocode(res, query.get('q')); return; }
     if (urlPath === '/api/proxy-image') { proxyImage(req, res, query.get('url')); return; }
     if (urlPath === '/api/generate-image') { generateAiImage(req, res); return; }
     if (urlPath === '/api/tmdb-cast') { fetchTmdbCast(res, query.get('title'), query.get('year')); return; }
@@ -915,7 +946,12 @@ const server = http.createServer((req, res) => {
             return;
         }
         const ext = path.extname(filePath).toLowerCase();
-        res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+        // This is the app's own source (empty.html, hub.html, and everything
+        // they <script src> or fetch) -- it changes on every edit during
+        // development, and a browser caching it across a server restart with
+        // no way to notice is a much worse failure mode than re-reading a
+        // small file off local disk on every request.
+        res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Cache-Control': 'no-store' });
         res.end(data);
     });
 });
