@@ -4151,10 +4151,9 @@
                  each pane's own header dropdown decides that. See FDPanels.updateActionRibbon(). -->
             <div id="shelf-tabs" class="shelf-tabs">
                 <button class="shelf-tab active" data-shelf="script-edit" onclick="FDPanels.setActiveShelf('script-edit')" title="Screenplay Editor tools">📜 Screenplay</button>
-                <button class="shelf-tab" data-shelf="media-player" onclick="FDPanels.setActiveShelf('media-player')" title="Video player tools">🎬 Video</button>
-                <button class="shelf-tab" data-shelf="storyboard" onclick="FDPanels.setActiveShelf('storyboard')" title="Storyboard tools">🎨 Storyboards</button>
-                <button class="shelf-tab" data-shelf="reference-board" onclick="FDPanels.setActiveShelf('reference-board')" title="Reference board tools">📌 References</button>
                 <button class="shelf-tab" data-shelf="script-render" onclick="FDPanels.setActiveShelf('script-render')" title="Screenplay Print tools">🖨️ Print</button>
+                <button class="shelf-tab" data-shelf="storyboard" onclick="FDPanels.setActiveShelf('storyboard')" title="Storyboard tools">🎨 Storyboards</button>
+                <button class="shelf-tab" data-shelf="media-player" onclick="FDPanels.setActiveShelf('media-player')" title="Video player tools">🎬 Video</button>
                 <button class="shelf-tab" data-shelf="location-map" onclick="FDPanels.setActiveShelf('location-map')" title="Location Map tools">🗺 Map</button>
             </div>
 
@@ -4465,37 +4464,6 @@
             <div class="ribbon-group"><span class="map-sub" id="map-sub"></span></div>
         </div>
 
-        <div id="shelf-reference-board" class="shelf-content">
-            <div class="ref-category-bar">
-                <div class="ref-category-pills">
-                    <button class="ref-cat-btn active" onclick="FDReferences.setCategory('all')">All</button>
-                    <button class="ref-cat-btn" onclick="FDReferences.setCategory('characters')">Characters</button>
-                    <button class="ref-cat-btn" onclick="FDReferences.setCategory('locations')">Locations</button>
-                    <button class="ref-cat-btn" onclick="FDReferences.setCategory('lighting')">Lighting &amp; Color</button>
-                    <button class="ref-cat-btn" onclick="FDReferences.setCategory('costumes')">Costumes</button>
-                    <button class="ref-cat-btn" onclick="FDReferences.setCategory('directing')">Directing Notes</button>
-                    <button class="ref-cat-btn" onclick="FDReferences.setCategory('pinterest')">📌 Pinterest</button>
-                </div>
-                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                    <button class="media-btn" onclick="document.getElementById('ref-file-input').click()" title="Upload image reference file">
-                        🖼️ + Image
-                    </button>
-                    <input type="file" id="ref-file-input" style="display:none;" accept="image/*" multiple onchange="FDReferences.handleImageUpload(event)">
-                    <button class="media-btn" onclick="FDReferences.promptAddPinterest()" title="Link a Pinterest board or pin share URL">
-                        📌 + Pinterest
-                    </button>
-                    <button class="media-btn" onclick="FDReferences.promptAddLink()" title="Add reference from URL (ArtStation, YouTube, web page, image URL)">
-                        🔗 + Link
-                    </button>
-                    <button class="media-btn" onclick="FDReferences.promptAddPalette()" title="Generate color palette swatch">
-                        🎨 + Palette
-                    </button>
-                    <button class="media-btn" onclick="FDReferences.promptAddNote()" title="Add directing note">
-                        📝 + Note
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
 
 
@@ -4573,7 +4541,6 @@
                             <option value="studio-hub">📺 Studio Hub</option>
                             <option value="media-player">🎬 Media Player</option>
                             <option value="storyboard">🎨 Storyboard &amp; Beats</option>
-                            <option value="reference-board">📌 References &amp; Moodboard</option>
                             <option value="location-map">🗺 Location Map</option>
                         </select>
                         <span class="pane-title" id="pane-title-slot-1" style="display:none;"></span>
@@ -4599,7 +4566,6 @@
                             <option value="studio-hub">📺 Studio Hub</option>
                             <option value="media-player">🎬 Media Player</option>
                             <option value="storyboard">🎨 Storyboard &amp; Beats</option>
-                            <option value="reference-board">📌 References &amp; Moodboard</option>
                             <option value="location-map">🗺 Location Map</option>
                         </select>
                         <span class="pane-title" id="pane-title-slot-2" style="display:none;"></span>
@@ -4629,7 +4595,6 @@
                             <option value="studio-hub">📺 Studio Hub</option>
                             <option value="media-player">🎬 Media Player</option>
                             <option value="storyboard" selected>🎨 Storyboard &amp; Beats</option>
-                            <option value="reference-board">📌 References &amp; Moodboard</option>
                             <option value="location-map">🗺 Location Map</option>
                         </select>
                         <span class="pane-title" id="pane-title-slot-3" style="display:none;"></span>
@@ -4643,7 +4608,7 @@
             </div>
 
             <!-- Slot 4 (For Quad-4) -->
-            <div class="doc-pane hidden" id="slot-4" data-slot="4" data-type="reference-board">
+            <div class="doc-pane hidden" id="slot-4" data-slot="4" data-type="media-player">
                 <div class="pane-header">
                     <div class="pane-header-left">
                         <select class="pane-type-select" onchange="changeSlotType('slot-4', this.value)">
@@ -4651,9 +4616,8 @@
                             <option value="script-source">📝 Script Source</option>
                             <option value="script-render">🖨️ Screenplay Print</option>
                             <option value="studio-hub">📺 Studio Hub</option>
-                            <option value="media-player">🎬 Media Player</option>
+                            <option value="media-player" selected>🎬 Media Player</option>
                             <option value="storyboard">🎨 Storyboard &amp; Beats</option>
-                            <option value="reference-board" selected>📌 References &amp; Moodboard</option>
                             <option value="location-map">🗺 Location Map</option>
                         </select>
                         <span class="pane-title" id="pane-title-slot-4" style="display:none;"></span>
@@ -4914,7 +4878,7 @@
                     { id: 'slot-1', type: 'script-edit' },
                     { id: 'slot-2', type: 'script-render' },
                     { id: 'slot-3', type: 'storyboard' },
-                    { id: 'slot-4', type: 'reference-board' }
+                    { id: 'slot-4', type: 'media-player' }
                 ]
             };
         }
@@ -10223,10 +10187,9 @@
             // own header dropdown is what decides what that pane shows.
             SHELF_TYPES: [
                 { type: 'script-edit', label: '📜 Screenplay' },
-                { type: 'media-player', label: '🎬 Video' },
-                { type: 'storyboard', label: '🎨 Storyboards' },
-                { type: 'reference-board', label: '📌 References' },
                 { type: 'script-render', label: '🖨️ Print' },
+                { type: 'storyboard', label: '🎨 Storyboards' },
+                { type: 'media-player', label: '🎬 Video' },
                 { type: 'location-map', label: '🗺 Map' },
             ],
 

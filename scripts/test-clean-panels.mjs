@@ -31,12 +31,12 @@ try {
   await page.goto('http://127.0.0.1:' + PORT + '/empty.html', { waitUntil: 'networkidle2' });
   await new Promise(r => setTimeout(r, 1000));
 
-  // 1. Setup 4-Pane Quad mode with Script, Video, Storyboard, and References
+  // 1. Setup 4-Pane Quad mode with Script, Video, Storyboard, and the Map
   await page.evaluate(() => {
     layoutState.slots[0].type = 'script-edit';
     layoutState.slots[1].type = 'media-player';
     layoutState.slots[2].type = 'storyboard';
-    layoutState.slots[3].type = 'reference-board';
+    layoutState.slots[3].type = 'location-map';
     FDPanels.setLayoutMode('quad-4');
 
     const editor = document.getElementById('editor-page');
@@ -58,18 +58,16 @@ try {
     const headers = Array.from(document.querySelectorAll('.doc-pane:not(.hidden) .pane-header'));
     const sbToolbar = document.querySelector('.storyboard-toolbar');
     const mediaCtrl = document.querySelector('.media-controls-bar');
-    const refBar = document.querySelector('.ref-category-bar');
     return {
       btnFound: !!btn,
       headersVisible: headers.every(h => getComputedStyle(h).display !== 'none'),
       sbToolbarVisible: sbToolbar && getComputedStyle(sbToolbar).display !== 'none',
-      mediaCtrlVisible: mediaCtrl && getComputedStyle(mediaCtrl).display !== 'none',
-      refBarVisible: refBar && getComputedStyle(refBar).display !== 'none'
+      mediaCtrlVisible: mediaCtrl && getComputedStyle(mediaCtrl).display !== 'none'
     };
   });
 
   ok('Initial: Clean Panels button exists', initInfo.btnFound, initInfo);
-  ok('Initial: Panel headers and internal toolbars visible', initInfo.headersVisible && initInfo.sbToolbarVisible && initInfo.mediaCtrlVisible && initInfo.refBarVisible, initInfo);
+  ok('Initial: Panel headers and internal toolbars visible', initInfo.headersVisible && initInfo.sbToolbarVisible && initInfo.mediaCtrlVisible, initInfo);
 
   // Take screenshot with menus visible
   await page.screenshot({ path: 'L:/Projects/fiction/final-drafter/scripts/quad-all-menus-visible.png' });
@@ -86,10 +84,9 @@ try {
     const mediaSource = document.querySelector('.media-source-bar');
     const mediaCtrl = document.querySelector('.media-controls-bar');
     const mediaBookmarks = document.querySelector('.media-bookmarks-bar');
-    const refBar = document.querySelector('.ref-category-bar');
     const sbCards = document.getElementById('storyboard-card-container');
     const mediaVideo = document.getElementById('media-video-wrapper');
-    const refGrid = document.getElementById('ref-card-grid');
+    const mapStage = document.getElementById('map-stage');
 
     return {
       btnActive: btn ? btn.classList.contains('active') : false,
@@ -100,10 +97,9 @@ try {
       mediaSourceHidden: mediaSource && getComputedStyle(mediaSource).display === 'none',
       mediaCtrlHidden: mediaCtrl && getComputedStyle(mediaCtrl).display === 'none',
       mediaBookmarksHidden: mediaBookmarks && getComputedStyle(mediaBookmarks).display === 'none',
-      refBarHidden: refBar && getComputedStyle(refBar).display !== 'none' ? false : true,
       sbCardsVisible: sbCards && getComputedStyle(sbCards).display !== 'none',
       mediaVideoVisible: mediaVideo && getComputedStyle(mediaVideo).display !== 'none',
-      refGridVisible: refGrid && getComputedStyle(refGrid).display !== 'none'
+      mapStageVisible: mapStage && getComputedStyle(mapStage).display !== 'none'
     };
   });
 
@@ -111,8 +107,7 @@ try {
   ok('Clean Panels: pane headers hidden', cleanInfo.headersHidden, cleanInfo);
   ok('Clean Panels: storyboard toolbar hidden (autopopulate/add shot/etc)', cleanInfo.sbToolbarHidden, cleanInfo);
   ok('Clean Panels: video player controls & source bars hidden', cleanInfo.mediaSourceHidden && cleanInfo.mediaCtrlHidden && cleanInfo.mediaBookmarksHidden, cleanInfo);
-  ok('Clean Panels: references category & action bar hidden', cleanInfo.refBarHidden, cleanInfo);
-  ok('Clean Panels: main viewer objects remain completely visible', cleanInfo.sbCardsVisible && cleanInfo.mediaVideoVisible && cleanInfo.refGridVisible, cleanInfo);
+  ok('Clean Panels: main viewer objects remain completely visible', cleanInfo.sbCardsVisible && cleanInfo.mediaVideoVisible && cleanInfo.mapStageVisible, cleanInfo);
 
   // Take screenshot of pure content view
   await page.screenshot({ path: 'L:/Projects/fiction/final-drafter/scripts/quad-pure-content-clean.png' });
