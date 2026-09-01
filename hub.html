@@ -235,6 +235,17 @@ body.modal-open { overflow: hidden; }
 .carousel::-webkit-scrollbar { height: 8px; }
 .carousel::-webkit-scrollbar-thumb { background: #2e2e38; border-radius: 4px; }
 
+/* Flat List's row: the whole point of dropping genre shelves is to read the
+   sort order top to bottom, which a single horizontally-scrolling carousel
+   can't show at a glance -- so it wraps into a grid instead. */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px;
+    padding: 6px 42px 14px;
+}
+.grid .card { width: auto; flex: none; }
+
 .card {
     position: relative; flex: 0 0 190px; width: 190px; aspect-ratio: 2 / 3;
     border-radius: 8px; overflow: hidden; cursor: pointer;
@@ -781,7 +792,7 @@ function closeModal() {
 }
 
 // ------------------------------------------------------------------- rows
-function rowHtml(title, sub, items, emptyNote) {
+function rowHtml(title, sub, items, emptyNote, grid) {
     if (!items.length) {
         if (!emptyNote) return '';
         return '<div class="row"><div class="row-head"><div class="row-title">' + esc(title) + '</div></div>'
@@ -789,7 +800,7 @@ function rowHtml(title, sub, items, emptyNote) {
     }
     return '<div class="row">'
         + '<div class="row-head"><div class="row-title">' + esc(title) + '</div><div class="row-sub">' + esc(sub) + '</div></div>'
-        + '<div class="carousel">' + items.map(cardHtml).join('') + '</div>'
+        + '<div class="' + (grid ? 'grid' : 'carousel') + '">' + items.map(cardHtml).join('') + '</div>'
         + '</div>';
 }
 
@@ -929,7 +940,7 @@ function render() {
             html += rowHtml('Unsorted', rowSub(unsorted) + ' · no genre tag yet', unsorted, '');
         }
     } else {
-        html += rowHtml('All Titles', rowSub(shown), shown, '');
+        html += rowHtml('All Titles', rowSub(shown), shown, '', true);
     }
     if (!shown.length) {
         html = '<div class="row"><div class="row-empty">Nothing in the library matches that.</div></div>';
