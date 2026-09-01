@@ -4118,7 +4118,7 @@
                     <div onclick="openProjectPicker()"
                         title="Restore a Final Drafter project exactly as saved — script, variation stacks, entity lists, layout, everything">📂 Open Project… (.fdproj)</div>
                     <div onclick="openImportModal()"
-                        title="Bring a PDF, Fountain, Markdown, or text screenplay in as script content — lossy, and can land in the current project or a new one">📄 Import Script… (PDF, Fountain, MD, TXT)</div>
+                        title="Bring a PDF, Fountain (.fountain/.foundation), HTML, Markdown, or text screenplay in as script content — lossy, and can land in the current project or a new one">📄 Import Script… (PDF, Fountain, HTML, MD, TXT)</div>
                     <div onclick="newScript()">✨ New Script</div>
                     <div onclick="saveJSON()" title="Write straight back to the file this script is already attached to (Ctrl+S)">💾 Save (.fdproj)</div>
                     <div onclick="saveAsJSON()" title="Choose a new file and folder to save to; the script stays attached to that new file">💾 Save As… (Ctrl+Shift+S)</div>
@@ -4132,7 +4132,7 @@
                 </div>
             </div>
             <input type="file" id="file-input-project" style="display: none;" accept=".fdproj,.json" onchange="openProject(event)">
-            <input type="file" id="file-input-import" style="display: none;" accept=".pdf,.md,.fountain,.txt" onchange="importScript(event)">
+            <input type="file" id="file-input-import" style="display: none;" accept=".pdf,.md,.fountain,.foundation,.html,.htm,.txt" onchange="importScript(event)">
 
             <div class="menu-item" onclick="window.location.href='hub.html'" tabindex="0"
                 title="Browse the screenplay and film libraries, and open a title with its script and its film side by side">
@@ -9729,6 +9729,169 @@
             });
 
             return blocks;
+        }
+
+        // --- HTML Import Parsing ---
+        // Reads a styled screenplay or prose HTML export -- the kind of hand-built
+        // page in time-shift/script/downtime-101-bay7.html (sh/c/p/d/t/ctr classes
+        // marking scene headings, character cues, parentheticals, dialogue,
+        // transitions and centered titles) or downtime-prose-part-one.html
+        // (<section class="chapter"> manuscript pages) -- and turns it into the
+        // same {type, text} blocks every other import produces, so Screenplay
+        // Print, the Navigator, word count, and (for the screenplay flavor) the
+        // real character/location lists all come along for free via
+        // extractEntities(). Prose has no sh/character markup to key off, so its
+        // characters/locations are a frequency-based guess instead -- see
+        // guessProseEntities().
+        const HTML_SCREENPLAY_CLASS_TYPES = {
+            sh: 'scene-heading', c: 'character', p: 'parenthetical',
+            d: 'dialogue', t: 'transition', ctr: 'center-title',
+        };
+
+        function parseHtmlToBlocks(htmlText) {
+            const doc = new DOMParser().parseFromString(htmlText, 'text/html');
+
+            let title = ((doc.querySelector('h1') || {}).textContent || '').trim();
+            const bylineStrong = doc.querySelector('.byline strong');
+            const author = bylineStrong ? bylineStrong.textContent.trim() : '';
+
+            // Screenplay flavor needs a scene heading plus a character or
+            // dialogue cue -- just a ".d" or ".c" somewhere isn't enough, since
+            // those are common class-name letters a totally unrelated page
+            // could use for its own styling.
+            const hasScreenplayMarkup = !!doc.querySelector('.sh') && !!doc.querySelector('.c, .d');
+            const scriptRoot = doc.querySelector('main.script') || (hasScreenplayMarkup ? doc.body : null);
+
+            if (scriptRoot) {
+                const blocks = [];
+                scriptRoot.querySelectorAll('p, .act').forEach(el => {
+                    // Cover/nav/endcard chrome (title, logline, byline, credits)
+                    // sits alongside the script in a bare <body> fallback -- never
+                    // inside main.script, but worth excluding either way.
+                    if (el.closest('header, nav, footer, .endcard')) return;
+                    const text = el.textContent.replace(/\s+/g, ' ').trim();
+                    if (!text) return;
+                    if (el.classList.contains('act')) {
+                        blocks.push({ type: 'center-title', text: text.toUpperCase() });
+                        return;
+                    }
+                    const cls = [...el.classList].find(c => HTML_SCREENPLAY_CLASS_TYPES[c]);
+                    blocks.push({ type: cls ? HTML_SCREENPLAY_CLASS_TYPES[cls] : 'action', text });
+                });
+                return { blocks, title, author, proseEntities: null };
+            }
+
+            // Prose flavor: a manuscript, not a scene list. Each chapter's <h2>
+            // becomes a centered title and each <p> an action (i.e. plain
+            // paragraph) block; front matter like an epigraph or an "adaptation
+            // notes" section outside <section class="chapter"> is left out.
+            const chapters = doc.querySelectorAll('section.chapter');
+            const blocks = [];
+            let proseText = '';
+            const paragraphsOf = section => {
+                const heading = section.querySelector ? section.querySelector('h2') : null;
+                if (heading) blocks.push({ type: 'center-title', text: heading.textContent.replace(/\s+/g, ' ').trim() });
+                (section.querySelectorAll ? section.querySelectorAll('p') : []).forEach(p => {
+                    const text = p.textContent.replace(/\s+/g, ' ').trim();
+                    if (!text) return;
+                    blocks.push({ type: 'action', text });
+                    proseText += text + '\n';
+                });
+            };
+            if (chapters.length) {
+                chapters.forEach(paragraphsOf);
+            } else {
+                // No chapter markup recognized -- fall back to every paragraph
+                // in the document, in order, as one continuous piece of prose.
+                doc.querySelectorAll('body p').forEach(p => {
+                    const text = p.textContent.replace(/\s+/g, ' ').trim();
+                    if (!text) return;
+                    blocks.push({ type: 'action', text });
+                    proseText += text + '\n';
+                });
+            }
+
+            return { blocks, title, author, proseEntities: guessProseEntities(proseText) };
+        }
+
+        // Best-effort character/location guess for prose HTML, which carries no
+        // sh/character markup to key off. Counts repeated capitalized phrases
+        // (1-3 Title Case words), drops common words and one-off matches, then
+        // sorts anything that reads like a place (Bay, Hub, Room, City...) into
+        // locations and everything else into characters. A guess, not a parse
+        // -- expect to prune or rename entries in the sidebar afterward.
+        const PROSE_STOPWORDS = new Set((
+            'the a an this that these those he she it they we i you his her its their our your ' +
+            'and or but so if when then there here what who why how some any all each every no ' +
+            'not yes now today tomorrow yesterday because while as until once still yet nobody ' +
+            'everybody someone everyone something everything nothing chapter part one two three ' +
+            'monday tuesday wednesday thursday friday saturday sunday ' +
+            'january february march april may june july august september october november december'
+        ).split(/\s+/));
+        const PROSE_LOCATION_HINTS = /\b(bay|hub|room|ward|station|quarter|city|house|street|road|avenue|hall|corridor|wing|deck|chamber|district|centre|center|tower|block|base|colony|world|planet|building|floor|park|garden|island|harbor|harbour|port|school|hospital|clinic|office|apartment|flat|home|lab|laboratory|facility|complex)\b/i;
+
+        const PROSE_CONTRACTION_RE = /^[A-Za-z]+['’](s|t|m|re|ve|ll|d)$/i;
+        const PROSE_SENTENCE_BOUNDARY_RE = /[.!?:"'‘’“”—\n]/;
+
+        function guessProseEntities(text) {
+            const counts = new Map();
+            const phraseRe = /\b[A-Z][a-zA-Z'’-]*(?:\s+[A-Z][a-zA-Z'’-]*){0,2}\b/g;
+            let m;
+            while ((m = phraseRe.exec(text))) {
+                let phrase = m[0].trim();
+                // "It's", "Don't", "You're" -- a contraction, not a name.
+                if (PROSE_CONTRACTION_RE.test(phrase)) continue;
+                // A trailing possessive folds into the base name ("Lena's" -> LENA).
+                phrase = phrase.replace(/['’]s$/i, '');
+                if (phrase.length < 3) continue;
+                const words = phrase.split(' ');
+                const firstWord = words[0].toLowerCase();
+                if (PROSE_STOPWORDS.has(firstWord)) continue;
+                // A single word that isn't ALL-CAPS is only trustworthy mid-sentence
+                // -- capitalized purely by starting a sentence (or a quoted line of
+                // dialogue) is exactly what floods this with false positives otherwise.
+                if (words.length === 1 && phrase !== phrase.toUpperCase()) {
+                    const prevChar = text.slice(0, m.index).trimEnd().slice(-1);
+                    if (!prevChar || PROSE_SENTENCE_BOUNDARY_RE.test(prevChar)) continue;
+                }
+                counts.set(phrase, (counts.get(phrase) || 0) + 1);
+            }
+
+            const characters = [];
+            const locations = [];
+            [...counts.entries()]
+                .filter(([, count]) => count >= 3)
+                .sort((a, b) => b[1] - a[1])
+                .forEach(([name, count]) => {
+                    const bucket = PROSE_LOCATION_HINTS.test(name) ? locations : characters;
+                    if (bucket.length < 20) bucket.push({ name: name.toUpperCase(), count });
+                });
+
+            return { characters, locations };
+        }
+
+        // Folds guessProseEntities()'s guesses into the same appState/dynamicCounts
+        // that the block-based extractEntities() populates, so they show up in
+        // the sidebar lists (with counts) exactly like a real script's characters
+        // and locations -- just without a DOM node to jump to, since prose
+        // carries no scene-heading/character markup to anchor them on.
+        function applyProseEntities(proseEntities) {
+            if (!proseEntities) return;
+            (proseEntities.characters || []).forEach(({ name, count }) => {
+                dynamicCounts.characters[name] = count;
+                if (!appState.characters.find(c => c.name === name)) {
+                    appState.characters.push({ id: Date.now() + Math.random(), name: name, color: getRandomColor() });
+                }
+            });
+            (proseEntities.locations || []).forEach(({ name, count }) => {
+                dynamicCounts.locations[name] = count;
+                if (!appState.locations.find(l => l.name === name)) {
+                    appState.locations.push({ id: Date.now() + Math.random(), name: name, color: getRandomColor() });
+                }
+            });
+            appState.characters.sort((a, b) => (dynamicCounts.characters[b.name] || 0) - (dynamicCounts.characters[a.name] || 0));
+            appState.locations.sort((a, b) => (dynamicCounts.locations[b.name] || 0) - (dynamicCounts.locations[a.name] || 0));
+            renderLists({ characters: {}, locations: {} });
         }
 
         // --- PDF Import: Render Mode's PDF replica + text extraction ---
@@ -16203,7 +16366,7 @@
             // even in "append" mode the merged result isn't what the
             // imported file on disk contains.
             if (!intoCurrent) {
-                lastSavedName = sanitizeFilename(file.name.replace(/\.(pdf|md|fountain|txt)$/i, ''));
+                lastSavedName = sanitizeFilename(file.name.replace(/\.(pdf|md|fountain|foundation|html?|txt)$/i, ''));
                 currentFileHandle = null;
             }
 
@@ -16304,11 +16467,48 @@
             // setRawSource(). A bare .txt file has no such source view; it
             // parses the same as it always has.
             const ext = (file.name.match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase();
-            const isSourceDoc = !intoCurrent && (ext === 'md' || ext === 'fountain');
+            // .foundation is treated as a plain-text Fountain alias -- same
+            // forced-element syntax, same title page, just a different extension.
+            const isFountainLike = ext === 'fountain' || ext === 'foundation';
+            const isSourceDoc = !intoCurrent && (ext === 'md' || isFountainLike);
 
             const reader = new FileReader();
             reader.onload = function(e) {
                 const rawText = e.target.result;
+
+                if (ext === 'html' || ext === 'htm') {
+                    const parsed = parseHtmlToBlocks(rawText);
+                    const blocks = parsed.blocks;
+
+                    if (intoCurrent) {
+                        appendImportedBlocks(blocks);
+                    } else {
+                        editor.innerHTML = '';
+                        resetStacks();
+                        appState = defaultAppState();
+                        docMeta = defaultDocMeta();
+                        if (parsed.title) docMeta.title = parsed.title;
+                        if (parsed.author) docMeta.author = parsed.author;
+                        const stagingFrame = createPageFrame();
+                        editor.appendChild(stagingFrame);
+                        (blocks.length ? blocks : [{ type: 'action', text: ' ' }]).forEach(b => {
+                            const div = document.createElement('div');
+                            div.className = b.type;
+                            div.innerText = b.text;
+                            stagingFrame.appendChild(div);
+                        });
+                        clearRawSource();
+                    }
+
+                    reflowPages();
+                    buildToc();
+                    extractEntities();
+                    if (parsed.proseEntities) applyProseEntities(parsed.proseEntities);
+                    updateStatistics();
+                    saveState();
+                    return;
+                }
+
                 let bodyText = rawText;
                 let title = '', author = '';
                 if (isSourceDoc) {
@@ -16317,7 +16517,7 @@
                     author = titlePage.author;
                     bodyText = titlePage.body;
                 }
-                const blocks = parseTextToBlocks(bodyText, { forced: isSourceDoc, dropSections: isSourceDoc && ext === 'fountain' });
+                const blocks = parseTextToBlocks(bodyText, { forced: isSourceDoc, dropSections: isSourceDoc && isFountainLike });
 
                 if (intoCurrent) {
                     appendImportedBlocks(blocks);
@@ -16338,7 +16538,7 @@
                     });
                 }
 
-                if (isSourceDoc) setRawSource(rawText, ext === 'fountain' ? 'fountain' : 'markdown');
+                if (isSourceDoc) setRawSource(rawText, isFountainLike ? 'fountain' : 'markdown');
                 else if (!intoCurrent) clearRawSource();
 
                 reflowPages();
