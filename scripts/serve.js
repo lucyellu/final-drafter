@@ -491,6 +491,18 @@ function readTmdbKey() {
     return null;
 }
 
+// Google Maps key for the Map panel's satellite basemap and Street View --
+// same gitignored-file convention as TMDB_KEY_FILE above, so the key never
+// lands in source. The client fetches it from /api/maps-key rather than
+// hardcoding it.
+const GOOGLE_MAPS_KEY_FILE = path.join(ROOT, 'google-maps-key.txt');
+function readGoogleMapsKey() {
+    const env = (process.env.GOOGLE_MAPS_API_KEY || '').trim();
+    if (env) return env;
+    if (fs.existsSync(GOOGLE_MAPS_KEY_FILE)) return fs.readFileSync(GOOGLE_MAPS_KEY_FILE, 'utf8').trim();
+    return null;
+}
+
 async function tmdbGet(pathname, params, key) {
     const isBearer = TMDB_JWT_RE.test(key);
     const u = new URL('https://api.themoviedb.org/3' + pathname);
@@ -925,6 +937,11 @@ const server = http.createServer((req, res) => {
     if (urlPath === '/api/save-image') { saveCustomImage(req, res); return; }
     if (urlPath === '/api/fetch-meta') { fetchUrlMetadata(res, query.get('url')); return; }
     if (urlPath === '/api/geocode') { fetchGeocode(res, query.get('q')); return; }
+    if (urlPath === '/api/maps-key') {
+        const key = readGoogleMapsKey();
+        sendJson(res, 200, key ? { ok: true, key } : { ok: false, error: 'No Google Maps key found. Save one as google-maps-key.txt in the app folder.' });
+        return;
+    }
     if (urlPath === '/api/proxy-image') { proxyImage(req, res, query.get('url')); return; }
     if (urlPath === '/api/generate-image') { generateAiImage(req, res); return; }
     if (urlPath === '/api/tmdb-cast') { fetchTmdbCast(res, query.get('title'), query.get('year')); return; }

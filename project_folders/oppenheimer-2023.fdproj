@@ -5,7 +5,7 @@
     "author": "",
     "docType": "screenplay",
     "created": "2026-08-31T06:46:56.693Z",
-    "modified": "2026-08-31T07:42:43.449Z"
+    "modified": "2026-09-02T00:58:37.382Z"
   },
   "settings": {
     "pageNumber": {
@@ -26,7 +26,7 @@
     }
   },
   "layout": {
-    "mode": "split-h",
+    "mode": "single",
     "splitRatio": 0.4312749003984064,
     "splitVRatio": 0.5,
     "studioHRatio": 0.5,
@@ -34,11 +34,11 @@
     "quadColRatio": 0.5,
     "quadRowRatio": 0.5,
     "cleanPanels": false,
-    "activeShelf": "media-player",
+    "activeShelf": "location-map",
     "slots": [
       {
         "id": "slot-1",
-        "type": "script-render"
+        "type": "location-map"
       },
       {
         "id": "slot-2",
@@ -6430,6 +6430,7 @@
     "activeCategory": "all",
     "items": []
   },
+  "rawSource": null,
   "script": [
     {
       "type": "center-title",
@@ -25632,6 +25633,526 @@
     ],
     "locations": [
       {
+        "id": 1788158801107.8433,
+        "name": "ROOM 2022, ATOMIC ENERGY COMMISSION",
+        "color": "hsl(200, 70%, 60%)"
+      },
+      {
+        "id": 1788310437439.9019,
+        "name": "SENATE OFFICE",
+        "color": "hsl(283, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.209,
+        "name": "SOUTH OBSERVATION POST, TRINITY TEST SITE",
+        "color": "hsl(266, 70%, 60%)"
+      },
+      {
+        "id": 1788310437439.2212,
+        "name": "SENATE COMMITTEE HEARING ROOM",
+        "color": "hsl(210, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.5002,
+        "name": "T-SECTION, LOS ALAMOS",
+        "color": "hsl(90, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.021,
+        "name": "BASE CAMP, TRINITY TEST SITE",
+        "color": "hsl(88, 70%, 60%)"
+      },
+      {
+        "id": 1788310437439.3643,
+        "name": "CLASSROOM, BERKELEY",
+        "color": "hsl(293, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.2505,
+        "name": "TRAIN, SANTA FE TO CHICAGO",
+        "color": "hsl(54, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.009,
+        "name": "RAD LAB, BERKELEY",
+        "color": "hsl(299, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.6501,
+        "name": "LT. JOHNSON’S OFFICE",
+        "color": "hsl(143, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.0496,
+        "name": "FULLER LODGE, LOS ALAMOS",
+        "color": "hsl(72, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.5146,
+        "name": "OPPENHEIMER’S OFFICE, LOS ALAMOS",
+        "color": "hsl(264, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.531,
+        "name": "LECTURE HALL, T-SECTION, LOS ALAMOS",
+        "color": "hsl(87, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.239,
+        "name": "OPPENHEIMER HOUSE, LOS ALAMOS",
+        "color": "hsl(187, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.3032,
+        "name": "HOTEL CONFERENCE ROOM",
+        "color": "hsl(168, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.8057,
+        "name": "LOS ALAMOS",
+        "color": "hsl(120, 70%, 60%)"
+      },
+      {
+        "id": 1788310437439.3745,
+        "name": "INSTITUTE FOR ADVANCED STUDY, PRINCETON",
+        "color": "hsl(91, 70%, 60%)"
+      },
+      {
+        "id": 1788310437439.5881,
+        "name": "CORRIDOR, BERKELEY",
+        "color": "hsl(39, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.5422,
+        "name": "ROOM 805, HOTEL, SAN FRANCISCO",
+        "color": "hsl(40, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.4727,
+        "name": "STEEL TOWER, TRINITY TEST SITE",
+        "color": "hsl(274, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.3982,
+        "name": "DISTANT OBSERVATION POINT",
+        "color": "hsl(9, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.0715,
+        "name": "LOBBY, FULLER LODGE, LOS ALAMOS",
+        "color": "hsl(146, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.797,
+        "name": "CORRIDOR OUTSIDE ROOM 2022",
+        "color": "hsl(197, 70%, 60%)"
+      },
+      {
+        "id": 1788310437439.2185,
+        "name": "LABORATORY, CAMBRIDGE",
+        "color": "hsl(20, 70%, 60%)"
+      },
+      {
+        "id": 1788310437439.6318,
+        "name": "QUADRANGLE, CAMBRIDGE",
+        "color": "hsl(195, 70%, 60%)"
+      },
+      {
+        "id": 1788310437439.0325,
+        "name": "BERKELEY",
+        "color": "hsl(142, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.7158,
+        "name": "NEW MEXICO",
+        "color": "hsl(242, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.2317,
+        "name": "PERRO CALIENTE",
+        "color": "hsl(305, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.3179,
+        "name": "BERKELEY CAMPUS",
+        "color": "hsl(345, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.9004,
+        "name": "CONGRESSIONAL HEARING ROOM",
+        "color": "hsl(63, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.32,
+        "name": "OPPENHEIMER HOUSE, BERKELEY",
+        "color": "hsl(29, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.9788,
+        "name": "LOS ALAMOS UNDER CONSTRUCTION",
+        "color": "hsl(298, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.702,
+        "name": "CYCLOTRON BUILDING, LOS ALAMOS",
+        "color": "hsl(216, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.2275,
+        "name": "CANYON, LOS ALAMOS",
+        "color": "hsl(8, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.7612,
+        "name": "TRINITY TEST SITE",
+        "color": "hsl(0, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.2117,
+        "name": "LOBBY, OVAL OFFICE, THE WHITE HOUSE",
+        "color": "hsl(300, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.393,
+        "name": "NICHOLS’ OFFICE, ATOMIC ENERGY COMMISSION",
+        "color": "hsl(215, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.1802,
+        "name": "LIVING ROOM, STRAUSS HOUSE",
+        "color": "hsl(355, 70%, 60%)"
+      },
+      {
+        "id": 1788310437441.951,
+        "name": "LAKESIDE, INSTITUTE FOR ADVANCED STUDY, PRINCETON",
+        "color": "hsl(287, 70%, 60%)"
+      },
+      {
+        "id": 1788158801107.4531,
+        "name": "PRESIDENT’S OFFICE, INSTITUTE FOR ADVANCED STUDY --",
+        "color": "hsl(353, 70%, 60%)"
+      },
+      {
+        "id": 1788310437439.0593,
+        "name": "CORRIDOR, SENATE BUILDING",
+        "color": "hsl(185, 70%, 60%)"
+      },
+      {
+        "id": 1788310437439.3662,
+        "name": "LECTURE HALL, CAMBRIDGE",
+        "color": "hsl(174, 70%, 60%)"
+      },
+      {
+        "id": 1788310437439.5405,
+        "name": "ROOMS AT CAMBRIDGE",
+        "color": "hsl(9, 70%, 60%)"
+      },
+      {
+        "id": 1788310437439.6396,
+        "name": "LECTURE HALL, LEIDEN",
+        "color": "hsl(197, 70%, 60%)"
+      },
+      {
+        "id": 1788310437439.821,
+        "name": "TRAIN, LEIDEN TO ZURICH",
+        "color": "hsl(352, 70%, 60%)"
+      },
+      {
+        "id": 1788310437439.8992,
+        "name": "LECTURE HALL, ZURICH",
+        "color": "hsl(167, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.4219,
+        "name": "HOUSE PARTY, SHASTA ROAD, BERKELEY",
+        "color": "hsl(177, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.2808,
+        "name": "LIVING ROOM, HOUSE PARTY, SHASTA ROAD, BERKELEY",
+        "color": "hsl(113, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.0605,
+        "name": "BEDROOM",
+        "color": "hsl(333, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.1086,
+        "name": "CAMPSITE",
+        "color": "hsl(321, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.864,
+        "name": "STREET, BERKELEY",
+        "color": "hsl(175, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.693,
+        "name": "TATLOCK HOUSE, BERKELEY",
+        "color": "hsl(130, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.326,
+        "name": "MEETING HALL, BERKELEY",
+        "color": "hsl(148, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.877,
+        "name": "HOUSE PARTY, TOLMAN HOUSE, PASADENA",
+        "color": "hsl(102, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.0134,
+        "name": "TATLOCK’S BEDROOM",
+        "color": "hsl(64, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.2007,
+        "name": "LIVING ROOM, CHEVALIER HOUSE",
+        "color": "hsl(304, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.6433,
+        "name": "PRESIDENT’S DINING HALL, BERKELEY",
+        "color": "hsl(203, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.4722,
+        "name": "TRAIN, BERKELEY TO WASHINGTON, DC",
+        "color": "hsl(209, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.5808,
+        "name": "CAR, LOS ALAMOS",
+        "color": "hsl(268, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.1426,
+        "name": "TRAIN, SANTA FE TO BOSTON",
+        "color": "hsl(113, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.3748,
+        "name": "LECTURE HALL, HARVARD",
+        "color": "hsl(33, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.0105,
+        "name": "CORRIDOR, MIT",
+        "color": "hsl(235, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.3267,
+        "name": "OFFICE, UNIVERSITY OF MICHIGAN",
+        "color": "hsl(308, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.6555,
+        "name": "QUADRANGLE, PRINCETON",
+        "color": "hsl(232, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.44,
+        "name": "TRAIN, PRINCETON TO SANTA FE",
+        "color": "hsl(329, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.6443,
+        "name": "CONSTRUCTION CABIN, LOS ALAMOS",
+        "color": "hsl(168, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.314,
+        "name": "WOODS, PRINCETON, NEW JERSEY",
+        "color": "hsl(284, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.9333,
+        "name": "LAKE, INSTITUTE FOR ADVANCED STUDY",
+        "color": "hsl(181, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.6885,
+        "name": "KITCHEN, OPPENHEIMER HOUSE, BERKELEY",
+        "color": "hsl(136, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.439,
+        "name": "NEW YORK STREET",
+        "color": "hsl(212, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.4082,
+        "name": "HOTEL, NEW YORK",
+        "color": "hsl(204, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.099,
+        "name": "\"MAIN STREET\", LOS ALAMOS",
+        "color": "hsl(41, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.667,
+        "name": "OUTER OFFICE",
+        "color": "hsl(349, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.246,
+        "name": "FOOTBALL STADIUM, CHICAGO",
+        "color": "hsl(129, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.2014,
+        "name": "ATOMIC PILE, UNDERNEATH THE STADIUM, CHICAGO",
+        "color": "hsl(306, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.6738,
+        "name": "COLONEL NICHOLS’ OFFICE",
+        "color": "hsl(337, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.227,
+        "name": "HOTEL, SAN FRANCISCO",
+        "color": "hsl(316, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.8362,
+        "name": "HOTEL LOBBY, SAN FRANCISCO",
+        "color": "hsl(316, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.6797,
+        "name": "CORRIDOR, HOTEL, SAN FRANCISCO",
+        "color": "hsl(337, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.89,
+        "name": "LECTURE HALL, T-SECTION",
+        "color": "hsl(145, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.8054,
+        "name": "SNOWY WOODS, LOS ALAMOS",
+        "color": "hsl(282, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.3577,
+        "name": "BERM",
+        "color": "hsl(63, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.8594,
+        "name": "HOTEL LOBBY, WASHINGTON, DC",
+        "color": "hsl(302, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.4167,
+        "name": "SECRETARY OF WAR’S OFFICE",
+        "color": "hsl(259, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.0476,
+        "name": "BASE OF STEEL TOWER, TRINITY TEST SITE",
+        "color": "hsl(115, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.832,
+        "name": "BUNKER, SOUTH OBSERVATION POST",
+        "color": "hsl(53, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.3564,
+        "name": "SOUTH 1500 POST",
+        "color": "hsl(262, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.4414,
+        "name": "HILLTOP DISTANT OBSERVATION POINT",
+        "color": "hsl(190, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.2473,
+        "name": "FOYER, OPPENHEIMER’S OFFICE",
+        "color": "hsl(266, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.337,
+        "name": "OFFICE, T-SECTION, LOS ALAMOS",
+        "color": "hsl(214, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.5935,
+        "name": "CORRIDOR, T-SECTION, LOS ALAMOS",
+        "color": "hsl(40, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.927,
+        "name": "OVAL OFFICE",
+        "color": "hsl(228, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.5386,
+        "name": "BALLROOM, PLAZA HOTEL",
+        "color": "hsl(85, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.765,
+        "name": "CORPORATE AUDITORIUM",
+        "color": "hsl(299, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.8242,
+        "name": "LECTURE HALL, LOS ALAMOS",
+        "color": "hsl(60, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.0671,
+        "name": "HOTEL ROOM, WASHINGTON, DC",
+        "color": "hsl(140, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.189,
+        "name": "FRONT HALL, STRAUSS RESIDENCE",
+        "color": "hsl(273, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.4666,
+        "name": "STRAUSS HOUSE",
+        "color": "hsl(326, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.7678,
+        "name": "STRAUSS CAR",
+        "color": "hsl(137, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.25,
+        "name": "VOLPE’S HOUSE",
+        "color": "hsl(146, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.775,
+        "name": "DINING ROOM, OLDEN MANOR, PRINCETON",
+        "color": "hsl(11, 70%, 60%)"
+      },
+      {
+        "id": 1788310437440.6665,
+        "name": "OLDEN MANOR, PRINCETON",
+        "color": "hsl(82, 70%, 60%)"
+      },
+      {
+        "id": 1788310437441.379,
+        "name": "OLDEN MANOR, BACK GATE OVERLOOKING THE INSTITUTE",
+        "color": "hsl(108, 70%, 60%)"
+      },
+      {
+        "id": 1788310437441.9622,
+        "name": "CABINET ROOM, WHITE HOUSE",
+        "color": "hsl(316, 70%, 60%)"
+      },
+      {
         "id": 1788158801107.9832,
         "name": "ROOM 2022, ATOMIC ENERGY COMMISSION -- DAY",
         "color": "hsl(186, 70%, 60%)"
@@ -25820,11 +26341,6 @@
         "id": 1788158801106.0205,
         "name": "INSTITUTE FOR ADVANCED STUDY, PRINCETON -- CONTINUOUS",
         "color": "hsl(33, 70%, 60%)"
-      },
-      {
-        "id": 1788158801107.4531,
-        "name": "PRESIDENT’S OFFICE, INSTITUTE FOR ADVANCED STUDY --",
-        "color": "hsl(353, 70%, 60%)"
       },
       {
         "id": 1788158801107.0088,
@@ -26127,11 +26643,6 @@
         "color": "hsl(75, 70%, 60%)"
       },
       {
-        "id": 1788158801107.8433,
-        "name": "ROOM 2022, ATOMIC ENERGY COMMISSION",
-        "color": "hsl(200, 70%, 60%)"
-      },
-      {
         "id": 1788158801107.128,
         "name": "ROOM 805, HOTEL, SAN FRANCISCO -- CONTINUOUS",
         "color": "hsl(243, 70%, 60%)"
@@ -26402,7 +26913,215 @@
         "color": "hsl(131, 70%, 60%)"
       }
     ],
-    "lastInsertion": {}
+    "lastInsertion": {},
+    "geo": {
+      "LOS ALAMOS": {
+        "lat": 35.88137,
+        "lon": -106.298959,
+        "display": "Los Alamos, Los Alamos County, New Mexico, 87544, United States",
+        "resolvedAt": 1788310491111
+      },
+      "BERKELEY": {
+        "lat": 37.8708393,
+        "lon": -122.272863,
+        "display": "Berkeley, Alameda County, California, United States",
+        "resolvedAt": 1788310492028
+      },
+      "PRINCETON": {
+        "lat": 40.3496953,
+        "lon": -74.6597376,
+        "display": "Princeton, Mercer County, New Jersey, United States",
+        "resolvedAt": 1788310492774
+      },
+      "TRINITY TEST SITE": {
+        "lat": 33.6772827,
+        "lon": -106.4753787,
+        "display": "Trinity Site Obelisk, Wsmr P Route 13, Socorro County, New Mexico, United States",
+        "resolvedAt": 1788310494002
+      },
+      "SAN FRANCISCO": {
+        "lat": 37.7879363,
+        "lon": -122.4075201,
+        "display": "San Francisco, California, United States",
+        "resolvedAt": 1788310495208
+      },
+      "CAMBRIDGE": {
+        "lat": 52.1975846,
+        "lon": 0.1391537,
+        "display": "Cambridge, Cambridgeshire, Cambridgeshire and Peterborough, England, United Kingdom",
+        "resolvedAt": 1788310495935
+      },
+      "DC": {
+        "lat": 4.2834715,
+        "lon": -74.1753606,
+        "display": "Bogota Capital District - Municipality, Bogota, Capital District, RAP (Especial) Central, 11001, Colombia",
+        "resolvedAt": 1788310497047
+      },
+      "ATOMIC ENERGY COMMISSION": {
+        "lat": 23.7778588,
+        "lon": 90.3719059,
+        "display": "Atomic Energy Commission (Extension Building, Shahid Shahabuddin Road, Taltola, West Agaragaon, Sher-E-Bangla Nagar, Dhaka, Dhaka Metropolitan, Dhaka District, Dhaka Division, 1916, Bangladesh",
+        "resolvedAt": 1788310498148
+      },
+      "CHICAGO": {
+        "lat": 41.8755616,
+        "lon": -87.6244212,
+        "display": "Chicago, South Chicago Township, Cook County, Illinois, United States",
+        "resolvedAt": 1788310499250
+      },
+      "SENATE OFFICE": {
+        "lat": 30.4373189,
+        "lon": -84.2816071,
+        "display": "Senate Office, 404, South Monroe Street, Tallahassee, Leon County, Florida, 32399, United States",
+        "resolvedAt": 1788310500347
+      },
+      "SENATE COMMITTEE HEARING ROOM": null,
+      "TRAIN, SANTA FE TO CHICAGO": null,
+      "LT. JOHNSON’S OFFICE": null,
+      "HOTEL CONFERENCE ROOM": {
+        "lat": 18.033561,
+        "lon": -63.082867,
+        "display": "Carl's Unique Inn & Conference Room, Orange Grove Road, Cay Bay, Cul-de-Sac, Sint Maarten, Netherlands",
+        "resolvedAt": 1788310504768
+      },
+      "DISTANT OBSERVATION POINT": null,
+      "CORRIDOR OUTSIDE ROOM 2022": null,
+      "LECTURE HALL, ZURICH": null,
+      "NEW MEXICO": {
+        "lat": 34.5802074,
+        "lon": -105.996047,
+        "display": "New Mexico, United States",
+        "resolvedAt": 1788310509204
+      },
+      "PERRO CALIENTE": {
+        "lat": 22.8374275,
+        "lon": -82.0292703,
+        "display": "Perro Caliente, Avenida 77 (Real), Leguina, Güines, Mayabeque, 33900, Cuba",
+        "resolvedAt": 1788310510318
+      },
+      "BERKELEY CAMPUS": {
+        "lat": 37.8754996,
+        "lon": -122.2390685,
+        "display": "University of California, Berkeley, Dwight Way, Southside, Berkeley, Alameda County, California, 94720, United States",
+        "resolvedAt": 1788310511426
+      },
+      "CONGRESSIONAL HEARING ROOM": null,
+      "LOS ALAMOS UNDER CONSTRUCTION": null,
+      "LOBBY, OVAL OFFICE, THE WHITE HOUSE": null,
+      "LIVING ROOM, STRAUSS HOUSE": null,
+      "CORRIDOR, SENATE BUILDING": null,
+      "PRESIDENT’S OFFICE, INSTITUTE FOR ADVANCED STUDY --": null,
+      "ROOMS AT CAMBRIDGE": null,
+      "LECTURE HALL, LEIDEN": {
+        "lat": 52.1673696,
+        "lon": 4.4599974,
+        "display": "Lecture Hall, 57, Einsteinweg, Leeuwenhoek, De Mors, Leiden, South Holland, Netherlands, 2333 CC, Netherlands",
+        "resolvedAt": 1788310520269
+      },
+      "TRAIN, LEIDEN TO ZURICH": null,
+      "BEDROOM": {
+        "lat": 41.9887995,
+        "lon": 21.4389969,
+        "display": "Bedroom, Treta makedonska brigada, Prolet, Centar, Municipality of Centar, Skopje, City of Skopje, 1001, North Macedonia",
+        "resolvedAt": 1788310522490
+      },
+      "CAMPSITE": {
+        "lat": 51.7554823,
+        "lon": -10.1017834,
+        "display": "campsite, Caherdaniel ED, Kenmare Municipal District, County Kerry, Munster, Ireland",
+        "resolvedAt": 1788310523592
+      },
+      "HOUSE PARTY, TOLMAN HOUSE, PASADENA": null,
+      "TATLOCK’S BEDROOM": null,
+      "LIVING ROOM, CHEVALIER HOUSE": null,
+      "TRAIN, SANTA FE TO BOSTON": null,
+      "LECTURE HALL, HARVARD": null,
+      "CORRIDOR, MIT": {
+        "lat": 42.3603308,
+        "lon": -71.0923433,
+        "display": "Reif Innovation Corridor, MIT, Cambridge, Middlesex County, Massachusetts, 02142, United States",
+        "resolvedAt": 1788310530263
+      },
+      "OFFICE, UNIVERSITY OF MICHIGAN": null,
+      "TRAIN, PRINCETON TO SANTA FE": null,
+      "WOODS, PRINCETON, NEW JERSEY": {
+        "lat": 40.376455,
+        "lon": -74.641077,
+        "display": "Herrontown Woods Arboretum, Princeton, Mercer County, New Jersey, 05840, United States",
+        "resolvedAt": 1788310533593
+      },
+      "LAKE, INSTITUTE FOR ADVANCED STUDY": null,
+      "NEW YORK STREET": {
+        "lat": 34.0512693,
+        "lon": -118.4115378,
+        "display": "New York Street, Century City, Los Angeles, Los Angeles County, California, 90067, United States",
+        "resolvedAt": 1788310535811
+      },
+      "HOTEL, NEW YORK": {
+        "lat": 49.0141965,
+        "lon": 2.5763164,
+        "display": "HOTEL, Rue de New York, Le Mesnil-Amelot, Meaux, Seine-et-Marne, Ile-de-France, Metropolitan France, 77990, France",
+        "resolvedAt": 1788310536927
+      },
+      "OUTER OFFICE": {
+        "lat": 61.5813424,
+        "lon": -149.0884,
+        "display": "Office, East Outer Springer Loop, Palmer, Matanuska-Susitna Borough, Alaska, 99645, United States",
+        "resolvedAt": 1788310538039
+      },
+      "COLONEL NICHOLS’ OFFICE": null,
+      "LECTURE HALL, T-SECTION": {
+        "lat": 24.2211192,
+        "lon": 120.5432692,
+        "display": "TsyrShing Lecture Hall, Section 1, Zhonghua Road, Yong'an Village, Wuqi District, Dazhuang, Taichung, 43345, Taiwan",
+        "resolvedAt": 1788310540244
+      },
+      "BERM": {
+        "lat": 51.7787606,
+        "lon": 5.3227258,
+        "display": "Berm, Kerkdriel, Maasdriel, Gelderland, Netherlands, 5331 JK, Netherlands",
+        "resolvedAt": 1788310541352
+      },
+      "SECRETARY OF WAR’S OFFICE": null,
+      "BUNKER, SOUTH OBSERVATION POST": null,
+      "SOUTH 1500 POST": {
+        "lat": 51.8104322,
+        "lon": 4.6684739,
+        "display": "Post, 120T, Johan de Wittstraat, Stadswerven, Dordrecht, South Holland, Netherlands, 3311 KJ, Netherlands",
+        "resolvedAt": 1788310544676
+      },
+      "HILLTOP DISTANT OBSERVATION POINT": null,
+      "FOYER, OPPENHEIMER’S OFFICE": null,
+      "OVAL OFFICE": {
+        "lat": 33.6390165,
+        "lon": -85.8417268,
+        "display": "Oval Office, Anniston, Calhoun County, Alabama, 36202, United States",
+        "resolvedAt": 1788310547992
+      },
+      "BALLROOM, PLAZA HOTEL": {
+        "lat": 28.3724489,
+        "lon": -81.5123409,
+        "display": "The Palm Ballroom, 1753, Hotel Plaza Boulevard, Lake Buena Vista, Orange County, Florida, 32830, United States",
+        "resolvedAt": 1788310549107
+      },
+      "CORPORATE AUDITORIUM": null,
+      "FRONT HALL, STRAUSS RESIDENCE": null,
+      "STRAUSS HOUSE": {
+        "lat": 37.2805156,
+        "lon": -76.6872675,
+        "display": "Strauss House, 105, Hangmans Lane, Forest Hill Park, Williamsburg, Gloucester, Virginia, 23185, United States",
+        "resolvedAt": 1788310552419
+      },
+      "STRAUSS CAR": null,
+      "VOLPE’S HOUSE": null,
+      "OLDEN MANOR, BACK GATE OVERLOOKING THE INSTITUTE": null,
+      "CABINET ROOM, WHITE HOUSE": null
+    }
+  },
+  "markup": {
+    "seq": 0,
+    "visible": true,
+    "notes": {}
   },
   "history": []
 }

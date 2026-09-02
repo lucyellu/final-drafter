@@ -915,6 +915,14 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 2px 16px;
+            /* Without this, "normal" (the default) computes to "stretch" for a
+               grid -- dragging the section taller stretched every row's own
+               height instead of leaving the rows compact, which read as the
+               row spacing itself growing. Rows now stay compact and any
+               extra height the resizer gives this section is just blank
+               space below the grid. See setupVResizer()'s stats-specific
+               height cap for the "stop at a max" half of this fix. */
+            align-content: start;
         }
         /* #doc-stats's own display:grid is an ID rule, which beats the plain
            class selector below it on specificity regardless of source order --
@@ -1142,6 +1150,24 @@
         #right-sidebar.split-mode .tab-content { display: flex !important; }
         #right-sidebar.split-mode #tab-characters { flex: 0 0 auto; height: 220px; min-height: 60px; }
         #right-sidebar.split-mode #tab-locations { flex: 1 1 0; min-height: 60px; }
+
+        /* Left sidebar's switcher: same shape as the right sidebar's above,
+           just defaulting to split (today's always-stacked behavior, so
+           nothing changes for anyone until they flip it) instead of tabs.
+           In tabs mode each section's own collapsible header is redundant
+           with the tab button that named it, so it's hidden there too --
+           only .section-content shows, filling the pane. */
+        #sidebar.split-mode .tabs-header { display: none; }
+        #sidebar:not(.split-mode) .v-resizer { display: none; }
+        /* !important: #sidebar-section-nav carries an inline display:flex
+           (it always has, to flex-grow into the section stack's leftover
+           space), which would otherwise outrank this class rule and leave
+           Navigator visible no matter which tab is picked. */
+        #sidebar:not(.split-mode) .sidebar-section { display: none !important; }
+        #sidebar:not(.split-mode) .sidebar-section.active {
+            display: flex !important; flex: 1 1 auto; height: auto !important;
+        }
+        #sidebar:not(.split-mode) .sidebar-section > h2.collapsible { display: none; }
 
         .list-items {
             flex-grow: 1;
@@ -1422,6 +1448,42 @@
         .map-fiction-pill:hover { border-color: var(--color-border-hover); color: var(--color-text); }
         .map-fiction-pill .fic-tag { color: var(--color-text-muted); font-style: italic; }
         .map-node { cursor: pointer; }
+        /* One divIcon per resolved coordinate: a filled dot sized by how many
+           scenes happen there, with that count printed inside it. See
+           renderWorld() -- _worldMarkerSize() picks the size.
+           Leaflet's own stylesheet loads later (fetched on first entry into
+           Real World mode, appended after this block) and its
+           .leaflet-div-icon default -- a white box with a grey border --
+           would otherwise win the specificity tie, so this overrides it
+           doubled-up rather than by source order alone. */
+        .leaflet-div-icon.map-scene-marker.map-scene-marker { background: transparent; border: none; }
+        .map-scene-marker-dot {
+            width: 100%; height: 100%; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-family: var(--font-mono, monospace); font-weight: 700;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+            box-shadow: 0 1px 5px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+        }
+        .map-popup-sv-btn {
+            margin-top: 6px; font-size: 0.72rem; padding: 3px 9px; border-radius: 999px;
+            background: var(--color-bg-elevated); border: 1px solid var(--color-border);
+            color: var(--color-text); cursor: pointer;
+        }
+        .map-popup-sv-btn:hover { border-color: var(--color-border-hover); }
+        #map-streetview {
+            position: absolute; inset: 0; z-index: 5;
+            background: var(--color-bg-sunken, #161619);
+        }
+        #map-streetview-frame { width: 100%; height: 100%; border: 0; display: block; }
+        .map-streetview-close {
+            position: absolute; top: 10px; right: 10px; z-index: 6;
+            font-size: 0.78rem; padding: 6px 12px; border-radius: 999px;
+            background: var(--color-chrome-elevated); border: 1px solid var(--color-border-hover);
+            color: var(--color-text); cursor: pointer;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+        }
+        .map-streetview-close:hover { border-color: var(--color-accent); }
         .map-node text { pointer-events: none; user-select: none; }
         .char-avatar {
             width: 22px; height: 22px;
@@ -4455,16 +4517,32 @@
                 <div class="ribbon-divider"></div>
                 <div class="ribbon-group">
                     <button class="media-btn" id="map-labels-btn" onclick="FDMap.toggleLabels()" title="Show or hide location names">Labels</button>
-                    <button class="media-btn" id="map-routes-btn" onclick="FDMap.toggleRoutes()" title="Show or hide the journeys between places">Routes</button>
-                    <button class="media-btn" onclick="FDMap.fitAndRender()" title="Frame everything">Fit</button>
-                    <button class="media-btn" onclick="FDMap.relayout()" title="Settle the layout again from a fresh start">Reshuffle</button>
+                    <button class="media-btn" id="map-routes-btn" onclick="FDMap.toggleRoutes()" title="Show or hide the lines connecting locations">Routes</button>
+                    <div class="media-btn-group" title="What a route line means">
+                        <button class="media-btn" id="map-route-mode-cuts" onclick="FDMap.setRouteMode('cuts')"
+                            title="A line for every scene-to-scene cut between two different places — thicker where the script cuts between them more often">Cuts</button>
+                        <button class="media-btn" id="map-route-mode-characters" onclick="FDMap.setRouteMode('characters')"
+                            title="A line for every place-to-place move a character actually makes — thicker where more characters make that same move">Characters</button>
+                    </div>
+                </div>
+                <div class="ribbon-divider"></div>
+                <div class="ribbon-group">
+                    <button class="media-btn" onclick="FDMap.fitAndRender()" title="Zoom and pan so every place on the map is visible — does not move anything">Fit</button>
+                    <button class="media-btn" onclick="FDMap.relayout()" title="These positions aren't geography, just a physics simulation settling places near what they connect to. Reshuffle reruns it from a new random start — same data, a different-looking arrangement.">Reshuffle</button>
                     <button class="media-btn" onclick="FDMap.exportSVG()" title="Save this map as an SVG file">💾 Export SVG</button>
                 </div>
                 <div class="ribbon-divider"></div>
             </div>
             <div id="map-world-tools" style="display:none;">
                 <div class="ribbon-group">
-                    <button class="media-btn" onclick="FDMap.fitWorld()" title="Frame every placed location">Fit</button>
+                    <div class="media-btn-group" title="Base imagery for the map">
+                        <button class="media-btn" id="map-basemap-osm" onclick="FDMap.setBasemap('osm')" title="Free street-map tiles (OpenStreetMap) — no API key needed">Map</button>
+                        <button class="media-btn" id="map-basemap-satellite" onclick="FDMap.setBasemap('satellite')" title="Satellite imagery from Google Maps">🛰</button>
+                    </div>
+                </div>
+                <div class="ribbon-divider"></div>
+                <div class="ribbon-group">
+                    <button class="media-btn" onclick="FDMap.fitWorld()" title="Zoom and pan so every placed location is visible — does not move anything">Fit</button>
                     <button class="media-btn" onclick="FDMap.regeocodeUnresolved()" title="Try the unresolved/fictional places again — useful if the lookup was briefly unreachable">↻ Re-check fictional</button>
                 </div>
                 <div class="ribbon-divider"></div>
@@ -4478,13 +4556,26 @@
     <div id="main-container">
         <!-- Left Sidebar -->
         <div id="sidebar">
+            <!-- Split (today's default: every section stacked, each with its
+                 own collapsible header) or Tabs (one section fills the panel,
+                 picked here) -- same switcher as the right sidebar's, just
+                 with four sections instead of two. See applyLeftSidebarLayout(). -->
+            <div class="rs-toolbar" id="ls-toolbar">
+                <div class="tabs-header">
+                    <button class="tab-btn" id="ls-tab-view" onclick="switchLeftTab('view')">View</button>
+                    <button class="tab-btn" id="ls-tab-stats" onclick="switchLeftTab('stats')">Stats</button>
+                    <button class="tab-btn" id="ls-tab-notes" onclick="switchLeftTab('notes')">Notes</button>
+                    <button class="tab-btn" id="ls-tab-nav" onclick="switchLeftTab('nav')">Navigator</button>
+                </div>
+                <button class="rs-layout-toggle" id="ls-layout-toggle" onclick="toggleLeftLayout()" title="Switch to tabs view">▤</button>
+            </div>
             <div class="sidebar-section" id="sidebar-section-view">
                 <h2 class="collapsible" onclick="toggleSection(this)">View Controls <span>▼</span></h2>
                 <div class="section-content">
-                    <label style="font-size: 0.85rem; display:block; margin-bottom:5px;">Zoom: <span id="zoom-val">100</span>%</label>
+                    <label style="font-size: 0.75rem; display:block; margin-bottom:5px;">Zoom: <span id="zoom-val">100</span>%</label>
                     <input type="range" id="zoom-slider" min="20" max="200" value="100" style="width:100%" oninput="updateZoom()">
 
-                    <label style="font-size: 0.85rem; margin-top: 15px; display:flex; align-items:center; gap: 8px; cursor:pointer;">
+                    <label style="font-size: 0.75rem; margin-top: 15px; display:flex; align-items:center; gap: 8px; cursor:pointer;">
                         <input type="checkbox" id="page-number-toggle" onchange="togglePageNumbers()"> Show Page Numbers
                     </label>
                 </div>
@@ -4757,6 +4848,10 @@
                         <div class="map-empty" id="map-empty"></div>
                         <div class="map-tip" id="map-tip"></div>
                         <div class="map-fiction-strip" id="map-fiction-strip"></div>
+                        <div id="map-streetview" style="display:none;">
+                            <button class="map-streetview-close" onclick="FDMap.hideStreetView()">✕ Back to map</button>
+                            <iframe id="map-streetview-frame" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -5003,7 +5098,10 @@
             reuseLastInsertion: true,
             deckBarPos: null,
             rightSidebarLayout: 'tabs',
+            leftSidebarLayout: 'split',
+            leftActiveTab: 'nav',
             sectionHeights: {},
+            uiFontScale: 100,
             highlightsVisible: true,
             stacksVisible: true,
             showHeadshots: false,
@@ -5063,8 +5161,31 @@
             if (label) label.innerText = t.charAt(0).toUpperCase() + t.slice(1);
         }
 
+        // One control for the whole interface's text size -- sidebars,
+        // toolbars, lists, modals. Nearly every `rem` size in the app's
+        // chrome CSS is a font-size (checked: 241 of 270 uses), so scaling
+        // the root percentage moves all of it together instead of leaving
+        // the Zoom label, the stats grid, and the character list each stuck
+        // at whatever size they were originally hand-picked at. The
+        // screenplay page itself is immune -- it's set in `pt`, an absolute
+        // unit, on purpose, so this never touches the actual script.
+        function applyUIFontScale() {
+            const pct = Math.max(80, Math.min(130, settings.uiFontScale || 100));
+            document.documentElement.style.fontSize = pct + '%';
+            const val = document.getElementById('ui-font-scale-val');
+            if (val) val.textContent = pct + '%';
+            const slider = document.getElementById('ui-font-scale-slider');
+            if (slider) slider.value = pct;
+        }
+        function setUIFontScale(pct) {
+            settings.uiFontScale = Math.max(80, Math.min(130, Number(pct) || 100));
+            applyUIFontScale();
+            saveSettings();
+        }
+
         function applySettings() {
             applyAppTheme();
+            applyUIFontScale();
             document.getElementById('zoom-slider').value = settings.zoom;
             document.getElementById('zoom-slider-modal').value = settings.zoom;
             document.getElementById('zoom-slider-print').value = settings.zoom;
@@ -5088,6 +5209,7 @@
             if (headshotToggle) headshotToggle.checked = !!settings.showHeadshots;
 
             applyRightSidebarLayout(settings.rightSidebarLayout);
+            applyLeftSidebarLayout(settings.leftSidebarLayout);
 
             const heightTargets = {
                 'sidebar-view': 'sidebar-section-view',
@@ -5154,21 +5276,66 @@
             saveSettings();
         }
 
+        // Scoped to #right-sidebar -- the left sidebar has its own .tab-btn/
+        // .tab-content pairs now too (see switchLeftTab()), and an unscoped
+        // query here would just as happily grab those.
         function switchTab(tabName) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
+            const rs = document.getElementById('right-sidebar');
+            if (!rs) return;
+            rs.querySelectorAll(':scope > .rs-toolbar .tab-btn').forEach(btn => btn.classList.remove('active'));
+            rs.querySelectorAll(':scope > .tab-content').forEach(content => content.classList.remove('active'));
+
             if (tabName === 'characters') {
-                const b = document.querySelector('.tab-btn:nth-child(1)');
+                const b = rs.querySelector(':scope > .rs-toolbar .tab-btn:nth-child(1)');
                 if (b) b.classList.add('active');
                 const tc = document.getElementById('tab-characters');
                 if (tc) tc.classList.add('active');
             } else {
-                const b = document.querySelector('.tab-btn:nth-child(2)');
+                const b = rs.querySelector(':scope > .rs-toolbar .tab-btn:nth-child(2)');
                 if (b) b.classList.add('active');
                 const tl = document.getElementById('tab-locations');
                 if (tl) tl.classList.add('active');
             }
+        }
+
+        // Same switcher as the right sidebar's, mirrored onto the left one --
+        // 'split' (default: every section stacked, each independently
+        // collapsible, today's only behavior) or 'tabs' (one section, picked
+        // below, fills the whole panel).
+        function applyLeftSidebarLayout(mode) {
+            const ls = document.getElementById('sidebar');
+            const btn = document.getElementById('ls-layout-toggle');
+            const split = mode === 'split';
+            if (ls) ls.classList.toggle('split-mode', split);
+            if (btn) {
+                btn.innerHTML = split ? '▤' : '⬓';
+                btn.title = split ? 'Switch to tabs view' : 'Switch to split view';
+            }
+            if (!split) switchLeftTab(settings.leftActiveTab || 'nav');
+        }
+
+        function toggleLeftLayout() {
+            settings.leftSidebarLayout = settings.leftSidebarLayout === 'split' ? 'tabs' : 'split';
+            applyLeftSidebarLayout(settings.leftSidebarLayout);
+            saveSettings();
+        }
+
+        const LEFT_TAB_SECTIONS = {
+            view: 'sidebar-section-view', stats: 'sidebar-section-stats',
+            notes: 'sidebar-section-notes', nav: 'sidebar-section-nav'
+        };
+        function switchLeftTab(tabName) {
+            if (!LEFT_TAB_SECTIONS[tabName]) tabName = 'nav';
+            const ls = document.getElementById('sidebar');
+            if (!ls) return;
+            ls.querySelectorAll(':scope > .rs-toolbar .tab-btn').forEach(btn => btn.classList.remove('active'));
+            ls.querySelectorAll(':scope > .sidebar-section').forEach(sec => sec.classList.remove('active'));
+            const btn = document.getElementById('ls-tab-' + tabName);
+            if (btn) btn.classList.add('active');
+            const sec = document.getElementById(LEFT_TAB_SECTIONS[tabName]);
+            if (sec) sec.classList.add('active');
+            settings.leftActiveTab = tabName;
+            saveSettings();
         }
 
         function getRandomColor() {
@@ -5353,6 +5520,7 @@
             const childrenByParent = new Map();
             const explicitParents = new Set();  // named after a dash, not a slash
             const order = [];               // location per scene, in script order
+            const sceneChars = [];          // characters seen per entry of `order`, same index
 
             let cur = null;
             blocks.forEach(b => {
@@ -5365,6 +5533,7 @@
                         cur.count++;
                         cur.headings.push(b);
                         order.push(cur.name);
+                        sceneChars.push(new Set());
                         return;
                     }
                     if (!p.name) { cur = null; return; }
@@ -5391,10 +5560,14 @@
                         childrenByParent.get(par).add(p.name);
                     });
                     order.push(p.name);
+                    sceneChars.push(new Set());
                     cur = rec;
                 } else if (cur && b.classList.contains('character')) {
                     const nm = b.innerText.replace(/\s*\(.*?\)/g, '').trim().toUpperCase();
-                    if (nm) cur.characters.add(nm);
+                    if (nm) {
+                        cur.characters.add(nm);
+                        sceneChars[sceneChars.length - 1].add(nm);
+                    }
                 }
             });
 
@@ -5483,8 +5656,33 @@
                 edges.push({ from, to, weight });
             });
 
+            // Character journeys: for each character, the locations they're
+            // present in, in the order the script visits them (consecutive
+            // repeats collapsed -- staying in a place across a cut isn't a
+            // journey). An edge between two places for every character who
+            // actually goes from one to the other, weighted by how many
+            // characters make that same move.
+            const charLastLoc = new Map();   // character -> last distinct location seen
+            const charTally = new Map();     // from -> Map(to -> weight); no delimiter needed
+            sceneChars.forEach((chars, i) => {
+                const loc = order[i];
+                chars.forEach(ch => {
+                    const last = charLastLoc.get(ch);
+                    if (last !== undefined && last !== loc) {
+                        if (!charTally.has(last)) charTally.set(last, new Map());
+                        const inner = charTally.get(last);
+                        inner.set(loc, (inner.get(loc) || 0) + 1);
+                    }
+                    charLastLoc.set(ch, loc);
+                });
+            });
+            const charEdges = [];
+            charTally.forEach((inner, from) => {
+                inner.forEach((weight, to) => charEdges.push({ from, to, weight }));
+            });
+
             const nodes = [...byName.values()].sort((a, b) => b.count - a.count);
-            locationGraph = { nodes, regions, edges, sceneCount: order.length };
+            locationGraph = { nodes, regions, edges, charEdges, sceneCount: order.length };
             return locationGraph;
         }
 
@@ -7324,21 +7522,33 @@
         // Drags the height of `aboveEl` (the section/panel sitting above the
         // resizer bar); whatever sits below just gets whatever space is left,
         // same relationship the horizontal resizers have with left/right.
-        function setupVResizer(resizerId, aboveId, storageKey) {
+        // `capToContent`: for a section whose content is a fixed, known
+        // shape (the Stats grid -- always the same rows) rather than a list
+        // that can grow, dragging past what the content actually needs just
+        // wastes space, so the drag stops there instead of leaving blank
+        // room below it.
+        function setupVResizer(resizerId, aboveId, storageKey, capToContent) {
             const resizer = document.getElementById(resizerId);
             const aboveEl = document.getElementById(aboveId);
-            let resizing = false, startY = 0, startH = 0;
+            let resizing = false, startY = 0, startH = 0, maxH = Infinity;
             resizer.addEventListener('mousedown', (e) => {
                 resizing = true;
                 startY = e.clientY;
                 startH = aboveEl.getBoundingClientRect().height;
+                maxH = Infinity;
+                if (capToContent) {
+                    const prevHeight = aboveEl.style.height;
+                    aboveEl.style.height = 'auto';
+                    maxH = aboveEl.getBoundingClientRect().height;
+                    aboveEl.style.height = prevHeight;
+                }
                 document.body.classList.add('resizing-v');
                 e.preventDefault();
             });
             document.addEventListener('mousemove', (e) => {
                 if (!resizing) return;
                 let newHeight = startH + (e.clientY - startY);
-                newHeight = Math.max(40, Math.min(newHeight, window.innerHeight - 150));
+                newHeight = Math.max(40, Math.min(newHeight, window.innerHeight - 150, maxH));
                 aboveEl.style.height = newHeight + 'px';
                 e.preventDefault();
             });
@@ -7352,7 +7562,7 @@
             });
         }
         setupVResizer('v-resizer-view-stats', 'sidebar-section-view', 'sidebar-view');
-        setupVResizer('v-resizer-stats-nav', 'sidebar-section-stats', 'sidebar-stats');
+        setupVResizer('v-resizer-stats-nav', 'sidebar-section-stats', 'sidebar-stats', true);
         setupVResizer('v-resizer-notes-nav', 'sidebar-section-notes', 'sidebar-notes');
         setupVResizer('rs-v-resizer', 'tab-characters', 'rs-characters');
 
@@ -16739,6 +16949,53 @@
             return _leafletLoad;
         }
 
+        // Google's basemap and Street View are opt-in, loaded only the first
+        // time someone actually asks for satellite imagery or a panorama --
+        // same lazy pattern as Leaflet itself. The satellite tiles ride into
+        // Leaflet through the "GoogleMutant" plugin, which needs the full
+        // Maps JavaScript API on the page first; Street View is a plain
+        // Embed-API iframe and needs neither.
+        const GOOGLEMUTANT_VERSION = '0.14.1';
+        // Key lives server-side (google-maps-key.txt, gitignored) and is
+        // fetched once via /api/maps-key rather than hardcoded here.
+        let _googleMapsKeyFetch = null;
+        function fetchGoogleMapsKey() {
+            if (_googleMapsKeyFetch) return _googleMapsKeyFetch;
+            _googleMapsKeyFetch = fetch('/api/maps-key').then(r => r.json()).then(data => {
+                if (!data.ok) throw new Error(data.error || 'No Google Maps key configured.');
+                return data.key;
+            });
+            return _googleMapsKeyFetch;
+        }
+        let _googleMapsLoad = null;
+        function loadGoogleMapsJS() {
+            if (window.google && window.google.maps) return Promise.resolve(window.google);
+            if (_googleMapsLoad) return _googleMapsLoad;
+            _googleMapsLoad = fetchGoogleMapsKey().then(key => new Promise((resolve, reject) => {
+                const cb = '_fdGoogleMapsReady';
+                window[cb] = () => { resolve(window.google); delete window[cb]; };
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&callback=${cb}&loading=async`;
+                script.async = true;
+                script.onerror = () => reject(new Error('Failed to load the Google Maps JavaScript API.'));
+                document.head.appendChild(script);
+            }));
+            return _googleMapsLoad;
+        }
+        let _googleMutantLoad = null;
+        function loadGoogleMutant() {
+            if (window.L && window.L.gridLayer && window.L.gridLayer.googleMutant) return Promise.resolve();
+            if (_googleMutantLoad) return _googleMutantLoad;
+            _googleMutantLoad = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = `https://cdn.jsdelivr.net/npm/leaflet.gridlayer.googlemutant@${GOOGLEMUTANT_VERSION}/dist/Leaflet.GoogleMutant.min.js`;
+                script.onload = resolve;
+                script.onerror = () => reject(new Error('Failed to load the Google basemap plugin.'));
+                document.head.appendChild(script);
+            });
+            return _googleMutantLoad;
+        }
+
         const FDMap = {
             skin: 'atlas',
             // 'conceptual' (the force-directed layout below) or 'world' (real
@@ -16746,6 +17003,14 @@
             mode: 'conceptual',
             showLabels: true,
             showRoutes: true,
+            // What a route line means in conceptual mode: 'cuts' (the script's
+            // own scene-to-scene cuts) or 'characters' (the same character
+            // moving from one place to another). See buildLocationGraph()'s
+            // edges vs. charEdges.
+            routeMode: 'cuts',
+            // Real World basemap: 'osm' (free, default) or 'satellite'
+            // (Google, loaded on demand -- see setBasemap()).
+            basemap: 'osm',
             detail: 'key',
             positions: new Map(),
             view: null,
@@ -16875,6 +17140,15 @@
                 const it = appState.locations.find(l => l.name === name);
                 const lit = it && activeHighlights.has(it.id);
                 return { ink: lit ? it.color : P.accent, lit: !!lit };
+            },
+
+            // Pixel diameter for a Real World marker, by how many scenes
+            // happen there. Same sqrt curve as the conceptual map's dots
+            // (see layout()'s `r`), just in screen pixels instead of map
+            // units, and capped so one very busy location can't swallow the
+            // rest of the map.
+            _worldMarkerSize(sceneCount) {
+                return Math.round(Math.max(18, Math.min(56, 16 + 11 * Math.sqrt(sceneCount))));
             },
 
             // Andrew's monotone chain.
@@ -17345,7 +17619,8 @@
                 // travel: the story leaving one place for another.
                 let routeLayer = '';
                 if (this.showRoutes) {
-                    g.edges.forEach(e => {
+                    const routeEdges = this.routeMode === 'characters' ? (g.charEdges || []) : g.edges;
+                    routeEdges.forEach(e => {
                         const A = this.positions.get(e.from), B = this.positions.get(e.to);
                         if (!A || !B) return;
                         const ra = regionOf.get(e.from), rb = regionOf.get(e.to);
@@ -17491,8 +17766,19 @@
                 const conceptualTools = document.getElementById('map-conceptual-tools');
                 const worldTools = document.getElementById('map-world-tools');
                 if (conceptualTools) conceptualTools.style.display = this.mode === 'world' ? 'none' : 'contents';
-                if (worldTools) worldTools.style.display = this.mode === 'world' ? '' : 'none';
-                if (this.mode === 'world') return;
+                // 'contents', not '' -- a plain block box here would stack its
+                // own children (ribbon-group, ribbon-divider) vertically
+                // instead of flowing into the toolbar's row, which is what
+                // made these buttons drift below the bar instead of sitting
+                // in it.
+                if (worldTools) worldTools.style.display = this.mode === 'world' ? 'contents' : 'none';
+                if (this.mode === 'world') {
+                    const bOsm = document.getElementById('map-basemap-osm');
+                    const bSat = document.getElementById('map-basemap-satellite');
+                    if (bOsm) bOsm.classList.toggle('active', this.basemap !== 'satellite');
+                    if (bSat) bSat.classList.toggle('active', this.basemap === 'satellite');
+                    return;
+                }
 
                 const atlas = this.skin === 'atlas';
                 document.getElementById('map-skin-atlas').classList.toggle('active', atlas);
@@ -17503,6 +17789,8 @@
                 });
                 document.getElementById('map-labels-btn').classList.toggle('active', this.showLabels);
                 document.getElementById('map-routes-btn').classList.toggle('active', this.showRoutes);
+                document.getElementById('map-route-mode-cuts').classList.toggle('active', this.routeMode !== 'characters');
+                document.getElementById('map-route-mode-characters').classList.toggle('active', this.routeMode === 'characters');
             },
 
             // ---- Real World mode -------------------------------------------
@@ -17574,10 +17862,11 @@
 
                 if (!this._leaflet) {
                     this._leaflet = L.map(leafletHost, { attributionControl: true });
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    this._osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                         maxZoom: 18
-                    }).addTo(this._leaflet);
+                    });
+                    this._applyBasemap();
                     this._leafletMarkers = L.layerGroup().addTo(this._leaflet);
                 } else {
                     this._leaflet.invalidateSize();
@@ -17607,18 +17896,33 @@
                     bounds.push([entry.lat, entry.lon]);
                     // Every node this coordinate stands in for -- the
                     // region/standalone place itself, plus any rooms nested
-                    // inside it -- shares one marker each, same point.
-                    g.nodes.forEach(n => {
-                        if ((n.region || n.name) !== name) return;
-                        const { ink, lit } = this._nodePaint(n.name, P);
-                        const marker = L.circleMarker([entry.lat, entry.lon], {
-                            radius: lit ? 9 : 6, color: ink, fillColor: ink,
-                            fillOpacity: lit ? 1 : 0.65, weight: lit ? 2 : 1
-                        });
-                        marker.bindPopup(this._tipHtml(n));
-                        marker.on('click', () => this._jumpTo(n));
-                        marker.addTo(this._leafletMarkers);
+                    // inside it -- folds into one marker, sized by their
+                    // combined scene count so the place the script actually
+                    // lives in reads as the biggest dot on the map.
+                    const members = g.nodes.filter(n => (n.region || n.name) === name);
+                    if (!members.length) return;
+                    const totalScenes = members.reduce((s, n) => s + n.count, 0);
+                    let paintInfo = this._nodePaint(name, P);
+                    if (!paintInfo.lit) {
+                        const litMember = members.find(n => this._nodePaint(n.name, P).lit);
+                        if (litMember) paintInfo = this._nodePaint(litMember.name, P);
+                    }
+                    const { ink, lit } = paintInfo;
+                    const size = this._worldMarkerSize(totalScenes);
+                    const fontSize = Math.max(9, Math.min(13, size * 0.4));
+                    const icon = L.divIcon({
+                        className: 'map-scene-marker',
+                        html: `<div class="map-scene-marker-dot" style="background:${ink};` +
+                            `opacity:${lit ? 1 : 0.82};border:${lit ? 3 : 1.5}px solid ${P.sea};` +
+                            `font-size:${fontSize}px;">${totalScenes}</div>`,
+                        iconSize: [size, size], iconAnchor: [size / 2, size / 2]
                     });
+                    const marker = L.marker([entry.lat, entry.lon], { icon });
+                    const svBtn = `<button class="map-popup-sv-btn" type="button" ` +
+                        `onclick="FDMap.showStreetView(${entry.lat},${entry.lon})">🧍 Street View</button>`;
+                    marker.bindPopup(members.map(n => this._tipHtml(n)).join('<hr style="margin:6px 0;opacity:0.25;">') + svBtn);
+                    marker.on('click', () => this._jumpTo(members[0]));
+                    marker.addTo(this._leafletMarkers);
                 });
 
                 // Fit once per settled dataset (first time every name has an
@@ -17676,6 +17980,69 @@
                 this.render();
             },
 
+            setBasemap(mode) {
+                if (this.basemap === mode) return;
+                this.basemap = mode;
+                this._applyBasemap();
+                this._syncToolbar();
+            },
+
+            // Swaps which tile layer is actually on the Leaflet instance.
+            // Google's layer is fetched (JS API + the GoogleMutant plugin)
+            // the first time it's asked for, then kept around for the rest
+            // of the session.
+            _applyBasemap() {
+                if (!this._leaflet) return;
+                if (this.basemap === 'satellite') {
+                    if (this._osmLayer && this._leaflet.hasLayer(this._osmLayer)) this._leaflet.removeLayer(this._osmLayer);
+                    if (this._googleLayer) {
+                        this._googleLayer.addTo(this._leaflet);
+                        return;
+                    }
+                    const sub = document.getElementById('map-sub');
+                    if (sub) sub.textContent = 'Loading satellite imagery…';
+                    Promise.all([loadGoogleMapsJS(), loadGoogleMutant()]).then(() => {
+                        if (this.basemap !== 'satellite' || !this._leaflet) return;
+                        this._googleLayer = L.gridLayer.googleMutant({ type: 'satellite' });
+                        this._googleLayer.addTo(this._leaflet);
+                        this.renderWorld();
+                    }).catch(err => {
+                        console.error('[FDMap] satellite basemap failed:', err);
+                        const sub2 = document.getElementById('map-sub');
+                        if (sub2) sub2.textContent = 'Could not load satellite imagery (see console for details): ' + err.message;
+                        this.basemap = 'osm';
+                        this._applyBasemap();
+                        this._syncToolbar();
+                    });
+                } else {
+                    if (this._googleLayer && this._leaflet.hasLayer(this._googleLayer)) this._leaflet.removeLayer(this._googleLayer);
+                    if (this._osmLayer) this._osmLayer.addTo(this._leaflet);
+                }
+            },
+
+            // Street View is a plain Maps Embed API iframe over the same
+            // panel Leaflet draws into -- no separate JS SDK, no Street View
+            // panorama widget to keep in sync with the map underneath it.
+            showStreetView(lat, lon) {
+                const panel = document.getElementById('map-streetview');
+                const frame = document.getElementById('map-streetview-frame');
+                if (!panel || !frame) return;
+                panel.style.display = '';
+                fetchGoogleMapsKey().then(key => {
+                    frame.src = `https://www.google.com/maps/embed/v1/streetview?key=${key}` +
+                        `&location=${lat},${lon}&heading=0&pitch=0&fov=90`;
+                }).catch(err => {
+                    console.error('[FDMap] street view failed:', err);
+                    panel.style.display = 'none';
+                });
+            },
+            hideStreetView() {
+                const panel = document.getElementById('map-streetview');
+                const frame = document.getElementById('map-streetview-frame');
+                if (panel) panel.style.display = 'none';
+                if (frame) frame.src = '';
+            },
+
             // Coalesces the repaints that follow a gesture: the viewBox moves
             // live, the type and the label placement catch up once it stops.
             _repaintSoon() {
@@ -17726,6 +18093,7 @@
                 if (this.mode === mode) return;
                 this.mode = mode;
                 this.view = null;
+                this.hideStreetView();
                 if (mode === 'world') {
                     loadLeaflet().then(() => this.render()).catch(err => {
                         const sub = document.getElementById('map-sub');
@@ -17739,6 +18107,7 @@
             setSkin(skin) { this.skin = skin; this.render(); },
             toggleLabels() { this.showLabels = !this.showLabels; this.render(); },
             toggleRoutes() { this.showRoutes = !this.showRoutes; this.render(); },
+            setRouteMode(mode) { this.routeMode = mode; this.render(); },
 
             // A different seeded start, for when the settled layout happens to
             // read badly. Same data, another arrangement of it.
@@ -18153,6 +18522,13 @@
                         <span id="zoom-val-modal">100%</span>
                     </div>
                     <input type="range" id="zoom-slider-modal" min="20" max="200" value="100" style="width:100%" oninput="updateZoomModal()">
+
+                    <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-top: 15px; margin-bottom:5px;"
+                         title="Scales all of the interface's text together -- sidebars, toolbars, lists, this settings panel. The screenplay page itself has its own Zoom, above, and isn't affected.">
+                        <span>Interface Text Size</span>
+                        <span id="ui-font-scale-val">100%</span>
+                    </div>
+                    <input type="range" id="ui-font-scale-slider" min="80" max="130" step="5" value="100" style="width:100%" oninput="setUIFontScale(this.value)">
 
                     <label style="font-size: 0.85rem; margin-top: 15px; display:flex; align-items:center; gap: 8px;"
                            title="Prints into the left margin, e.g. S004.V002. Off by default — a script you send out usually shouldn't carry them.">
