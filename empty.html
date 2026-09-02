@@ -872,6 +872,7 @@
             cursor: pointer;
             background: transparent;
             display: flex;
+            flex-shrink: 0;
             justify-content: space-between;
             align-items: center;
             user-select: none;
@@ -1141,10 +1142,24 @@
             background: rgba(0,0,0,0.2);
             border-bottom: 1px solid var(--color-border);
             flex-shrink: 0;
+            cursor: pointer;
+            user-select: none;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.18s ease;
         }
+        .rs-panel-header:hover { color: var(--color-on-chrome); background: rgba(255, 255, 255, 0.06); }
+        .rs-panel-header span { font-size: 8px; transition: transform 0.2s ease; color: var(--color-on-chrome-muted); }
+        .rs-panel-header.collapsed span { transform: rotate(-90deg); }
+        /* Unlike the left sidebar's single .section-content per header, a
+           right-sidebar panel's body is several sibling elements (toolbar,
+           list) directly under the same .tab-content as the header -- so
+           collapsing hides everything after the header via ~ instead of
+           a single named next-sibling. */
+        .rs-panel-header.collapsed ~ * { display: none; }
 
         #right-sidebar.split-mode .tabs-header { display: none; }
-        #right-sidebar.split-mode .rs-panel-header { display: block; }
+        #right-sidebar.split-mode .rs-panel-header { display: flex; }
         #right-sidebar.split-mode .v-resizer { display: block; }
         #right-sidebar:not(.split-mode) .v-resizer { display: none; }
         #right-sidebar.split-mode .tab-content { display: flex !important; }
@@ -4879,7 +4894,7 @@
             <!-- Characters: auto-populated from .character blocks in the script
                  by extractEntities() -- there's no manual "add" control here. -->
             <div id="tab-characters" class="tab-content active">
-                <div class="rs-panel-header">Characters</div>
+                <div class="rs-panel-header" onclick="toggleSection(this)">Characters <span>▼</span></div>
                 <div class="char-list-toolbar">
                     <label class="headshot-toggle" title="Show the actor's headshot next to each character">
                         <input type="checkbox" id="headshot-toggle-input" onchange="FDHeadshots.toggleShow(this.checked)">
@@ -4895,7 +4910,7 @@
 
             <!-- Locations: auto-populated from .scene-heading blocks. -->
             <div id="tab-locations" class="tab-content">
-                <div class="rs-panel-header">Locations</div>
+                <div class="rs-panel-header" onclick="toggleSection(this)">Locations <span>▼</span></div>
                 <div class="char-list-toolbar">
                     <span class="loc-region-note" id="loc-region-note"></span>
                     <button class="headshot-fetch-btn" onclick="FDMap.show()"
@@ -5101,7 +5116,7 @@
             leftSidebarLayout: 'split',
             leftActiveTab: 'nav',
             sectionHeights: {},
-            uiFontScale: 100,
+            uiFontScale: 80,
             highlightsVisible: true,
             stacksVisible: true,
             showHeadshots: false,
@@ -5170,7 +5185,7 @@
         // screenplay page itself is immune -- it's set in `pt`, an absolute
         // unit, on purpose, so this never touches the actual script.
         function applyUIFontScale() {
-            const pct = Math.max(80, Math.min(130, settings.uiFontScale || 100));
+            const pct = Math.max(50, Math.min(120, settings.uiFontScale || 80));
             document.documentElement.style.fontSize = pct + '%';
             const val = document.getElementById('ui-font-scale-val');
             if (val) val.textContent = pct + '%';
@@ -5178,7 +5193,7 @@
             if (slider) slider.value = pct;
         }
         function setUIFontScale(pct) {
-            settings.uiFontScale = Math.max(80, Math.min(130, Number(pct) || 100));
+            settings.uiFontScale = Math.max(50, Math.min(120, Number(pct) || 80));
             applyUIFontScale();
             saveSettings();
         }
@@ -7586,14 +7601,28 @@
         function toggleSection(headerEl) {
             headerEl.classList.toggle('collapsed');
             // A resized section has an explicit inline height; collapsing must
-            // clear it (so the section shrinks to just the header) and restore
-            // it on expand, or the header would sit above a blank gap.
+            // override it (so the section shrinks to just the header) and
+            // restore it on expand, or the header would sit above a blank
+            // gap. Right-sidebar panels also carry a *default* CSS height
+            // (e.g. #tab-characters' 220px) that isn't inline at all -- an
+            // inline height of 'auto' beats that by specificity and collapses
+            // to content (just the header, since its siblings are now
+            // display:none), where clearing the inline style outright would
+            // have let the 220px default reassert itself under the collapsed
+            // header.
             const section = headerEl.parentElement;
             if (headerEl.classList.contains('collapsed')) {
                 if (section.style.height) section.dataset.savedHeight = section.style.height;
-                section.style.height = '';
-            } else if (section.dataset.savedHeight) {
-                section.style.height = section.dataset.savedHeight;
+                section.style.height = 'auto';
+                // Right-sidebar panels also carry a CSS min-height (their
+                // resize floor); left it here it'd hold the collapsed
+                // section open past the header, same blank-gap problem as
+                // the default height above.
+                section.style.minHeight = '0';
+            } else {
+                section.style.height = section.dataset.savedHeight || '';
+                section.style.minHeight = '';
+                delete section.dataset.savedHeight;
             }
         }
 
@@ -18526,9 +18555,9 @@
                     <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-top: 15px; margin-bottom:5px;"
                          title="Scales all of the interface's text together -- sidebars, toolbars, lists, this settings panel. The screenplay page itself has its own Zoom, above, and isn't affected.">
                         <span>Interface Text Size</span>
-                        <span id="ui-font-scale-val">100%</span>
+                        <span id="ui-font-scale-val">80%</span>
                     </div>
-                    <input type="range" id="ui-font-scale-slider" min="80" max="130" step="5" value="100" style="width:100%" oninput="setUIFontScale(this.value)">
+                    <input type="range" id="ui-font-scale-slider" min="50" max="120" step="5" value="80" style="width:100%" oninput="setUIFontScale(this.value)">
 
                     <label style="font-size: 0.85rem; margin-top: 15px; display:flex; align-items:center; gap: 8px;"
                            title="Prints into the left margin, e.g. S004.V002. Off by default — a script you send out usually shouldn't carry them.">
