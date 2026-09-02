@@ -1500,6 +1500,194 @@
         }
         .map-streetview-close:hover { border-color: var(--color-accent); }
         .map-node text { pointer-events: none; user-select: none; }
+
+        /* Timeline panel: a grid (Rowling-style scenes x threads table) and a
+           swimlane (Nolan-style parallel lanes) rendered from the same beat
+           data, laid out the same way the Map panel hosts its SVG. */
+        .timeline-canvas-wrap {
+            flex: 1 1 auto;
+            min-height: 0;
+            position: relative;
+            overflow: auto;
+        }
+        .timeline-empty {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-align: center;
+            color: var(--color-text-muted);
+            font-size: 0.85rem;
+            padding: 30px;
+        }
+        .timeline-empty.show { display: flex; }
+        .timeline-sub {
+            font-size: 0.72rem;
+            color: var(--color-text-muted);
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        /* Grid view: one row per beat, one column per thread. Sticky headers
+           on both axes so a long scene list or a wide thread list still
+           orients against row/column zero while scrolling. */
+        table.timeline-grid {
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            width: max-content;
+            min-width: 100%;
+        }
+        .timeline-grid th, .timeline-grid td {
+            border: 1px solid var(--color-border);
+            padding: 5px 8px;
+            vertical-align: top;
+            text-align: left;
+        }
+        .timeline-grid thead th {
+            position: sticky; top: 0; z-index: 2;
+            background: var(--color-chrome-elevated);
+            color: var(--color-text);
+            white-space: nowrap;
+        }
+        /* Three fixed columns lead the grid, the way Rowling's own chart
+           leads with NO./TIME/TITLE: a narrow frozen "#" column, a frozen
+           "Time" column (the axis a *timeline* is actually organized by --
+           kept visible while scrolling through threads), then the scene
+           title/cast/note, which scrolls normally like every thread column
+           after it. */
+        .timeline-grid .tl-num-head {
+            position: sticky; left: 0; z-index: 1;
+            background: var(--color-bg-surface);
+            width: 40px; text-align: center;
+        }
+        .timeline-grid .tl-time-head {
+            position: sticky; left: 40px; z-index: 1;
+            background: var(--color-bg-surface);
+            min-width: 120px; max-width: 160px;
+            border-right: 2px solid var(--color-border-hover);
+        }
+        .timeline-grid .tl-scene-cell { min-width: 200px; max-width: 320px; }
+        .timeline-grid thead th.tl-num-head, .timeline-grid thead th.tl-time-head { z-index: 3; }
+        .timeline-grid tr.tl-key-row .tl-num-head,
+        .timeline-grid tr.tl-key-row .tl-time-head { background: var(--color-bg-elevated); }
+        .timeline-beat-num { color: var(--color-text-muted); font-family: var(--font-mono, monospace); }
+        .timeline-beat-time {
+            font-weight: 700; color: var(--color-text); cursor: pointer;
+            display: block;
+        }
+        .timeline-beat-day { color: var(--color-text-muted); font-weight: 400; display: block; font-size: 0.7rem; margin-top: 1px; }
+        .timeline-beat-title { font-weight: 600; color: var(--color-text); cursor: pointer; }
+        .timeline-beat-meta { color: var(--color-text-muted); display: block; margin-top: 2px; }
+        .timeline-beat-note { color: var(--color-text-dim); display: block; margin-top: 3px; }
+        .tl-star {
+            cursor: pointer; margin-right: 6px; user-select: none;
+            color: var(--color-text-muted);
+        }
+        .tl-star.on { color: var(--color-accent, #e8b339); }
+        .timeline-grid td.tl-cell { text-align: center; cursor: pointer; color: var(--color-text-muted); min-width: 140px; }
+        .timeline-grid td.tl-cell.on { font-weight: 700; }
+        .timeline-grid td.tl-cell.has-note { text-align: left; font-weight: 400; white-space: normal; line-height: 1.35; }
+        .timeline-grid td.tl-cell:hover { background: var(--color-bg-elevated); }
+        /* Swimlane view: threads as horizontal rows in an SVG, beats plotted
+           left-to-right by either script order or derived story time. */
+        #timeline-svg { width: 100%; height: 100%; display: block; }
+        .timeline-lane-label { font-size: 11px; fill: var(--color-text-muted, #8a8a90); }
+        .timeline-node { cursor: pointer; }
+        .timeline-node.suggested { opacity: 0.55; }
+        .timeline-tip {
+            position: absolute;
+            pointer-events: none;
+            z-index: 3;
+            display: none;
+            max-width: 280px;
+            background: var(--color-chrome-elevated);
+            border: 1px solid var(--color-border-hover);
+            border-radius: 10px;
+            padding: 8px 11px;
+            font-size: 0.76rem;
+            line-height: 1.45;
+            color: var(--color-text);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+        }
+        .timeline-tip.show { display: block; }
+        .timeline-tip b { font-weight: 700; }
+        .timeline-tip .timeline-tip-meta { color: var(--color-text-muted); }
+        .tl-thread-manager {
+            display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+        }
+        .tl-thread-chip {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-size: 0.72rem; padding: 3px 8px 3px 6px; border-radius: 999px;
+            background: var(--color-bg-elevated); border: 1px solid var(--color-border);
+            color: var(--color-text-dim);
+        }
+        .tl-thread-chip .tl-swatch { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+        .tl-thread-chip input {
+            border: none; background: transparent; color: inherit; font: inherit;
+            width: 9ch; min-width: 4ch;
+        }
+        .tl-thread-chip .tl-thread-del { cursor: pointer; color: var(--color-text-muted); }
+        .tl-thread-chip .tl-thread-del:hover { color: var(--color-text); }
+
+        /* Beat strip: the 3-Act / 6-Beat views. A handful of cards in a row
+           -- not a table, because 3 or 6 rows in a grid with mostly-empty
+           thread columns is exactly the "scenes with characters" complaint
+           this replaced. Each card is one structural beat: its scene, a
+           real description, and a date when the script gives one. */
+        #timeline-beatstrip-host {
+            padding: 24px; height: 100%; box-sizing: border-box; overflow: auto;
+        }
+        .tl-beatstrip { display: flex; align-items: stretch; gap: 0; min-width: max-content; }
+        .tl-beat-card {
+            width: 260px; flex: 0 0 auto;
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        .tl-beat-connector {
+            flex: 0 0 auto; width: 36px; display: flex; align-items: center; justify-content: center;
+        }
+        .tl-beat-connector::after {
+            content: ''; display: block; width: 100%; height: 2px;
+            background: var(--color-border-hover);
+        }
+        /* Vertical orientation: same cards top-to-bottom instead of left-to-right --
+           useful for long structures or a narrow panel. */
+        .tl-beatstrip.vertical {
+            flex-direction: column; align-items: flex-start; min-width: 0; max-width: 420px;
+        }
+        .tl-beatstrip.vertical .tl-beat-card { width: 100%; }
+        .tl-beatstrip.vertical .tl-beat-connector { width: 100%; height: 28px; }
+        .tl-beatstrip.vertical .tl-beat-connector::after { width: 2px; height: 100%; }
+        .tl-beat-label {
+            font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+            color: var(--color-accent, #8ea4c8);
+        }
+        .tl-beat-date {
+            font-size: 0.9rem; font-weight: 700; color: var(--color-text);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .tl-beat-date .tl-edit-icon {
+            font-size: 0.68rem; color: var(--color-text-muted); cursor: pointer; opacity: 0.6;
+        }
+        .tl-beat-date .tl-edit-icon:hover { opacity: 1; color: var(--color-text); }
+        .tl-beat-scene {
+            font-size: 0.78rem; font-weight: 600; color: var(--color-text-dim);
+            cursor: pointer; text-decoration: none;
+        }
+        .tl-beat-scene:hover { color: var(--color-text); text-decoration: underline; }
+        .tl-beat-note { font-size: 0.8rem; color: var(--color-text); line-height: 1.4; flex: 1 1 auto; }
+        .tl-beat-guess { font-size: 0.68rem; color: var(--color-text-muted); font-style: italic; }
+        .tl-beatstrip-hint {
+            font-size: 0.78rem; color: var(--color-text-muted); margin-bottom: 16px; max-width: 640px; line-height: 1.5;
+        }
+
         .char-avatar {
             width: 22px; height: 22px;
             border-radius: 50%;
@@ -4238,6 +4426,7 @@
                 <button class="shelf-tab active" data-shelf="script-edit" onclick="FDPanels.setActiveShelf('script-edit')" title="Screenplay Editor tools">📜 Screenplay</button>
                 <button class="shelf-tab" data-shelf="script-render" onclick="FDPanels.setActiveShelf('script-render')" title="Screenplay Print tools">🖨️ Print</button>
                 <button class="shelf-tab" data-shelf="location-map" onclick="FDPanels.setActiveShelf('location-map')" title="Location Map tools">🗺 Map</button>
+                <button class="shelf-tab" data-shelf="timeline" onclick="FDPanels.setActiveShelf('timeline')" title="Timeline tools">📈 Timeline</button>
                 <button class="shelf-tab" data-shelf="storyboard" onclick="FDPanels.setActiveShelf('storyboard')" title="Storyboard tools">🎨 Storyboards</button>
                 <button class="shelf-tab" data-shelf="media-player" onclick="FDPanels.setActiveShelf('media-player')" title="Video player tools">🎬 Video</button>
             </div>
@@ -4565,6 +4754,58 @@
             <div class="ribbon-group"><span class="map-sub" id="map-sub"></span></div>
         </div>
 
+        <div id="shelf-timeline" class="shelf-content">
+            <div class="ribbon-group">
+                <div class="media-btn-group" title="How much structure to show: the 3 acts, a 6-beat story spine, or every scene against your plot threads">
+                    <button class="media-btn" id="tl-level-3act" onclick="FDTimeline.setLevel('3act')">3-Act</button>
+                    <button class="media-btn" id="tl-level-6beat" onclick="FDTimeline.setLevel('6beat')">6-Beat</button>
+                    <button class="media-btn" id="tl-level-detailed" onclick="FDTimeline.setLevel('detailed')">Detailed</button>
+                </div>
+            </div>
+            <div class="ribbon-divider"></div>
+            <div class="ribbon-group">
+                <div class="media-btn-group" title="Order beats as the script presents them, or by the story's own chronology (inferred from time-jump language in scene headings, e.g. 'THREE WEEKS LATER', and real dates when the script states one -- flag a beat's story day manually to correct it)">
+                    <button class="media-btn" id="tl-order-presented" onclick="FDTimeline.setOrder('presented')">As Presented</button>
+                    <button class="media-btn" id="tl-order-chrono" onclick="FDTimeline.setOrder('chrono')">Chronological</button>
+                </div>
+            </div>
+            <div class="ribbon-divider" id="tl-orientation-divider"></div>
+            <div class="ribbon-group" id="tl-orientation-group">
+                <div class="media-btn-group" title="Lay the beat cards out left-to-right, or stack them top-to-bottom">
+                    <button class="media-btn" id="tl-orient-horizontal" onclick="FDTimeline.setOrientation('horizontal')">↔ Horizontal</button>
+                    <button class="media-btn" id="tl-orient-vertical" onclick="FDTimeline.setOrientation('vertical')">↕ Vertical</button>
+                </div>
+            </div>
+            <div class="ribbon-divider"></div>
+            <div class="ribbon-group">
+                <button class="media-btn" onclick="FDTimeline.analyze()" id="tl-analyze-btn" title="Ask a free LLM (Pollinations, no signup needed; falls back to Groq/Cerebras if that's down) to read the scenes and pick which one anchors each beat, with a real description of what happens -- not just a position guess. Runs through your own dev server.">🤖 Analyze with AI</button>
+            </div>
+            <div class="ribbon-divider" id="tl-detailed-divider"></div>
+            <div id="tl-detailed-tools" style="display:contents;">
+                <div class="ribbon-group">
+                    <div class="media-btn-group" title="Table of every scene against your plot threads, or parallel lanes with scenes plotted along a shared axis">
+                        <button class="media-btn" id="tl-view-grid" onclick="FDTimeline.setDetailView('grid')">Grid</button>
+                        <button class="media-btn" id="tl-view-swimlane" onclick="FDTimeline.setDetailView('swimlane')">Swimlane</button>
+                    </div>
+                </div>
+                <div class="ribbon-divider"></div>
+                <div class="ribbon-group">
+                    <button class="media-btn" id="tl-key-only" onclick="FDTimeline.toggleKeyOnly()" title="Show only starred key events. Scenes are pre-starred by a rough significance guess (cast size, length) -- star or unstar any scene to correct it.">★ Key Events Only</button>
+                </div>
+                <div class="ribbon-divider"></div>
+                <div class="ribbon-group tl-thread-manager" id="tl-thread-manager"></div>
+                <div class="ribbon-group">
+                    <button class="media-btn" onclick="FDTimeline.addThread()" title="Add a custom thread/plotline column, e.g. 'Prophecy'">+ Thread</button>
+                </div>
+                <div class="ribbon-divider"></div>
+                <div class="ribbon-group">
+                    <button class="media-btn" onclick="FDTimeline.fillThreadNotes()" id="tl-thread-notes-btn" title="Ask the AI to write a short phrase per cell -- what actually happens in that thread at that scene, not just that it's present. Only fills cells that don't have a note yet.">🤖 Fill Thread Notes</button>
+                    <button class="media-btn" onclick="FDTimeline.exportSVG()" id="tl-export-btn" title="Save the swimlane view as an SVG file">💾 Export SVG</button>
+                </div>
+            </div>
+            <div class="ribbon-group"><span class="timeline-sub" id="timeline-sub"></span></div>
+        </div>
+
     </div>
 
 
@@ -4656,6 +4897,7 @@
                             <option value="media-player">🎬 Media Player</option>
                             <option value="storyboard">🎨 Storyboard &amp; Beats</option>
                             <option value="location-map">🗺 Location Map</option>
+                            <option value="timeline">📈 Timeline</option>
                         </select>
                         <span class="pane-title" id="pane-title-slot-1" style="display:none;"></span>
                     </div>
@@ -4681,6 +4923,7 @@
                             <option value="media-player">🎬 Media Player</option>
                             <option value="storyboard">🎨 Storyboard &amp; Beats</option>
                             <option value="location-map">🗺 Location Map</option>
+                            <option value="timeline">📈 Timeline</option>
                         </select>
                         <span class="pane-title" id="pane-title-slot-2" style="display:none;"></span>
                     </div>
@@ -4710,6 +4953,7 @@
                             <option value="media-player">🎬 Media Player</option>
                             <option value="storyboard" selected>🎨 Storyboard &amp; Beats</option>
                             <option value="location-map">🗺 Location Map</option>
+                            <option value="timeline">📈 Timeline</option>
                         </select>
                         <span class="pane-title" id="pane-title-slot-3" style="display:none;"></span>
                     </div>
@@ -4733,6 +4977,7 @@
                             <option value="media-player" selected>🎬 Media Player</option>
                             <option value="storyboard">🎨 Storyboard &amp; Beats</option>
                             <option value="location-map">🗺 Location Map</option>
+                            <option value="timeline">📈 Timeline</option>
                         </select>
                         <span class="pane-title" id="pane-title-slot-4" style="display:none;"></span>
                     </div>
@@ -4870,6 +5115,20 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 8. Timeline Component. Same shape as the Map component above:
+                 a panel body only, tools live on the 📈 Timeline shelf. -->
+            <div id="component-timeline" class="panel-content-view">
+                <div id="timeline-stage">
+                    <div class="timeline-canvas-wrap" id="timeline-canvas-wrap">
+                        <div id="timeline-beatstrip-host" style="display:none;"></div>
+                        <svg id="timeline-svg" xmlns="http://www.w3.org/2000/svg" style="display:none;"></svg>
+                        <div id="timeline-grid-host" style="display:none;"></div>
+                        <div class="timeline-empty" id="timeline-empty"></div>
+                        <div class="timeline-tip" id="timeline-tip"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Fullscreen Lightbox Modal -->
@@ -4959,6 +5218,29 @@
                 // null on a cached miss ("looked up, not a real place"),
                 // absent key meaning never looked up. See FDMap.renderWorld().
                 geo: {},
+                // Timeline panel. `level` is which structure lens is showing
+                // ('3act' / '6beat' / 'detailed'). `structure` holds the AI's
+                // (or, until analyzed, nothing -- see mechanicalStoryBeats())
+                // reading of the story's main beats per level: which scene
+                // anchors each one, a description, and a real date/year when
+                // the script actually gives one. `threads` and `beats` back
+                // the 'detailed' Rowling/Nolan-style scene grid: `threads`
+                // are the plotline columns/lanes (auto-seeded once from the
+                // top characters, then fully user-owned -- see
+                // FDTimeline.ensureDefaultThreads()), `beats` is annotation
+                // per scene keyed by scene ordinal ('b'+index) -- which
+                // threads it belongs to (plus threadsOff, explicit
+                // overrides against a character-name-match guess), a
+                // starred key-event flag (null = heuristic guess, true/
+                // false = explicit override), a free-text note, and a
+                // manual chronological-day override for scenes the "NEXT
+                // DAY"/"LATER" heuristic gets wrong (true nonlinear
+                // structure has to be authored, not detected). Keying by
+                // ordinal means inserting/deleting a scene earlier in the
+                // script can shift a later beat's annotations onto the
+                // wrong scene -- a known interim tradeoff, same shape as
+                // the title-page-detection gap noted in PLAN.md, not a bug.
+                timeline: { seeded: false, level: '3act', structure: {}, structureSource: {}, threads: [], beats: {} },
                 // Free-text token templates for the six header/footer slots
                 // (item 3). See renderFurniture() / resolveFurnitureTokens().
                 furniture: {
@@ -5701,6 +5983,209 @@
             return locationGraph;
         }
 
+        // ---------------------------------------------------------------
+        // Timeline: one beat per scene, in script order, plus a best-effort
+        // guess at story-chronological order. See FDTimeline for rendering.
+        // ---------------------------------------------------------------
+
+        // parseSceneHeading() throws the day/time-of-day tail away once it's
+        // done using it to decide where a slugline's name ends -- the map
+        // has no use for "DAY" or "THREE WEEKS LATER". The timeline is built
+        // entirely out of that tail, so it re-walks the same segmentation
+        // rather than changing what parseSceneHeading returns (Map and
+        // everything else that calls it don't need to care this exists).
+        const CHRONO_UNIT_DAYS = { SECOND: 0, SECONDS: 0, MINUTE: 0, MINUTES: 0, HOUR: 0.04, HOURS: 0.04,
+            DAY: 1, DAYS: 1, WEEK: 7, WEEKS: 7, MONTH: 30, MONTHS: 30, YEAR: 365, YEARS: 365 };
+        const CHRONO_NUM_WORDS = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5, SIX: 6, SEVEN: 7,
+            EIGHT: 8, NINE: 9, TEN: 10, ELEVEN: 11, TWELVE: 12, A: 1, AN: 1 };
+        const CHRONO_SAME_DAY_RE = /\b(NEXT DAY|THE NEXT MORNING|NEXT MORNING|THAT NIGHT|ANOTHER DAY|LATER THAT (DAY|NIGHT))\b/;
+        const CHRONO_JUMP_RE = /\b(\d+|ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|ELEVEN|TWELVE|A|AN)?\s*(SECONDS?|MINUTES?|HOURS?|DAYS?|WEEKS?|MONTHS?|YEARS?)\s+(LATER|EARLIER|AFTER|AGO|BEFORE)\b/;
+        const CHRONO_NUMBERED_ANCHOR_RE = /^\s*(DAY|WEEK|YEAR)\s+\d+\s*$/;
+
+        // isHeadingQualifier()'s vocabulary is exact-string ("WEEKS LATER")
+        // and has no notion of a leading count, because the Map panel only
+        // needs to recognize the phrase well enough to know it isn't a place
+        // -- "THREE WEEKS LATER" already fails to strip there and falls
+        // through to becoming a location *parent* instead, which is a
+        // pre-existing quirk of that shared parser this file leaves alone.
+        // The timeline cares which segment is a time cue in the first place,
+        // so it recognizes a superset locally rather than widening
+        // isHeadingQualifier and risking Map's location inference.
+        function looksLikeTiming(seg) {
+            return isHeadingQualifier(seg) || CHRONO_JUMP_RE.test(seg) || CHRONO_NUMBERED_ANCHOR_RE.test(seg);
+        }
+
+        function sceneTimingTail(raw) {
+            let t = (raw || '').trim().toUpperCase();
+            t = t.replace(/\s*#[^#]*#\s*$/, '');
+            const m = t.match(/^(INT\.?\/EXT\.?|EXT\.?\/INT\.?|I\.?\/E\.?|INT\.?|EXT\.?)[\s.]+(.*)$/);
+            const body = (m ? m[2] : t).trim();
+            const segs = body.split(/\s+[-–—]+\s+/).map(s => s.trim()).filter(Boolean);
+            const tail = [];
+            while (segs.length > 1 && looksLikeTiming(segs[segs.length - 1])) tail.unshift(segs.pop());
+            return tail.join(' -- ');
+        }
+
+        // A rough, explicitly-heuristic estimate of how many story-days a
+        // scene's heading tail moves the clock forward (or back) from the
+        // scene before it. Real nonlinear structure (Inception, Memento)
+        // isn't recoverable from vocabulary like this -- it has to be
+        // authored, which is what each beat's manual chronoOverride is for.
+        function chronoJumpDays(tail) {
+            if (!tail) return 0;
+            const q = tail.toUpperCase();
+            const m = q.match(CHRONO_JUMP_RE);
+            if (m) {
+                const n = m[1] ? (CHRONO_NUM_WORDS[m[1]] || parseInt(m[1], 10) || 1) : 1;
+                const unit = CHRONO_UNIT_DAYS[m[2]] || 0;
+                const sign = /EARLIER|AGO|BEFORE/.test(m[3]) ? -1 : 1;
+                return sign * n * unit;
+            }
+            if (CHRONO_SAME_DAY_RE.test(q)) return 1;
+            return 0;
+        }
+
+        // An explicit "DAY 3" / "WEEK 2" / "YEAR 1" anchor (HEADING_CLOCK,
+        // defined above) sets story time outright instead of accumulating --
+        // scripts that number their days this way are telling you the
+        // chronology directly, which beats guessing from jump phrases.
+        function chronoAnchorDays(tail) {
+            if (!tail) return null;
+            const m = tail.toUpperCase().match(/\b(DAY|WEEK|YEAR)\s+(\d+)\b/);
+            if (!m) return null;
+            const n = parseInt(m[2], 10);
+            return m[1] === 'DAY' ? n : m[1] === 'WEEK' ? n * 7 : n * 365;
+        }
+
+        let timelineData = { beats: [], sceneCount: 0 };
+
+        const MONTH_NAMES = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY',
+            'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+        const MONTH_RE = new RegExp('\\b(' + MONTH_NAMES.join('|') + ')\\b');
+        const YEAR_RE = /\b(1[0-9]{3}|20[0-9]{2})\b/;
+
+        // A real calendar anchor, when the script actually gives one --
+        // the heading tail first (most deliberate), then whatever action/
+        // dialogue text the scene has (a date is often stated in narration
+        // or dialogue, e.g. "It's December, 1945" rather than in a
+        // slugline). Never invented: no date text means no dateLabel, full
+        // stop, same as chronoJumpDays() never guessing a jump it has no
+        // vocabulary for.
+        function extractDateLabel(...texts) {
+            const combined = texts.filter(Boolean).join(' ').toUpperCase();
+            const month = combined.match(MONTH_RE);
+            const year = combined.match(YEAR_RE);
+            if (month && year) return month[1] + ' ' + year[1];
+            if (year) return year[1];
+            if (month) return month[1];
+            return null;
+        }
+
+        function buildTimelineData() {
+            const blocks = getBlocks();
+            const beats = [];
+            let cur = null;
+            let chronoDay = 0;
+
+            blocks.forEach(b => {
+                if (b.classList.contains('scene-heading')) {
+                    const heading = b.innerText;
+                    const p = parseSceneHeading(heading);
+                    if (p.continues && cur) {
+                        cur.lineCount++;
+                        return;
+                    }
+                    if (!p.name) { cur = null; return; }
+                    const tail = sceneTimingTail(heading);
+                    const anchor = chronoAnchorDays(tail);
+                    chronoDay = anchor !== null ? anchor : chronoDay + chronoJumpDays(tail);
+                    cur = {
+                        index: beats.length,
+                        heading: b,
+                        name: p.name, intExt: p.intExt, timing: tail,
+                        characters: new Set(), snippet: '', dateScanText: '', lineCount: 1,
+                        chronoDay
+                    };
+                    beats.push(cur);
+                } else if (cur && b.classList.contains('character')) {
+                    const nm = b.innerText.replace(/\s*\(.*?\)/g, '').trim().toUpperCase();
+                    if (nm) cur.characters.add(nm);
+                    cur.lineCount++;
+                } else if (cur) {
+                    if (b.classList.contains('action') || b.classList.contains('dialogue')) {
+                        const t = b.innerText.trim();
+                        if (t) {
+                            if (!cur.snippet) cur.snippet = t.length > 90 ? t.slice(0, 87) + '…' : t;
+                            if (cur.dateScanText.length < 600) cur.dateScanText += ' ' + t;
+                        }
+                    }
+                    cur.lineCount++;
+                }
+            });
+
+            // Suggested "key event" subset: cast size and scene length are
+            // the only signals available without asking an LLM or a human,
+            // so this is a starting guess to star/unstar from, not a claim
+            // about what actually matters in the story.
+            const scored = beats.map(bt => ({ bt, score: bt.characters.size * 2 + Math.log2(bt.lineCount + 1) }));
+            scored.sort((a, b) => b.score - a.score);
+            const keyBudget = Math.max(1, Math.min(20, Math.ceil(beats.length * 0.35)));
+            const suggested = new Set(scored.slice(0, keyBudget).map(s => s.bt));
+            beats.forEach(bt => {
+                bt.suggestedKey = suggested.has(bt);
+                bt.dateLabel = extractDateLabel(bt.timing, bt.dateScanText);
+            });
+
+            timelineData = { beats, sceneCount: beats.length };
+            return timelineData;
+        }
+
+        const STRUCTURE_LABELS = {
+            '3act': ['Beginning', 'Middle', 'End'],
+            '6beat': ['Introduction', 'Inciting Incident', 'Rising Action', 'Crisis', 'Climax', 'Resolution']
+        };
+        // Rough Save-the-Cat-style proportions through the script, purely by
+        // position -- a starting guess so the panel shows something the
+        // instant a script is loaded, not a claim about where the "real"
+        // beats are. FDTimeline.analyze() (an actual read of the scenes,
+        // not their position) is what replaces these; this is the floor
+        // under it, not a competing opinion.
+        const STRUCTURE_POSITIONS = {
+            '3act': [0.05, 0.5, 0.95],
+            '6beat': [0.05, 0.12, 0.45, 0.72, 0.85, 0.97]
+        };
+        function mechanicalStoryBeats(level) {
+            const labels = STRUCTURE_LABELS[level];
+            const positions = STRUCTURE_POSITIONS[level];
+            const beats = timelineData.beats;
+            const n = beats.length;
+            if (!n || !labels) return [];
+            return labels.map((label, i) => {
+                const idx = Math.min(n - 1, Math.max(0, Math.round(positions[i] * (n - 1))));
+                return { label, sceneIndex: beats[idx].index, note: '', dateLabel: null, mechanical: true };
+            });
+        }
+
+        // Per-beat annotation the user actually owns (thread membership, a
+        // key-event override, notes, a manual chrono correction), merged
+        // onto the freshly-derived beat above. Keyed by scene ordinal --
+        // see the `timeline` comment in defaultAppState() for the tradeoff.
+        function beatKey(index) { return 'b' + index; }
+        function defaultBeatMeta() {
+            return { threads: [], threadsOff: [], threadNotes: {}, key: null, note: '', chronoOverride: null };
+        }
+        function beatMeta(index) {
+            // Object.assign, not `||`, so a record saved before threadNotes
+            // (or any future field) existed still gets it backfilled rather
+            // than reading as undefined.
+            return Object.assign(defaultBeatMeta(), appState.timeline.beats[beatKey(index)] || {});
+        }
+        function setBeatMeta(index, patch) {
+            const key = beatKey(index);
+            const existing = appState.timeline.beats[key] || defaultBeatMeta();
+            appState.timeline.beats[key] = Object.assign({}, existing, patch);
+        }
+
         function extractEntities() {
             dynamicCounts = { characters: {}, locations: {} };
             const entityNodes = { characters: {}, locations: {} };
@@ -5744,8 +6229,10 @@
             appState.locations.sort((a, b) => (dynamicCounts.locations[b.name] || 0) - (dynamicCounts.locations[a.name] || 0));
 
             buildLocationGraph();
+            buildTimelineData();
             renderLists(entityNodes);
             if (window.FDMap) FDMap.onScriptChanged();
+            if (window.FDTimeline) FDTimeline.onScriptChanged();
         }
 
         function renderLists(entityNodes) {
@@ -10532,7 +11019,7 @@
 
                 slotEl.dataset.type = type;
                 bodyEl.classList.toggle('script-body', type === 'script-edit' || type === 'script-render');
-                bodyEl.classList.toggle('flush-body', type === 'media-player' || type === 'studio-hub' || type === 'storyboard' || type === 'reference-board' || type === 'location-map');
+                bodyEl.classList.toggle('flush-body', type === 'media-player' || type === 'studio-hub' || type === 'storyboard' || type === 'reference-board' || type === 'location-map' || type === 'timeline');
 
                 const compEl = document.getElementById('component-' + type);
                 if (compEl && compEl.parentElement !== bodyEl) {
@@ -10552,6 +11039,8 @@
                     FDStudioHub.render();
                 } else if (type === 'location-map') {
                     FDMap.mountedInPanel();
+                } else if (type === 'timeline') {
+                    FDTimeline.mountedInPanel();
                 }
             },
 
@@ -10599,6 +11088,7 @@
                 { type: 'script-edit', label: '📜 Screenplay' },
                 { type: 'script-render', label: '🖨️ Print' },
                 { type: 'location-map', label: '🗺 Map' },
+                { type: 'timeline', label: '📈 Timeline' },
                 { type: 'storyboard', label: '🎨 Storyboards' },
                 { type: 'media-player', label: '🎬 Video' },
             ],
@@ -16161,7 +16651,8 @@
                     characters: appState.characters,
                     locations: appState.locations,
                     lastInsertion: appState.lastInsertion,
-                    geo: appState.geo
+                    geo: appState.geo,
+                    timeline: appState.timeline
                 },
                 // Red-pen review pass: the note bodies. Their anchors ride in
                 // the blocks' `html` above, so the two halves are restored
@@ -16423,6 +16914,7 @@
                         locations: lists.locations || fallback.locations,
                         lastInsertion: lists.lastInsertion || fallback.lastInsertion,
                         geo: lists.geo || fallback.geo,
+                        timeline: Object.assign({}, fallback.timeline, lists.timeline || {}),
                         furniture: Object.assign({}, fallback.furniture, docSettings.furniture || {}),
                         pageNumber: Object.assign({}, fallback.pageNumber, docSettings.pageNumber || {})
                     };
@@ -16436,6 +16928,7 @@
                         // no lastInsertion/furniture/pageNumber keys.
                         if (!appState.lastInsertion) appState.lastInsertion = fallback.lastInsertion;
                         if (!appState.geo) appState.geo = fallback.geo;
+                        if (!appState.timeline) appState.timeline = fallback.timeline;
                         if (!appState.furniture) appState.furniture = fallback.furniture;
                         if (!appState.pageNumber) appState.pageNumber = fallback.pageNumber;
                     } else {
@@ -18326,6 +18819,785 @@
             }
         };
         window.FDMap = FDMap;
+
+        // =====================================================================
+        // FDTimeline — one beat per scene, as a Rowling-style grid (scenes x
+        // threads) or a Nolan-style swimlane (threads as lanes, beats plotted
+        // along a shared axis). Same lifecycle shape as FDMap: show()/
+        // mountedInPanel()/isShowing()/onScriptChanged(), a ResizeObserver on
+        // its own canvas host, and a render() that never runs while hidden.
+        // =====================================================================
+        const FDTimeline = {
+            get level() { return appState.timeline.level || '3act'; },  // '3act' | '6beat' | 'detailed'
+            set level(v) { appState.timeline.level = v; },
+            detailView: 'grid',       // 'grid' | 'swimlane' -- only meaningful when level === 'detailed'
+            order: 'presented',       // 'presented' | 'chrono'
+            orientation: 'horizontal', // 'horizontal' | 'vertical' -- beat strip layout (3-Act/6-Beat only)
+            keyOnly: false,
+            _bound: false,
+            _ro: null,
+
+            show() {
+                const visible = FDPanels.getVisibleSlots();
+                const already = visible.find(s => s.type === 'timeline');
+                if (already) { FDPanels.setActiveShelf('timeline'); return; }
+                if (visible.length < 2) FDPanels.setLayoutMode('split-h');
+                const slots = FDPanels.getVisibleSlots();
+                FDPanels.setSlotType(slots[slots.length - 1].id, 'timeline');
+            },
+
+            mountedInPanel() {
+                this._bind();
+                this.ensureDefaultThreads();
+                this.render();
+            },
+
+            isShowing() {
+                const wrap = document.getElementById('timeline-canvas-wrap');
+                return !!wrap && wrap.clientWidth > 0 && wrap.clientHeight > 0;
+            },
+
+            _bind() {
+                if (this._bound) return;
+                this._bound = true;
+                this._observeHost();
+            },
+
+            _observeHost() {
+                if (this._ro || typeof ResizeObserver !== 'function') return;
+                const wrap = document.getElementById('timeline-canvas-wrap');
+                if (!wrap) return;
+                this._ro = new ResizeObserver(() => {
+                    clearTimeout(this._roTimer);
+                    this._roTimer = setTimeout(() => { if (this.isShowing()) this.render(); }, 120);
+                });
+                this._ro.observe(wrap);
+            },
+
+            // Called from extractEntities() on every edit. Repainting a
+            // timeline nobody can see would be wasted work on every keystroke.
+            onScriptChanged() {
+                this.ensureDefaultThreads();
+                if (this.isShowing()) this.render();
+            },
+
+            setLevel(level) { this.level = level; this.render(); saveState(); },
+            setDetailView(v) { this.detailView = v; this.render(); },
+            setOrder(o) { this.order = o; this.render(); },
+            setOrientation(o) { this.orientation = o; this.render(); },
+            toggleKeyOnly() { this.keyOnly = !this.keyOnly; this.render(); },
+
+            // The 3-Act/6-Beat card the user is looking at for a given
+            // structural slot: the AI's pick if analyze() has been run for
+            // this level (all-or-nothing per level -- either it's been
+            // analyzed or it hasn't), otherwise the proportional guess.
+            _currentStructureBeats(level) {
+                const saved = appState.timeline.structure[level];
+                const labels = STRUCTURE_LABELS[level] || [];
+                if (saved && saved.length === labels.length) return saved;
+                return mechanicalStoryBeats(level);
+            },
+            setStructureDateOverride(level, slotIndex) {
+                const beats = this._currentStructureBeats(level).slice();
+                const entry = beats[slotIndex];
+                if (!entry) return;
+                const raw = prompt('Date/time for "' + entry.label + '" (any text -- a year, a season, "Day 3"...). Leave blank to go back to the automatic guess.',
+                    entry.dateLabel || '');
+                if (raw === null) return;
+                entry.dateLabel = raw.trim() || null;
+                entry.mechanical = false;
+                appState.timeline.structure[level] = beats;
+                this.render();
+                saveState();
+            },
+
+            // Seeds thread columns/lanes from the top characters, once ever --
+            // never re-seeded after that, so deleting, renaming, or adding
+            // threads sticks even as the script (and its character list)
+            // keeps changing underneath.
+            ensureDefaultThreads() {
+                if (appState.timeline.seeded) return;
+                if (!appState.characters.length) return; // nothing to seed from yet
+                appState.timeline.seeded = true;
+                appState.timeline.threads = appState.characters.slice(0, 5).map(c => ({
+                    id: 'th' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                    name: c.name, color: c.color
+                }));
+            },
+
+            addThread() {
+                const name = prompt('Thread name (a subplot, POV, or storyline):', '');
+                if (!name || !name.trim()) return;
+                appState.timeline.threads.push({
+                    id: 'th' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                    name: name.trim(), color: getRandomColor()
+                });
+                this.render();
+                saveState();
+            },
+            renameThread(id, name) {
+                const th = appState.timeline.threads.find(t => t.id === id);
+                if (th && name) th.name = name;
+                this.render();
+                saveState();
+            },
+            deleteThread(id) {
+                appState.timeline.threads = appState.timeline.threads.filter(t => t.id !== id);
+                Object.values(appState.timeline.beats).forEach(m => {
+                    if (m.threads) m.threads = m.threads.filter(t => t !== id);
+                    if (m.threadsOff) m.threadsOff = m.threadsOff.filter(t => t !== id);
+                });
+                this.render();
+                saveState();
+            },
+            // A thread named after a character (which is every auto-seeded
+            // one, and any custom one the user happens to name the same as a
+            // character) defaults to "on" for a scene that character is
+            // actually in -- otherwise every lane starts empty and the whole
+            // panel is 266 rows of nothing until someone hand-ticks every
+            // cell. meta.threads/threadsOff are the user's explicit
+            // overrides on top of that guess, exactly the key/suggestedKey
+            // split above.
+            isBeatThreadOn(beat, threadId) {
+                const meta = beatMeta(beat.index);
+                if ((meta.threadsOff || []).includes(threadId)) return false;
+                if (meta.threads.includes(threadId)) return true;
+                const th = appState.timeline.threads.find(t => t.id === threadId);
+                return !!(th && beat.characters.has(th.name.trim().toUpperCase()));
+            },
+            toggleBeatThread(beat, threadId) {
+                const meta = beatMeta(beat.index);
+                const on = this.isBeatThreadOn(beat, threadId);
+                const threads = meta.threads.filter(t => t !== threadId);
+                const threadsOff = (meta.threadsOff || []).filter(t => t !== threadId);
+                if (on) threadsOff.push(threadId); else threads.push(threadId);
+                setBeatMeta(beat.index, { threads, threadsOff });
+                this.render();
+                saveState();
+            },
+            clearThreadNote(index, threadId) {
+                const meta = beatMeta(index);
+                const threadNotes = Object.assign({}, meta.threadNotes);
+                delete threadNotes[threadId];
+                setBeatMeta(index, { threadNotes });
+                this.render();
+                saveState();
+            },
+            // Fills in real plot text per (scene, thread) cell instead of
+            // leaving it a presence dot -- what actually turns the grid into
+            // something that reads like Rowling's chart. Only cells without
+            // a note yet are sent, and only "on" cells are sent at all (a
+            // cell that's off has no thread content to describe), capped so
+            // a script with a very frequent character/thread doesn't blow
+            // the same per-request token ceiling the beat analysis hit.
+            async fillThreadNotes() {
+                if (this.level !== 'detailed') return;
+                const CAP = 150;
+                const entries = [];
+                appState.timeline.threads.forEach(t => {
+                    timelineData.beats.forEach(b => {
+                        if (entries.length >= CAP) return;
+                        if (!this.isBeatThreadOn(b, t.id)) return;
+                        if ((beatMeta(b.index).threadNotes || {})[t.id]) return;
+                        entries.push({ thread: t.name, sceneIndex: b.index, heading: b.name, snippet: b.snippet });
+                    });
+                });
+                if (!entries.length) { alert('Every visible cell already has a note. Clear one to re-fill it.'); return; }
+                const btn = document.getElementById('tl-thread-notes-btn');
+                if (btn) { btn.disabled = true; btn.textContent = '🤖 Filling…'; }
+                try {
+                    const res = await fetch('/api/timeline-thread-notes', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ entries })
+                    });
+                    const data = await res.json();
+                    if (!data.ok) { alert('Fill failed: ' + (data.error || 'unknown error')); return; }
+                    const byId = new Map(appState.timeline.threads.map(t => [t.name, t.id]));
+                    (data.notes || []).forEach(n => {
+                        const threadId = byId.get(n.thread);
+                        if (!threadId || !Number.isInteger(n.sceneIndex) || !n.note) return;
+                        const meta = beatMeta(n.sceneIndex);
+                        const threadNotes = Object.assign({}, meta.threadNotes, { [threadId]: String(n.note).slice(0, 80) });
+                        setBeatMeta(n.sceneIndex, { threadNotes });
+                    });
+                    this.render();
+                    saveState();
+                } catch (err) {
+                    alert('Fill failed: ' + err.message);
+                } finally {
+                    if (btn) { btn.disabled = false; btn.textContent = '🤖 Fill Thread Notes'; }
+                }
+            },
+            isBeatKey(beat) {
+                const meta = beatMeta(beat.index);
+                return (meta.key === null || meta.key === undefined) ? beat.suggestedKey : meta.key;
+            },
+            toggleBeatKey(index, beat) {
+                setBeatMeta(index, { key: !this.isBeatKey(beat) });
+                this.render();
+                saveState();
+            },
+            setChronoOverride(index) {
+                const current = beatMeta(index).chronoOverride;
+                const raw = prompt('Story day for this scene (a number; earlier scenes get a smaller number). Leave blank to go back to the automatic guess.',
+                    current !== null && current !== undefined ? String(current) : '');
+                if (raw === null) return;
+                const n = raw.trim() === '' ? null : Number(raw);
+                setBeatMeta(index, { chronoOverride: (n === null || isNaN(n)) ? null : n });
+                this.render();
+                saveState();
+            },
+
+            _orderedBeats() {
+                let beats = timelineData.beats.slice();
+                if (this.keyOnly) beats = beats.filter(b => this.isBeatKey(b));
+                if (this.order === 'chrono') {
+                    beats.sort((a, b) => {
+                        const oa = beatMeta(a.index).chronoOverride, ob = beatMeta(b.index).chronoOverride;
+                        const da = (oa === null || oa === undefined) ? a.chronoDay : oa;
+                        const db = (ob === null || ob === undefined) ? b.chronoDay : ob;
+                        return da - db || a.index - b.index;
+                    });
+                }
+                return beats;
+            },
+
+            _esc(s) {
+                return String(s).replace(/[&<>"']/g, c =>
+                    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            },
+
+            _palette() {
+                const cs = getComputedStyle(document.documentElement);
+                const v = (n, fb) => (cs.getPropertyValue(n) || '').trim() || fb;
+                return {
+                    ink: v('--color-text', '#e2e2e6'),
+                    muted: v('--color-text-muted', '#8a8a90'),
+                    line: v('--color-border-hover', 'rgba(255,255,255,0.22)'),
+                    surface: v('--color-bg-surface', '#1c1c20')
+                };
+            },
+
+            // Shared jump-to-script behavior, same as FDMap._jumpTo -- scroll
+            // and flash the heading, but never conjure a hidden editor pane.
+            _jumpTo(beat) {
+                const node = beat && beat.heading;
+                if (!node) return;
+                if (paneState.editable) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const old = node.style.backgroundColor;
+                node.style.backgroundColor = 'rgba(255,255,0,0.5)';
+                setTimeout(() => { node.style.backgroundColor = old; }, 900);
+            },
+
+            render() {
+                const wrap = document.getElementById('timeline-canvas-wrap');
+                const empty = document.getElementById('timeline-empty');
+                const svg = document.getElementById('timeline-svg');
+                const gridHost = document.getElementById('timeline-grid-host');
+                const stripHost = document.getElementById('timeline-beatstrip-host');
+                if (!wrap) return;
+
+                this._syncToolbar();
+                if (this.level === 'detailed') this._renderThreadManager();
+
+                const sub = document.getElementById('timeline-sub');
+                if (!timelineData.beats.length) {
+                    empty.textContent = 'No scenes yet — write some sluglines and the timeline fills in.';
+                    empty.classList.add('show');
+                    svg.style.display = 'none';
+                    gridHost.style.display = 'none';
+                    stripHost.style.display = 'none';
+                    if (sub) sub.textContent = '';
+                    return;
+                }
+                empty.classList.remove('show');
+
+                if (this.level !== 'detailed') {
+                    svg.style.display = 'none';
+                    gridHost.style.display = 'none';
+                    stripHost.style.display = 'block';
+                    this._renderBeatStrip(stripHost);
+                    if (sub) {
+                        const analyzed = !!appState.timeline.structure[this.level];
+                        const source = (appState.timeline.structureSource || {})[this.level];
+                        sub.textContent = !analyzed
+                            ? 'Proportional guess from ' + timelineData.beats.length + ' scenes — Analyze with AI for a real read'
+                            : source === 'title'
+                                ? 'Read by AI from its knowledge of the title, anchored to this script\'s scenes'
+                                : 'Read by AI from ' + timelineData.beats.length + ' scenes';
+                    }
+                    return;
+                }
+
+                stripHost.style.display = 'none';
+                const shown = this._orderedBeats().length;
+                if (sub) {
+                    sub.textContent = `${shown} of ${timelineData.beats.length} scene${timelineData.beats.length === 1 ? '' : 's'} shown` +
+                        ` · ${appState.timeline.threads.length} thread${appState.timeline.threads.length === 1 ? '' : 's'}`;
+                }
+
+                if (this.detailView === 'grid') {
+                    svg.style.display = 'none';
+                    gridHost.style.display = 'block';
+                    this._renderGrid(gridHost);
+                } else {
+                    gridHost.style.display = 'none';
+                    svg.style.display = 'block';
+                    this._renderSwimlane(svg, wrap);
+                }
+            },
+
+            _syncToolbar() {
+                const on = (id, cond) => { const el = document.getElementById(id); if (el) el.classList.toggle('active', cond); };
+                on('tl-level-3act', this.level === '3act');
+                on('tl-level-6beat', this.level === '6beat');
+                on('tl-level-detailed', this.level === 'detailed');
+                on('tl-view-grid', this.detailView === 'grid');
+                on('tl-view-swimlane', this.detailView === 'swimlane');
+                on('tl-order-presented', this.order === 'presented');
+                on('tl-order-chrono', this.order === 'chrono');
+                on('tl-orient-horizontal', this.orientation === 'horizontal');
+                on('tl-orient-vertical', this.orientation === 'vertical');
+                on('tl-key-only', this.keyOnly);
+                const detailedTools = document.getElementById('tl-detailed-tools');
+                const detailedDivider = document.getElementById('tl-detailed-divider');
+                const isDetailed = this.level === 'detailed';
+                if (detailedTools) detailedTools.style.display = isDetailed ? 'contents' : 'none';
+                if (detailedDivider) detailedDivider.style.display = isDetailed ? '' : 'none';
+                const orientGroup = document.getElementById('tl-orientation-group');
+                const orientDivider = document.getElementById('tl-orientation-divider');
+                if (orientGroup) orientGroup.style.display = isDetailed ? 'none' : '';
+                if (orientDivider) orientDivider.style.display = isDetailed ? 'none' : '';
+                const analyzeBtn = document.getElementById('tl-analyze-btn');
+                if (analyzeBtn) analyzeBtn.style.display = isDetailed ? 'none' : '';
+                const exportBtn = document.getElementById('tl-export-btn');
+                if (exportBtn) exportBtn.style.display = this.detailView === 'swimlane' ? '' : 'none';
+            },
+
+            // 3-Act / 6-Beat view: a small horizontal strip of cards, one
+            // per structural beat, in fixed label order (Beginning always
+            // reads before End regardless of the order toggle -- reordering
+            // the labels themselves wouldn't mean anything). The order
+            // toggle instead decides what the date row shows: the script's
+            // own day/time language, or the resolved story-chronology day.
+            _renderBeatStrip(host) {
+                const level = this.level;
+                const beats = this._currentStructureBeats(level);
+                const analyzed = !!appState.timeline.structure[level];
+                host.innerHTML = '';
+
+                if (!analyzed) {
+                    const hint = document.createElement('div');
+                    hint.className = 'tl-beatstrip-hint';
+                    hint.textContent = 'This is a rough position guess, not a read of your story — click "🤖 Analyze with AI" above ' +
+                        'to have a model actually identify these beats and describe what happens at each one.';
+                    host.appendChild(hint);
+                }
+
+                const strip = document.createElement('div');
+                strip.className = 'tl-beatstrip' + (this.orientation === 'vertical' ? ' vertical' : '');
+                beats.forEach((entry, i) => {
+                    if (i > 0) {
+                        const connector = document.createElement('div');
+                        connector.className = 'tl-beat-connector';
+                        strip.appendChild(connector);
+                    }
+                    const scene = timelineData.beats[entry.sceneIndex];
+                    const card = document.createElement('div');
+                    card.className = 'tl-beat-card';
+
+                    const label = document.createElement('div');
+                    label.className = 'tl-beat-label';
+                    label.textContent = entry.label;
+                    card.appendChild(label);
+
+                    const dateRow = document.createElement('div');
+                    dateRow.className = 'tl-beat-date';
+                    const dateText = document.createElement('span');
+                    const shown = entry.dateLabel || (scene && scene.dateLabel) ||
+                        (this.order === 'chrono' && scene ? 'Day ' + Math.round(scene.chronoDay * 10) / 10 : (scene ? scene.timing : '')) ||
+                        (scene ? 'Scene ' + (scene.index + 1) : '—');
+                    dateText.textContent = shown;
+                    dateRow.appendChild(dateText);
+                    const editIcon = document.createElement('span');
+                    editIcon.className = 'tl-edit-icon';
+                    editIcon.textContent = '✎';
+                    editIcon.title = 'Set a date/time label for this beat by hand';
+                    editIcon.onclick = () => this.setStructureDateOverride(level, i);
+                    dateRow.appendChild(editIcon);
+                    card.appendChild(dateRow);
+
+                    if (scene) {
+                        const sceneLink = document.createElement('div');
+                        sceneLink.className = 'tl-beat-scene';
+                        sceneLink.textContent = '#' + (scene.index + 1) + ' ' + scene.name;
+                        sceneLink.title = 'Jump to this scene';
+                        sceneLink.onclick = () => this._jumpTo(scene);
+                        card.appendChild(sceneLink);
+                    }
+
+                    const note = document.createElement('div');
+                    note.className = 'tl-beat-note';
+                    note.textContent = entry.note || (scene ? scene.snippet : '') || '';
+                    card.appendChild(note);
+
+                    if (entry.mechanical !== false && !analyzed) {
+                        const guess = document.createElement('div');
+                        guess.className = 'tl-beat-guess';
+                        guess.textContent = 'position guess';
+                        card.appendChild(guess);
+                    }
+
+                    strip.appendChild(card);
+                });
+                host.appendChild(strip);
+            },
+
+            _renderThreadManager() {
+                const host = document.getElementById('tl-thread-manager');
+                if (!host) return;
+                host.innerHTML = '';
+                appState.timeline.threads.forEach(th => {
+                    const chip = document.createElement('span');
+                    chip.className = 'tl-thread-chip';
+                    const sw = document.createElement('span');
+                    sw.className = 'tl-swatch';
+                    sw.style.background = th.color;
+                    chip.appendChild(sw);
+                    const input = document.createElement('input');
+                    input.value = th.name;
+                    input.title = 'Rename thread';
+                    input.onchange = () => this.renameThread(th.id, input.value.trim());
+                    chip.appendChild(input);
+                    const del = document.createElement('span');
+                    del.className = 'tl-thread-del';
+                    del.textContent = '✕';
+                    del.title = 'Delete thread';
+                    del.onclick = () => this.deleteThread(th.id);
+                    chip.appendChild(del);
+                    host.appendChild(chip);
+                });
+            },
+
+            _renderGrid(host) {
+                const beats = this._orderedBeats();
+                const threads = appState.timeline.threads;
+                const table = document.createElement('table');
+                table.className = 'timeline-grid';
+
+                const thead = document.createElement('thead');
+                const headRow = document.createElement('tr');
+                const numTh = document.createElement('th');
+                numTh.className = 'tl-num-head';
+                numTh.textContent = '#';
+                headRow.appendChild(numTh);
+                const timeTh = document.createElement('th');
+                timeTh.className = 'tl-time-head';
+                timeTh.textContent = this.order === 'chrono' ? 'Time (chronological)' : 'Time (as presented)';
+                headRow.appendChild(timeTh);
+                const sceneTh = document.createElement('th');
+                sceneTh.textContent = 'Scene';
+                headRow.appendChild(sceneTh);
+                threads.forEach(t => {
+                    const th = document.createElement('th');
+                    th.textContent = t.name;
+                    th.style.color = t.color;
+                    headRow.appendChild(th);
+                });
+                thead.appendChild(headRow);
+                table.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
+                beats.forEach(beat => {
+                    const meta = beatMeta(beat.index);
+                    const key = this.isBeatKey(beat);
+                    const tr = document.createElement('tr');
+                    if (key) tr.classList.add('tl-key-row');
+
+                    // Column 1: key-event star + scene number.
+                    const numCell = document.createElement('td');
+                    numCell.className = 'tl-num-head';
+                    const star = document.createElement('span');
+                    star.className = 'tl-star' + (key ? ' on' : '');
+                    star.textContent = '★';
+                    star.title = 'Toggle key event';
+                    star.onclick = () => this.toggleBeatKey(beat.index, beat);
+                    numCell.appendChild(star);
+                    const numSpan = document.createElement('span');
+                    numSpan.className = 'timeline-beat-num';
+                    numSpan.textContent = String(beat.index + 1);
+                    numCell.appendChild(numSpan);
+                    tr.appendChild(numCell);
+
+                    // Column 2: the actual time axis -- a real date when the
+                    // script states one, otherwise the heading's own day/
+                    // time-of-day text, prominent and frozen while
+                    // scrolling. Browsing never pops anything up; the small
+                    // pencil icon is the only click target for the manual
+                    // story-day override.
+                    const timeCell = document.createElement('td');
+                    timeCell.className = 'tl-time-head';
+                    const timeSpan = document.createElement('span');
+                    timeSpan.className = 'timeline-beat-time';
+                    timeSpan.textContent = beat.dateLabel || beat.timing || '—';
+                    timeCell.appendChild(timeSpan);
+                    const resolvedDay = meta.chronoOverride ?? beat.chronoDay;
+                    if (this.order === 'chrono' || (meta.chronoOverride !== null && meta.chronoOverride !== undefined)) {
+                        const daySpan = document.createElement('span');
+                        daySpan.className = 'timeline-beat-day';
+                        daySpan.textContent = 'day ' + Math.round(resolvedDay * 10) / 10;
+                        const editIcon = document.createElement('span');
+                        editIcon.className = 'tl-edit-icon';
+                        editIcon.textContent = '✎';
+                        editIcon.title = 'Set a manual story-day for chronological order';
+                        editIcon.onclick = () => this.setChronoOverride(beat.index);
+                        daySpan.appendChild(document.createTextNode(' '));
+                        daySpan.appendChild(editIcon);
+                        timeCell.appendChild(daySpan);
+                    }
+                    tr.appendChild(timeCell);
+
+                    // Column 3: the scene itself -- title, cast, note.
+                    const sceneCell = document.createElement('td');
+                    sceneCell.className = 'tl-scene-cell';
+
+                    const titleSpan = document.createElement('span');
+                    titleSpan.className = 'timeline-beat-title';
+                    titleSpan.textContent = beat.name;
+                    titleSpan.title = 'Jump to this scene';
+                    titleSpan.onclick = () => this._jumpTo(beat);
+                    sceneCell.appendChild(titleSpan);
+
+                    const metaLine = document.createElement('span');
+                    metaLine.className = 'timeline-beat-meta';
+                    const castList = [...beat.characters].slice(0, 4).join(', ');
+                    metaLine.textContent = castList;
+                    sceneCell.appendChild(metaLine);
+
+                    if (beat.snippet || meta.note) {
+                        const noteLine = document.createElement('span');
+                        noteLine.className = 'timeline-beat-note';
+                        noteLine.textContent = meta.note || beat.snippet;
+                        sceneCell.appendChild(noteLine);
+                    }
+                    tr.appendChild(sceneCell);
+
+                    threads.forEach(t => {
+                        const td = document.createElement('td');
+                        const on = this.isBeatThreadOn(beat, t.id);
+                        const cellNote = on ? (meta.threadNotes || {})[t.id] : null;
+                        td.className = 'tl-cell' + (on ? ' on' : '') + (cellNote ? ' has-note' : '');
+                        td.textContent = cellNote || (on ? '●' : '');
+                        if (on) td.style.color = t.color;
+                        td.title = on
+                            ? (cellNote ? cellNote + ' — click to clear this cell\'s note' : 'Toggle "' + t.name + '" off for this scene')
+                            : 'Toggle "' + t.name + '" on for this scene';
+                        td.onclick = () => cellNote ? this.clearThreadNote(beat.index, t.id) : this.toggleBeatThread(beat, t.id);
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+                host.innerHTML = '';
+                host.appendChild(table);
+            },
+
+            _renderSwimlane(svg, wrap) {
+                const P = this._palette();
+                const beats = this._orderedBeats();
+                const threads = appState.timeline.threads;
+                const w = Math.max(wrap.clientWidth, 600);
+                const laneH = 46;
+                const topPad = 30, leftPad = 130, rightPad = 30;
+                const effectiveThreadIds = b => threads.filter(t => this.isBeatThreadOn(b, t.id)).map(t => t.id);
+                const hasLoose = beats.some(b => !effectiveThreadIds(b).length);
+                const laneCount = Math.max(1, threads.length) + (hasLoose ? 1 : 0);
+                const h = topPad + laneH * laneCount + 20;
+                svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+                svg.innerHTML = '';
+
+                const ns = 'http://www.w3.org/2000/svg';
+                const el = (tag, attrs) => {
+                    const n = document.createElementNS(ns, tag);
+                    Object.entries(attrs || {}).forEach(([k, v]) => n.setAttribute(k, v));
+                    return n;
+                };
+
+                // x position per beat, spread evenly across the available
+                // width. "As presented" this is just scene order; switching
+                // to chronological reuses the same slots but with the sorted
+                // beats array, so gaps in time aren't drawn to scale -- a
+                // scene ten years later doesn't push far to the right. That
+                // trades away a literal timeline for a readable one: the
+                // point is seeing which beats interleave, not the distance
+                // between them.
+                const n = beats.length;
+                const xFor = i => n <= 1 ? leftPad : leftPad + (i / (n - 1)) * (w - leftPad - rightPad);
+                const looseY = topPad + threads.length * laneH + laneH / 2;
+                const laneY = (threadId) => {
+                    if (!threadId) return looseY;
+                    const i = threads.findIndex(t => t.id === threadId);
+                    return i === -1 ? looseY : topPad + i * laneH + laneH / 2;
+                };
+
+                threads.forEach((t, li) => {
+                    const y = topPad + li * laneH + laneH / 2;
+                    svg.appendChild(el('line', { x1: leftPad, y1: y, x2: w - rightPad, y2: y, stroke: P.line, 'stroke-width': 1 }));
+                    const label = el('text', { x: 8, y: y + 4, class: 'timeline-lane-label' });
+                    label.textContent = t.name;
+                    svg.appendChild(label);
+                });
+                if (hasLoose) {
+                    svg.appendChild(el('line', { x1: leftPad, y1: looseY, x2: w - rightPad, y2: looseY, stroke: P.line, 'stroke-width': 1, 'stroke-dasharray': '2,3' }));
+                    const label = el('text', { x: 8, y: looseY + 4, class: 'timeline-lane-label' });
+                    label.textContent = '(unassigned)';
+                    svg.appendChild(label);
+                }
+
+                // Connect each thread's own beats in x order, so a lane reads
+                // as a throughline rather than a scatter of dots.
+                threads.concat(hasLoose ? [{ id: null }] : []).forEach(t => {
+                    const pts = beats.map((b, i) => ({ b, i })).filter(({ b }) => {
+                        const ids = effectiveThreadIds(b);
+                        return t.id ? ids.includes(t.id) : !ids.length;
+                    });
+                    for (let k = 1; k < pts.length; k++) {
+                        const a = pts[k - 1], c = pts[k];
+                        svg.appendChild(el('line', {
+                            x1: xFor(a.i), y1: laneY(t.id), x2: xFor(c.i), y2: laneY(t.id),
+                            stroke: t.id ? t.color : P.muted, 'stroke-width': 1.5, opacity: 0.6
+                        }));
+                    }
+                });
+
+                beats.forEach((b, i) => {
+                    const key = this.isBeatKey(b);
+                    const ids = effectiveThreadIds(b);
+                    const myThreads = ids.length ? ids : [null];
+                    myThreads.forEach(tid => {
+                        const cx = xFor(i), cy = laneY(tid);
+                        const r = key ? 6 : 4;
+                        const color = tid ? threads.find(t => t.id === tid).color : P.muted;
+                        const g = el('g', { class: 'timeline-node' + (key ? '' : ' suggested') });
+                        g.appendChild(el('circle', { cx, cy, r, fill: color, stroke: P.surface, 'stroke-width': key ? 2 : 1 }));
+                        g.addEventListener('click', () => this._jumpTo(b));
+                        g.addEventListener('mouseenter', (e) => this._showTip(e, b));
+                        g.addEventListener('mouseleave', () => this._hideTip());
+                        svg.appendChild(g);
+                    });
+                });
+            },
+
+            _showTip(e, beat) {
+                const tip = document.getElementById('timeline-tip');
+                const wrap = document.getElementById('timeline-canvas-wrap');
+                if (!tip || !wrap) return;
+                const cast = [...beat.characters].slice(0, 6).join(', ');
+                const meta = beatMeta(beat.index);
+                tip.innerHTML = `<b>#${beat.index + 1} ${this._esc(beat.name)}</b><br>` +
+                    `<span class="timeline-tip-meta">${this._esc(beat.timing || '')}</span>` +
+                    (cast ? `<br><span class="timeline-tip-meta">${this._esc(cast)}</span>` : '') +
+                    ((meta.note || beat.snippet) ? `<br>${this._esc(meta.note || beat.snippet)}` : '');
+                const r = wrap.getBoundingClientRect();
+                tip.style.left = (e.clientX - r.left + 14) + 'px';
+                tip.style.top = (e.clientY - r.top + 10) + 'px';
+                tip.classList.add('show');
+            },
+            _hideTip() {
+                const tip = document.getElementById('timeline-tip');
+                if (tip) tip.classList.remove('show');
+            },
+
+            exportSVG() {
+                const svg = document.getElementById('timeline-svg');
+                if (!svg || this.detailView !== 'swimlane' || this.level !== 'detailed') { alert('Switch to Detailed → Swimlane view to export SVG.'); return; }
+                const data = new XMLSerializer().serializeToString(svg);
+                const blob = new Blob([data], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'timeline.svg';
+                a.click();
+                URL.revokeObjectURL(url);
+            },
+
+            // Sends the scene list so the model can actually read the
+            // story's shape, not just the current level's slot count -- one
+            // call's result is reusable for 3-act or 6-beat without asking
+            // again. The call is server-side (scripts/serve.js),
+            // Pollinations' free anonymous tier first, Groq/Cerebras as
+            // fallback; nothing here talks to a third party directly, and
+            // no manuscript text leaves the machine except what's in this
+            // payload.
+            //
+            // Every free tier this calls chokes on a full-length feature:
+            // Groq's on-demand quota is a hard 8000-tokens-per-request cap,
+            // and a 266-scene screenplay with full cast+snippet on every
+            // scene runs to ~14,500 -- Pollinations and Cerebras rejected
+            // the same request too. So only a bounded, scored subset of
+            // scenes (the same significance heuristic the Detailed grid
+            // stars) gets full detail; everything else is a bare heading +
+            // timing skeleton, still enough for the model to see the whole
+            // script's shape and where a beat probably falls even where it
+            // can't read exactly what happens.
+            _analyzePayload() {
+                const all = timelineData.beats;
+                const DETAIL_CAP = 40;
+                let detailed = new Set(all.map(b => b.index));
+                if (all.length > DETAIL_CAP) {
+                    const scored = all.map(b => ({ b, score: b.characters.size * 2 + Math.log2(b.lineCount + 1) }));
+                    scored.sort((a, b) => b.score - a.score);
+                    detailed = new Set(scored.slice(0, DETAIL_CAP).map(s => s.b.index));
+                }
+                return all.map(b => detailed.has(b.index) ? {
+                    index: b.index, heading: b.name, timing: b.timing,
+                    characters: [...b.characters], snippet: b.snippet
+                } : { index: b.index, heading: b.name, timing: b.timing });
+            },
+            async analyze() {
+                if (this.level === 'detailed') return;
+                const btn = document.getElementById('tl-analyze-btn');
+                if (btn) { btn.disabled = true; btn.textContent = '🤖 Analyzing…'; }
+                try {
+                    const res = await fetch('/api/timeline-analyze', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            level: this.level,
+                            title: (docMeta.title || lastSavedName || '').trim(),
+                            author: (docMeta.author || '').trim(),
+                            scenes: this._analyzePayload()
+                        })
+                    });
+                    const data = await res.json();
+                    if (!data.ok) { alert('Analyze failed: ' + (data.error || 'unknown error')); return; }
+                    const labels = STRUCTURE_LABELS[this.level] || [];
+                    const byLabel = new Map((data.beats || []).map(b => [b.label, b]));
+                    const resolved = labels.map(label => {
+                        const b = byLabel.get(label);
+                        const sceneIndex = b && Number.isInteger(b.sceneIndex) &&
+                            b.sceneIndex >= 0 && b.sceneIndex < timelineData.beats.length ? b.sceneIndex : null;
+                        return sceneIndex === null ? null : {
+                            label, sceneIndex,
+                            note: (b.note ? String(b.note) : '').slice(0, 300),
+                            dateLabel: b.dateLabel ? String(b.dateLabel).slice(0, 60) : null
+                        };
+                    });
+                    if (resolved.some(r => !r)) throw new Error('Model response was missing or malformed beats');
+                    appState.timeline.structure[this.level] = resolved;
+                    appState.timeline.structureSource = appState.timeline.structureSource || {};
+                    appState.timeline.structureSource[this.level] = data.source || 'scenes';
+                    this.render();
+                    saveState();
+                } catch (err) {
+                    alert('Analyze failed: ' + err.message);
+                } finally {
+                    if (btn) { btn.disabled = false; btn.textContent = '🤖 Analyze with AI'; }
+                }
+            }
+        };
+        window.FDTimeline = FDTimeline;
 
         window.onload = () => {
             setupFormatButtons();

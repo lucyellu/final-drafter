@@ -921,6 +921,262 @@ function generateAiImage(req, res) {
     });
 }
 
+// Timeline panel's "Analyze" button. Pollinations' anonymous text endpoint
+// is the primary provider: no key, no signup, and (unlike Groq/Cerebras
+// below) nothing to misconfigure into a billing prompt. The one thing to
+// avoid is `response_format: json_object` -- on Pollinations' free/anonymous
+// tier that specific parameter routes the request through a paid code path
+// and comes back "402 Payment Required" even though plain completions are
+// free, which is exactly the "it asks for money" failure this replaces.
+// Groq/Cerebras (borrowed from the sibling ai-free project's .env, same
+// file-based-secret convention as TMDB_KEY_FILE/GOOGLE_MAPS_KEY_FILE above)
+// are kept only as a fallback if Pollinations is down.
+const AI_FREE_ENV_FILE = 'L:\\Projects\\ai-free\\.env';
+function readAiFreeEnv() {
+    if (!fs.existsSync(AI_FREE_ENV_FILE)) return {};
+    const out = {};
+    fs.readFileSync(AI_FREE_ENV_FILE, 'utf8').split(/\r?\n/).forEach(line => {
+        const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i);
+        if (m) out[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    });
+    return out;
+}
+
+async function chatComplete(url, apiKey, model, messages) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (apiKey) headers.Authorization = 'Bearer ' + apiKey;
+    const r = await fetch(url, {
+        method: 'POST',
+        headers,
+        // No response_format anywhere -- see the block comment above for why
+        // Pollinations specifically rejects it, and it's left off the
+        // Groq/Cerebras fallback too so every provider is asked the same
+        // way and parsed the same lenient way below.
+        body: JSON.stringify({ model, messages, temperature: 0.4 }),
+        signal: AbortSignal.timeout(45000)
+    });
+    if (!r.ok) throw new Error((await r.text().catch(() => '')) || ('HTTP ' + r.status));
+    const data = await r.json();
+    const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    if (!content) throw new Error('Empty response from model');
+    return content;
+}
+
+// Without response_format:json_object a model routinely wraps its answer in
+// a ```json fence or adds a sentence before/after it despite being told not
+// to -- this pulls out the first balanced {...} or [...] rather than
+// trusting the whole reply to be bare JSON.
+function extractJson(text) {
+    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const body = fenced ? fenced[1] : text;
+    const start = body.search(/[\{\[]/);
+    if (start === -1) throw new Error('No JSON found in model response');
+    const open = body[start], close = open === '{' ? '}' : ']';
+    let depth = 0, end = -1;
+    for (let i = start; i < body.length; i++) {
+        if (body[i] === open) depth++;
+        else if (body[i] === close) { depth--; if (depth === 0) { end = i; break; } }
+    }
+    if (end === -1) throw new Error('Unbalanced JSON in model response');
+    return JSON.parse(body.slice(start, end + 1));
+}
+
+// Identifies the scenes that anchor a story-structure level (3-act or the
+// 6-beat Introduction/Inciting Incident/Rising Action/Crisis/Climax/
+// Resolution breakdown) and writes a short description of what happens at
+// each one, plus a real calendar date/year when the scenes actually mention
+// one. This is a narrative judgment call no regex can make reliably --
+// that's what the mechanical proportional fallback in FDTimeline is for,
+// this is the enrichment layer on top of it.
+const LEVEL_LABELS = {
+    '6beat': ['Introduction', 'Inciting Incident', 'Rising Action', 'Crisis', 'Climax', 'Resolution'],
+    '3act': ['Beginning', 'Middle', 'End']
+};
+
+// Runs one chat prompt against whichever free-tier provider is available,
+// Pollinations' anonymous endpoint first, Groq/Cerebras (ai-free's .env) as
+// fallback -- shared by both the title-recall and the scene-reading prompts
+// below so neither has to repeat the provider chain.
+async function runLlmPrompt(messages) {
+    const env = readAiFreeEnv();
+    const groqKey = (process.env.GROQ_API_KEY || env.GROQ_API_KEY || '').trim();
+    const cerebrasKey = (process.env.CEREBRAS_API_KEY || env.CEREBRAS_API_KEY || '').trim();
+    const attempts = [() => chatComplete('https://text.pollinations.ai/openai', null, 'openai', messages)];
+    if (groqKey) attempts.push(() => chatComplete('https://api.groq.com/openai/v1/chat/completions', groqKey,
+        env.GROQ_TEXT_MODEL || 'openai/gpt-oss-120b', messages));
+    if (cerebrasKey) attempts.push(() => chatComplete('https://api.cerebras.ai/v1/chat/completions', cerebrasKey,
+        env.CEREBRAS_TEXT_MODEL || 'gpt-oss-120b', messages));
+    let lastErr;
+    for (const attempt of attempts) {
+        try { return await attempt(); } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error('no provider available');
+}
+
+// Tier 1: ask by title alone, no script text at all. A model that actually
+// knows a published work (which is most of what anyone loads this panel
+// for -- a produced screenplay, a novel) already has its plot; sending the
+// script back to it just to have it re-derive what it already knows is
+// exactly the token-budget problem that broke on a 266-scene feature. Self-
+// reported recognition (told explicitly to say so rather than guess) is the
+// guard against a title it doesn't actually know -- not perfect, but much
+// safer than trusting an unprompted answer to a title it's never seen.
+async function identifyBeatsByTitle(title, author, labels) {
+    const who = author ? `"${title}" by ${author}` : `"${title}"`;
+    const prompt = `Do you specifically recognize the screenplay, film, or book ${who}? ` +
+        'Only answer from actual knowledge of this specific work -- if you are not confident you know its ' +
+        'real plot, say so rather than guessing or inventing one. ' +
+        `If you do recognize it, identify these ${labels.length} story-structure beats, in this order: ` +
+        `${labels.join(', ')}. For each, write a 1-2 sentence description of what actually happens, and a ` +
+        'dateLabel (a real year/season/date the story states, omit if none). ' +
+        'Respond with ONLY JSON, no other text: {"recognized":true,"beats":[{"label":"...","note":"...","dateLabel":"..."}, ...]} ' +
+        `with exactly ${labels.length} entries if recognized, or {"recognized":false,"beats":[]} if not.`;
+    const content = await runLlmPrompt([{ role: 'user', content: prompt }]);
+    const parsed = extractJson(content);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Unexpected response shape');
+    return parsed;
+}
+
+// Tier 1's follow-up: the model knows what happens, but not which scene of
+// *this* printout it happens in -- draft numbering, added/cut scenes, and
+// different scripts of the same title all shift scene numbers. A heading-
+// only pass (no cast/snippet -- cheap even at hundreds of scenes) anchors
+// each beat's description onto an actual scene in the loaded document.
+async function matchBeatsToScenes(beats, scenes) {
+    const prompt = 'These are story beats already identified for a screenplay, and below them the full list ' +
+        'of scene headings from one specific printout of it, in order. For each beat, pick the sceneIndex ' +
+        'from the list whose heading and position best matches where that beat happens in this printout. ' +
+        'Respond with ONLY a JSON array, no other text: [{"label":"...","sceneIndex":<number>}, ...], one ' +
+        `entry per beat given, in the same order.\n\nBeats:\n${JSON.stringify(beats)}\n\nScenes:\n` +
+        JSON.stringify(scenes.map(s => ({ index: s.index, heading: s.heading, timing: s.timing })));
+    const content = await runLlmPrompt([{ role: 'user', content: prompt }]);
+    const parsed = extractJson(content);
+    if (!Array.isArray(parsed)) throw new Error('Unexpected response shape');
+    return parsed;
+}
+
+// Tier 2 (the original approach, kept as the fallback for anything Tier 1
+// doesn't recognize -- original/unpublished work, an obscure title, or no
+// title at all): read the scenes themselves. See FDTimeline._analyzePayload()
+// client-side for why only a bounded, scored subset carries full cast/
+// snippet detail rather than every scene -- the same 8000-token Groq wall
+// that made Tier 1 worth building in the first place.
+async function readBeatsFromScenes(scenes, labels) {
+    const prompt = 'You are a script analyst identifying the main story-structure beats of a screenplay ' +
+        'from its scene list, given in the order the script presents them. Each entry has its index and ' +
+        'heading, plus any day/time text from the slugline; scenes central enough to be worth the extra ' +
+        'length also carry the characters present and a short line pulled from the scene -- treat those ' +
+        'as the richest evidence, but a beat can still land on a heading-only scene if that is genuinely ' +
+        'the best fit. ' +
+        `Identify these ${labels.length} beats, in this order: ${labels.join(', ')}. ` +
+        'For each beat, pick the single scene index that best represents it, write a 1-2 sentence ' +
+        'description of what actually happens there in the story, and if the scene text gives a real ' +
+        'calendar date, year, or season, include it as dateLabel (omit dateLabel if none is given -- do not guess one). ' +
+        'Respond with ONLY a JSON array, no other text, shaped like: ' +
+        '[{"label":"<one of the beat names above>","sceneIndex":<number>,"note":"<description>","dateLabel":"<optional>"}, ...] ' +
+        `with exactly ${labels.length} entries, one per beat, in the order given.\n\nScenes:\n` +
+        JSON.stringify(scenes.map(s => ({
+            index: s.index, heading: s.heading, timing: s.timing, characters: s.characters, snippet: s.snippet
+        })));
+    const content = await runLlmPrompt([{ role: 'user', content: prompt }]);
+    const beats = extractJson(content);
+    if (!Array.isArray(beats)) throw new Error('Model response was not a JSON array');
+    return beats;
+}
+
+// Detailed grid cell notes: for each (thread, scene) pair the user has
+// marked "on," a short phrase of what's actually happening in that
+// thread/plotline at that scene -- not just that the character showed up.
+// This is what turns the grid's cells from presence dots into something
+// that actually reads like Rowling's chart, where every cell carries real
+// story content. Entries arrive pre-capped by the client (same token-limit
+// lesson as the story-beat analysis above) so this never needs its own
+// size logic.
+async function analyzeThreadNotes(req, res) {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+        let payload;
+        try {
+            payload = JSON.parse(body || '{}');
+        } catch (e) {
+            sendJson(res, 400, { ok: false, error: 'Bad request body: ' + e.message });
+            return;
+        }
+        const { entries } = payload;
+        if (!Array.isArray(entries) || !entries.length) {
+            sendJson(res, 400, { ok: false, error: 'No entries provided' });
+            return;
+        }
+
+        const prompt = 'For each (thread, scene) pair below, write a very short phrase (3-8 words, no ' +
+            'ending punctuation) describing what actually happens in that scene specifically for that ' +
+            'thread/plotline/character -- not just that they are present, but what is going on for them at ' +
+            'that point in the story. Respond with ONLY JSON, no other text: ' +
+            '{"notes":[{"thread":"<exact thread name given>","sceneIndex":<number>,"note":"<phrase>"}, ...]} ' +
+            `with one entry per pair given.\n\nPairs:\n` + JSON.stringify(entries);
+
+        try {
+            const content = await runLlmPrompt([{ role: 'user', content: prompt }]);
+            const parsed = extractJson(content);
+            const notes = Array.isArray(parsed) ? parsed : parsed.notes;
+            if (!Array.isArray(notes)) throw new Error('Unexpected response shape');
+            sendJson(res, 200, { ok: true, notes });
+        } catch (e) {
+            sendJson(res, 200, { ok: false, error: 'Analyze failed: ' + e.message });
+        }
+    });
+}
+
+function analyzeStoryBeats(req, res) {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+        let payload;
+        try {
+            payload = JSON.parse(body || '{}');
+        } catch (e) {
+            sendJson(res, 400, { ok: false, error: 'Bad request body: ' + e.message });
+            return;
+        }
+        const { level, title, author, scenes } = payload;
+        const labels = LEVEL_LABELS[level] || LEVEL_LABELS['3act'];
+        if (!Array.isArray(scenes) || !scenes.length) {
+            sendJson(res, 400, { ok: false, error: 'No scenes provided' });
+            return;
+        }
+
+        // Tier 1: title recall, then anchor onto this printout's scenes.
+        if (title && title.trim()) {
+            try {
+                const recall = await identifyBeatsByTitle(title.trim(), (author || '').trim(), labels);
+                if (recall.recognized && Array.isArray(recall.beats) && recall.beats.length === labels.length) {
+                    const matched = await matchBeatsToScenes(recall.beats, scenes);
+                    const byLabel = new Map(matched.map(m => [m.label, m.sceneIndex]));
+                    const beats = recall.beats.map(b => ({
+                        label: b.label, note: b.note, dateLabel: b.dateLabel,
+                        sceneIndex: byLabel.has(b.label) ? byLabel.get(b.label) : null
+                    }));
+                    if (beats.every(b => Number.isInteger(b.sceneIndex))) {
+                        sendJson(res, 200, { ok: true, beats, source: 'title' });
+                        return;
+                    }
+                    // Matching came back incomplete -- fall through to Tier 2
+                    // rather than ship beats with no scene to jump to.
+                }
+            } catch (e) { /* fall through to Tier 2 */ }
+        }
+
+        // Tier 2: no title, an unrecognized one, or Tier 1 failed outright.
+        try {
+            const beats = await readBeatsFromScenes(scenes, labels);
+            sendJson(res, 200, { ok: true, beats, source: 'scenes' });
+        } catch (e) {
+            sendJson(res, 200, { ok: false, error: 'Analyze failed: ' + e.message });
+        }
+    });
+}
+
 const server = http.createServer((req, res) => {
     resetIdleTimer();
 
@@ -945,6 +1201,8 @@ const server = http.createServer((req, res) => {
     if (urlPath === '/api/proxy-image') { proxyImage(req, res, query.get('url')); return; }
     if (urlPath === '/api/generate-image') { generateAiImage(req, res); return; }
     if (urlPath === '/api/tmdb-cast') { fetchTmdbCast(res, query.get('title'), query.get('year')); return; }
+    if (urlPath === '/api/timeline-analyze') { analyzeStoryBeats(req, res); return; }
+    if (urlPath === '/api/timeline-thread-notes') { analyzeThreadNotes(req, res); return; }
 
     if (urlPath === '/') urlPath = '/hub.html';
     const filePath = path.normalize(path.join(ROOT, urlPath));
