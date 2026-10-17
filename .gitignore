@@ -6,3 +6,10 @@ tmdb-key.txt
 google-maps-key.txt
 posters/
 scripts/_serve.log
+
+# Copyrighted screenplays and projects built from them: kept locally, never published
+text/
+project_folders/
+# Screenshots of Pinterest boards (account invite link, other people's photos)
+scripts/storyboard-default-and-pinterest-board.png
+scripts/pinterest-individual-images-verified.png

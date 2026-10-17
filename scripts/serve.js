@@ -408,7 +408,7 @@ async function fetchGeocode(res, query) {
 
     const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent(query);
     const headers = {
-        'User-Agent': 'FinalDrafter/1 (local screenplay editor; contact: lucylu.contact@gmail.com)',
+        'User-Agent': 'FinalDrafter/1 (local screenplay editor; contact: hello@lucylu.org)',
         'Accept-Language': 'en'
     };
     try {
